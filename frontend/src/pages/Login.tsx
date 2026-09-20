@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '..//components/ui/Button';
-import { Lock, ArrowLeft, ShieldCheck, AlertCircle, KeyRound, UserCheck } from 'lucide-react';
+import { Lock, ArrowLeft, ShieldCheck, AlertCircle, KeyRound } from 'lucide-react';
 
 export const Login: React.FC = () => {
-  const [username, setUsername] = useState('admin261125@gmail.com');
-  const [password, setPassword] = useState('admin261125@gmail.com');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -34,12 +34,6 @@ export const Login: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemoFill = () => {
-    setUsername('admin261125@gmail.com');
-    setPassword('admin261125@gmail.com');
-    setError('');
   };
 
   return (
@@ -132,18 +126,6 @@ export const Login: React.FC = () => {
                 </>
               )}
             </button>
-
-            {/* Quick Demo Fill Helper */}
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={handleDemoFill}
-                className="inline-flex items-center gap-1.5 text-[12px] font-medium text-apple-gray-500 dark:text-apple-gray-400 hover:text-apple-blue dark:hover:text-apple-blue transition-colors cursor-pointer"
-              >
-                <UserCheck className="h-3.5 w-3.5" />
-                <span>Fill Default Credentials</span>
-              </button>
-            </div>
           </form>
         </div>
       </div>

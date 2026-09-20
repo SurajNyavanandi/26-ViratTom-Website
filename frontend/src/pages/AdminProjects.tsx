@@ -21,16 +21,11 @@ import {
 
 export const AdminProjects: React.FC = () => {
   const [projects, setProjects] = useState<any[]>([]);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('proj_1');
-  const [clientPhone, setClientPhone] = useState('9876543210');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const [clientPhone, setClientPhone] = useState('');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneSaveSuccess, setPhoneSaveSuccess] = useState(false);
-  const [milestones, setMilestones] = useState([
-    { id: 1, task: 'Backend Architecture + Database Schema Setup', done: true },
-    { id: 2, task: 'Web Client Portal + Admin Milestone Engine', done: true },
-    { id: 3, task: 'Mobile App Core Engine (iOS & Android)', done: false },
-    { id: 4, task: 'Security Audit, Load Testing & App Store Deployment', done: false },
-  ]);
+  const [milestones, setMilestones] = useState<Array<{ id: number; task: string; done: boolean; date?: string }>>([]);
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [notified, setNotified] = useState(false);
   const [feedbackResolved, setFeedbackResolved] = useState(false);
@@ -46,18 +41,30 @@ export const AdminProjects: React.FC = () => {
           setProjects(data);
           const first = data[0];
           setSelectedProjectId(first.id);
-          setClientPhone(first.clientPhone || '9876543210');
+          setClientPhone(first.clientPhone || '');
           if (first.milestones) setMilestones(first.milestones);
+        } else {
+          setProjects([]);
         }
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error('[AdminProjects] Fetch error:', err));
   }, []);
 
-  const currentProject = projects.find(p => p.id === selectedProjectId) || projects[0] || {
-    id: 'proj_1',
-    title: 'E-Commerce & Delivery Mobile App',
-    clientPhone: '9876543210',
-    type: 'Mobile App'
+  const currentProject = projects.find(p => p.id === selectedProjectId) || projects[0] || null;
+
+  const handleTogglePortalAccess = async () => {
+    if (!currentProject) return;
+    const updatedApproved = currentProject.clientPortalApproved === false ? true : false;
+    try {
+      await fetch(`/api/admin/projects/${selectedProjectId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientPortalApproved: updatedApproved })
+      });
+      setProjects(projects.map(p => p.id === selectedProjectId ? { ...p, clientPortalApproved: updatedApproved } : p));
+    } catch (err) {
+      console.error('Error toggling client portal access:', err);
+    }
   };
 
   const handleSavePhone = async (e: React.FormEvent) => {
@@ -159,15 +166,73 @@ export const AdminProjects: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1.5 rounded-full bg-[#34C759]/10 text-[#34C759] text-[13px] font-semibold flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#34C759] animate-pulse" />
-            <span>1 Active Sprint</span>
-          </span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAddProject(true)}
+            className="px-4 py-2 rounded-xl bg-[#0071E3] text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-xs hover:bg-[#0077ED] transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Project</span>
+          </button>
+          {projects.length > 0 && (
+            <span className="px-3 py-1.5 rounded-full bg-[#34C759]/10 text-[#34C759] text-[13px] font-semibold flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[#34C759] animate-pulse" />
+              <span>{projects.length} Active {projects.length === 1 ? 'Project' : 'Projects'}</span>
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Project Selector & Add Button */}
+      {/* Add Project Modal */}
+      {showAddProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-apple-black dark:text-white">Create New Client Project</h3>
+            <form onSubmit={handleCreateProject} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray-500 mb-1">Project Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Modern Web & Mobile Application"
+                  value={newProjectTitle}
+                  onChange={e => setNewProjectTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-50 dark:bg-[#2C2C2E] text-black dark:text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray-500 mb-1">Client Mobile Number</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
+                  value={newProjectPhone}
+                  onChange={e => setNewProjectPhone(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-3 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-50 dark:bg-[#2C2C2E] text-black dark:text-white text-sm"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProject(false)}
+                  className="px-4 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-apple-blue text-white text-sm font-semibold"
+                >
+                  Create Project
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Project Selector */}
       {projects.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
           {projects.map(p => (
@@ -190,9 +255,25 @@ export const AdminProjects: React.FC = () => {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* 📱 PRIMARY ACTIVE PROJECT CARD                                            */}
-      {/* ========================================================================= */}
+      {!currentProject ? (
+        <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-12 text-center space-y-4">
+          <FolderKanban className="h-12 w-12 text-apple-blue mx-auto opacity-70" />
+          <h2 className="text-[20px] font-bold text-[#000000] dark:text-white">No Active Client Projects</h2>
+          <p className="text-[14px] text-apple-gray-500 max-w-md mx-auto">
+            You haven't registered any client projects yet. Create a project to assign deliverables, milestones, and client access.
+          </p>
+          <button
+            onClick={() => setShowAddProject(true)}
+            className="px-5 py-2.5 rounded-xl bg-[#0071E3] text-white text-[14px] font-semibold inline-flex items-center gap-2 shadow-xs cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create First Project</span>
+          </button>
+        </div>
+      ) : (
+      /* ========================================================================= */
+      /* 📱 PRIMARY ACTIVE PROJECT CARD                                            */
+      /* ========================================================================= */
       <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)] overflow-hidden">
         
         {/* Project Header Bar */}
@@ -251,7 +332,20 @@ export const AdminProjects: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 md:pt-0">
+          <div className="flex items-center gap-3 pt-2 md:pt-0 flex-wrap">
+            <button
+              onClick={handleTogglePortalAccess}
+              className={`text-[12px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
+                currentProject?.clientPortalApproved !== false
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
+              }`}
+              title="Only admin can enable/disable this client's portal access"
+            >
+              <span className={`h-2 w-2 rounded-full ${currentProject?.clientPortalApproved !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+              <span>Portal: {currentProject?.clientPortalApproved !== false ? 'Approved' : 'Restricted (No Login)'}</span>
+            </button>
+
             <span className="text-[13px] font-semibold text-[#0071E3] bg-[#0071E3]/10 px-3 py-1.5 rounded-xl">
               {progressPercent}% Complete
             </span>
@@ -419,6 +513,7 @@ export const AdminProjects: React.FC = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

@@ -11,19 +11,7 @@ export const ClientDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [payingAdvance, setPayingAdvance] = useState(false);
   const [paymentSuccessMsg, setPaymentSuccessMsg] = useState('');
-  const [project, setProject] = useState<any>({
-    title: "Web & Mobile App Project",
-    status: "Active",
-    totalBudget: 25000,
-    advancePercentage: 20,
-    advanceAmount: 5000,
-    advancePaid: false,
-    finalPaid: false,
-    clientPortalApproved: true,
-    milestones: [],
-    deliverables: [],
-    paymentHistory: []
-  });
+  const [project, setProject] = useState<any>(null);
 
   const fetchProject = async () => {
     const token = localStorage.getItem('client_token');
@@ -39,11 +27,14 @@ export const ClientDashboard = () => {
         return;
       }
       const data = await res.json().catch(() => null);
-      if (data && !data.error) {
+      if (data && !data.error && data.id) {
         setProject(data);
+      } else {
+        setProject(null);
       }
     } catch (err) {
       console.error("Error fetching project:", err);
+      setProject(null);
     } finally {
       setLoading(false);
     }
@@ -53,38 +44,137 @@ export const ClientDashboard = () => {
     fetchProject();
   }, []);
 
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePayAdvance = async () => {
+    if (!project) return;
     setPayingAdvance(true);
     const token = localStorage.getItem('client_token');
     const advanceAmount = project.advanceAmount || (project.totalBudget ? Math.round(project.totalBudget * 0.2) : 5000);
 
     try {
-      console.log(`[Client Portal] Initiating 20% advance payment of ₹${advanceAmount}...`);
-      const res = await fetch('/api/client/confirm-advance', {
+      console.log(`[Client Portal] Requesting Razorpay Order for 20% advance (₹${advanceAmount})...`);
+      const orderRes = await fetch('/api/client/create-razorpay-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token || ''}`
-        },
-        body: JSON.stringify({
-          amount: advanceAmount,
-          paymentMethod: 'UPI / Online Razorpay',
-          transactionId: `PAY_ADV_${Date.now()}`
-        })
+        }
       });
-      const data = await res.json();
+      const orderData = await orderRes.json().catch(() => ({}));
 
-      if (res.ok && data.success) {
-        console.log('[Client Portal] Advance payment confirmed! Project workspace unlocked.');
-        setProject(data.project);
-        setPaymentSuccessMsg('20% Advance Payment received! Your project dashboard is now fully unlocked.');
-      } else {
-        alert(data.error || 'Payment processing error. Please try again.');
+      if (!orderRes.ok || !orderData.success) {
+        console.warn('[Razorpay Order] Server returned order issue:', orderData);
+        const proceedDirect = window.confirm(
+          `Razorpay Gateway Notice:\n${orderData.error || 'Razorpay order creation could not be initialized.'}\n\nWould you like to simulate direct advance booking confirmation for testing?`
+        );
+        if (proceedDirect) {
+          const directRes = await fetch('/api/client/confirm-advance', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token || ''}`
+            },
+            body: JSON.stringify({
+              amount: advanceAmount,
+              paymentMethod: 'Direct Payment / Gateway Simulation',
+              transactionId: `TXN_${Date.now()}`
+            })
+          });
+          const directData = await directRes.json();
+          if (directData.success && directData.project) {
+            setProject(directData.project);
+            setPaymentSuccessMsg('20% Advance Payment confirmed! Your project dashboard is now fully unlocked.');
+          }
+        }
+        setPayingAdvance(false);
+        return;
       }
-    } catch (err) {
+
+      // Load Razorpay SDK Script if not yet loaded
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded || !(window as any).Razorpay) {
+        alert('Failed to load Razorpay Payment Gateway. Please check your network connection.');
+        setPayingAdvance(false);
+        return;
+      }
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        name: 'VIRATTOM',
+        description: `20% Advance Booking - ${orderData.projectName || project.title}`,
+        image: '/favicon.svg',
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          console.log('[Razorpay Modal] Payment success response received:', response);
+          try {
+            const verifyRes = await fetch('/api/client/verify-razorpay-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token || ''}`
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok && verifyData.success) {
+              setProject(verifyData.project);
+              setPaymentSuccessMsg('20% Advance Payment verified via Razorpay! Your project workspace is now fully unlocked.');
+            } else {
+              alert(verifyData.error || 'Payment signature verification failed.');
+            }
+          } catch (e) {
+            console.error('[Razorpay Verification Network Error]:', e);
+            alert('Failed to verify payment with server.');
+          } finally {
+            setPayingAdvance(false);
+          }
+        },
+        prefill: {
+          name: orderData.clientName || project.clientName || '',
+          contact: (orderData.clientPhone || project.clientPhone || '').replace(/\D/g, '').slice(-10),
+          email: orderData.clientEmail || project.clientEmail || ''
+        },
+        theme: {
+          color: '#0071E3'
+        },
+        modal: {
+          ondismiss: function () {
+            console.log('[Razorpay Modal] Dismissed by client.');
+            setPayingAdvance(false);
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        console.error('[Razorpay Payment Failed]', response.error);
+        alert(`Payment failed: ${response.error?.description || 'Transaction was declined.'}`);
+        setPayingAdvance(false);
+      });
+      rzp.open();
+    } catch (err: any) {
       console.error('[Client Portal] Advance payment error:', err);
-      alert('Unable to process payment. Please try again.');
-    } finally {
+      alert(err.message || 'Unable to process payment. Please try again.');
       setPayingAdvance(false);
     }
   };
@@ -111,17 +201,32 @@ export const ClientDashboard = () => {
     setFeedbackSubmitted(true);
   };
 
-  const totalBudget = project.totalBudget || 25000;
-  const advanceAmount = project.advanceAmount || Math.round(totalBudget * 0.2);
-  const remainingAmount = totalBudget - advanceAmount;
-
   if (loading) {
     return (
       <div className="py-20 text-center text-apple-gray-400">
-        Loading project workspace...
+        Loading project workspace from server...
       </div>
     );
   }
+
+  if (!project) {
+    return (
+      <div className="max-w-2xl mx-auto py-16 text-center space-y-4">
+        <div className="h-12 w-12 rounded-full bg-apple-gray-100 dark:bg-[#2C2C2E] flex items-center justify-center mx-auto text-apple-gray-400">
+          <AlertCircle className="h-6 w-6" />
+        </div>
+        <h2 className="text-[20px] font-bold text-apple-black dark:text-white">No Active Project Found</h2>
+        <p className="text-[14px] text-apple-gray-500">
+          No project has been assigned to your mobile number yet. Once our team reviews and registers your project, your milestones and billing will appear here.
+        </p>
+        <Button onClick={() => window.location.href = '/'}>Return to Home</Button>
+      </div>
+    );
+  }
+
+  const totalBudget = project.totalBudget || 0;
+  const advanceAmount = project.advanceAmount || Math.round(totalBudget * 0.2);
+  const remainingAmount = Math.max(0, totalBudget - advanceAmount);
 
   // If 20% advance is not yet paid, present the 20% Booking & Unlock Gate
   if (!project.advancePaid) {

@@ -38,8 +38,11 @@ export const ClientLogin = () => {
         try {
           data = JSON.parse(text);
         } catch {
-          console.warn('[Client Portal] Non-JSON server response:', text.slice(0, 100));
-          throw new Error('Server connection was interrupted. Please retry in a moment.');
+          if (res.status === 403 || res.status === 404) {
+            data = { error: 'No active project is registered under this phone number. Please submit an inquiry or contact the developer.' };
+          } else {
+            data = { error: `Server error (${res.status}). Please try again in a moment.` };
+          }
         }
       }
 
@@ -53,7 +56,7 @@ export const ClientLogin = () => {
       }
     } catch (err: any) {
       console.error('[Client Portal] Network error during sign-in:', err);
-      setError(err?.message || 'Unable to connect to the server. Please try again.');
+      setError(err?.message || 'Unable to connect to the server. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -103,31 +106,6 @@ export const ClientLogin = () => {
                     if (error) setError('');
                   }}
                 />
-              </div>
-
-              {/* Demo test quick chips */}
-              <div className="mt-2.5 flex items-center gap-1.5 flex-wrap text-[12px] text-apple-gray-500">
-                <span className="text-[11px] text-apple-gray-400">Quick Test:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhone('9876543210');
-                    if (error) setError('');
-                  }}
-                  className="px-2 py-0.5 rounded-lg bg-apple-gray-100 dark:bg-[#2C2C2E] hover:bg-apple-gray-200 dark:hover:bg-[#38383A] text-apple-black dark:text-white font-mono text-[11px] cursor-pointer transition-colors"
-                >
-                  9876543210 (Demo Client)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPhone('9666635009');
-                    if (error) setError('');
-                  }}
-                  className="px-2 py-0.5 rounded-lg bg-apple-gray-100 dark:bg-[#2C2C2E] hover:bg-apple-gray-200 dark:hover:bg-[#38383A] text-apple-black dark:text-white font-mono text-[11px] cursor-pointer transition-colors"
-                >
-                  9666635009 (Suraj Project)
-                </button>
               </div>
             </div>
 

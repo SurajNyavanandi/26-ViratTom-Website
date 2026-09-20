@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, KeyRound, Mail, MessageSquare, Phone } from 'lucide-react';
+import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, KeyRound, Mail, MessageSquare, Phone, ExternalLink, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const PROJECT_MIN_PRICES: Record<string, number> = {
@@ -19,7 +20,7 @@ const getMinPrice = (type: string): number => {
 };
 
 export const Home = () => {
-  const [projects, setProjects] = useState([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formState, setFormState] = useState({ 
     name: '', 
@@ -31,18 +32,25 @@ export const Home = () => {
   });
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'otp' | 'success'>('idle');
   const [otp, setOtp] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/projects')
       .then(res => res.json())
       .then(data => {
-        setProjects(data);
-        setLoading(false);
+        if (Array.isArray(data)) {
+          setProjects(data);
+        } else {
+          setProjects([]);
+        }
       })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('[Home] Failed to load dynamic projects from backend:', err);
+        setProjects([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleApply = async (e: React.FormEvent) => {
@@ -94,9 +102,6 @@ export const Home = () => {
       }
 
       console.log('[Home Inquiry] Email OTP requested successfully.');
-      if (data.devOtp) {
-        setDevOtpHint(data.devOtp);
-      }
       setFormStatus('otp');
     } catch (err: any) {
       console.error('[Home Inquiry] Error requesting email OTP:', err);
@@ -164,6 +169,16 @@ export const Home = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
+          <div className="mb-3 inline-flex items-center">
+            <Link
+              to="/resume"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-apple-gray-100 dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white text-[12px] sm:text-[13px] font-medium transition-all hover:scale-[1.02] shadow-xs cursor-pointer"
+            >
+              <FileText className="h-3.5 w-3.5 text-apple-blue" />
+              <span>Looking for a developer CV? <span className="text-apple-blue font-semibold underline">Download resume template at Virattom</span> &rarr;</span>
+            </Link>
+          </div>
+          <br />
           <span className="text-[12px] sm:text-[14px] font-semibold tracking-widest text-apple-gray-500 dark:text-apple-gray-400 uppercase">
             VI<span className="font-bold text-apple-blue">R</span>
             <span className="font-bold text-apple-blue">A</span>T TO
@@ -259,23 +274,49 @@ export const Home = () => {
           <div className="flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-apple-blue border-t-transparent" /></div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            {projects.map((project: any) => (
-              <div key={project._id} className="group relative overflow-hidden rounded-2xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#2C2C2E] shadow-sm hover:shadow-md transition-all">
-                <div className="aspect-16/10 overflow-hidden bg-apple-gray-100 dark:bg-[#2C2C2E]">
-                  <img 
-                    src={project.imageUrl} 
-                    alt={project.title} 
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                  />
-                </div>
-                <div className="p-7">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-blue/10 text-apple-blue mb-2">
-                    {project.type}
-                  </span>
-                  <h3 className="text-[22px] font-bold text-apple-black dark:text-white">{project.title}</h3>
-                </div>
-              </div>
-            ))}
+            {projects.map((project: any) => {
+              const projectUrl = project.url || (project.title === 'Inisio' ? 'https://inisio.vercel.app/' : 'https://urbanico.vercel.app/');
+              return (
+                <a 
+                  key={project._id} 
+                  href={projectUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative block overflow-hidden rounded-2xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#2C2C2E] shadow-sm hover:shadow-lg transition-all text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
+                >
+                  <div className="aspect-16/10 overflow-hidden bg-apple-gray-100 dark:bg-[#2C2C2E] relative">
+                    <img 
+                      src={project.imageUrl} 
+                      alt={project.title} 
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
+                    <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[12px] font-medium text-apple-black dark:text-white flex items-center gap-1.5 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
+                      <span>Visit Live</span>
+                      <ExternalLink className="h-3.5 w-3.5 text-apple-blue" />
+                    </div>
+                  </div>
+                  <div className="p-7">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-blue/10 text-apple-blue">
+                        {project.type}
+                      </span>
+                      <span className="text-[13px] text-apple-gray-400 dark:text-apple-gray-500 font-mono flex items-center gap-1">
+                        {projectUrl.replace('https://', '').replace('/', '')}
+                      </span>
+                    </div>
+                    <h3 className="text-[22px] font-bold text-apple-black dark:text-white group-hover:text-apple-blue transition-colors flex items-center justify-between">
+                      <span>{project.title}</span>
+                      <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 text-apple-blue" />
+                    </h3>
+                    {project.description && (
+                      <p className="mt-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
+                        {project.description}
+                      </p>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
           </div>
         )}
       </section>
@@ -298,13 +339,13 @@ export const Home = () => {
               <h3 className="text-[22px] font-bold mb-1">Static Website</h3>
               <p className="text-[14px] text-apple-gray-500 mb-6">Simple 1 to 5 Page Website with WhatsApp Chat</p>
               <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Fast delivery</p>
+              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Direct developer attention</p>
               <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Simple business brochure / visiting card</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 1-tap WhatsApp message button</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Fast loading on all mobile phones</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Google search (SEO) ready</li>
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 1-2 Weeks Delivery</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Direct 1-on-1 developer collaboration & updates</li>
               </ul>
               <Button onClick={() => {
                 setFormState({...formState, projectType: 'Static Website'});
@@ -326,7 +367,7 @@ export const Home = () => {
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Database that saves customer or student data</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Admin panel to edit info anytime</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Interactive search & forms</li>
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 3-5 Weeks Delivery</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Milestone-based progress with live preview links</li>
               </ul>
               <Button onClick={() => {
                 setFormState({...formState, projectType: 'Dynamic Website'});
@@ -348,7 +389,7 @@ export const Home = () => {
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Shopping cart & customer checkout</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Online payments (UPI, GPay, Cards)</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Order tracking & inventory manager</li>
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 4-6 Weeks Delivery</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> End-to-end checkout & payment integration testing</li>
               </ul>
               <Button onClick={() => {
                 setFormState({...formState, projectType: 'Online Store'});
@@ -370,7 +411,7 @@ export const Home = () => {
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Daily phone push notifications</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Smooth touch gestures & offline mode</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Assistance publishing on App Stores</li>
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 6-8 Weeks Delivery</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Multi-device responsiveness & app store compliance</li>
               </ul>
               <Button onClick={() => {
                 setFormState({...formState, projectType: 'Mobile App'});
@@ -449,19 +490,6 @@ export const Home = () => {
                     We sent a 6-digit verification code to <span className="font-semibold text-apple-black dark:text-white">{formState.email}</span>
                   </p>
                 </div>
-
-                {devOtpHint && (
-                  <div className="p-3.5 rounded-xl bg-apple-blue/5 border border-apple-blue/20 text-apple-blue text-[13px] text-center flex items-center justify-between">
-                    <span>Verification Code: <strong className="font-mono font-bold tracking-widest">{devOtpHint}</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => setOtp(devOtpHint)}
-                      className="text-[12px] font-semibold underline hover:text-blue-700 cursor-pointer ml-2"
-                    >
-                      Auto-fill
-                    </button>
-                  </div>
-                )}
 
                 <div>
                   <label className="block text-[14px] font-medium mb-2">6-Digit Email OTP</label>
@@ -644,30 +672,39 @@ export const Home = () => {
           </Card>
 
           {/* WhatsApp Business Connect Card */}
-          <div className="mt-8 p-5 rounded-2xl bg-linear-to-r from-[#25D366]/10 to-[#128C7E]/10 border border-[#25D366]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
-            <div className="flex items-center gap-3.5">
-              <div className="h-11 w-11 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
-                <MessageSquare className="h-6 w-6" />
+          {(() => {
+            const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/\D/g, '');
+            const whatsappUrl = rawWaNumber 
+              ? `https://wa.me/${rawWaNumber}?text=Hello%20Virattom%20Team,%20I%20would%20like%20to%20discuss%20a%20project.`
+              : `https://wa.me/?text=Hello%20Virattom%20Team,%20I%20would%20like%20to%20discuss%20a%20project.`;
+
+            return (
+              <div className="mt-8 p-5 rounded-2xl bg-linear-to-r from-[#25D366]/10 to-[#128C7E]/10 border border-[#25D366]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-11 w-11 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <MessageSquare className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-[15px] text-apple-black dark:text-white">
+                      Prefer WhatsApp?
+                    </h4>
+                    <p className="text-[13px] text-apple-gray-600 dark:text-apple-gray-300">
+                      Chat directly with our business desk for instant project estimates.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] text-white text-[13px] font-semibold hover:bg-[#20bd5a] active:scale-95 transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Chat on WhatsApp</span>
+                </a>
               </div>
-              <div>
-                <h4 className="font-bold text-[15px] text-apple-black dark:text-white">
-                  Prefer WhatsApp?
-                </h4>
-                <p className="text-[13px] text-apple-gray-600 dark:text-apple-gray-300">
-                  Chat directly with our business desk for instant project estimates.
-                </p>
-              </div>
-            </div>
-            <a
-              href="https://wa.me/?text=Hello%20Virattom%20Team,%20I%20would%20like%20to%20discuss%20a%20project."
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] text-white text-[13px] font-semibold hover:bg-[#20bd5a] active:scale-95 transition-all shadow-xs shrink-0 self-start sm:self-auto"
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span>Chat on WhatsApp</span>
-            </a>
-          </div>
+            );
+          })()}
         </div>
       </section>
     </div>

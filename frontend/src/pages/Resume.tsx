@@ -80,14 +80,6 @@ interface ResumeData {
   certifications: string;
 }
 
-interface VerifiedRecruiter {
-  name: string;
-  email: string;
-  phone: string;
-  company?: string;
-  verifiedAt: string;
-}
-
 type ResumeChunk =
   | { type: 'header' }
   | { type: 'skills' }
@@ -102,23 +94,23 @@ type ResumeChunk =
 
 const DEFAULT_RESUME_DATA: ResumeData = {
   header: {
-    name: "Suraj Nyavanandi",
+    name: "Alex Morgan",
     role: "MERN Stack Developer",
-    location: "Hyderabad, Telangana",
-    phone: "+91-9666635009",
-    email: "kanusuraj15@gmail.com",
-    github: "github.com/SurajNyavanandi",
-    linkedin: "linkedin.com/in/suraj-nyavanandi-305962286",
-    liveProjects: "Portfolio | E-Commerce | Invoice Management | AI Chatbot | RVM Bags",
-    portfolio: "virattom.com",
-    portfolioLink: "https://virattom.com"
+    location: "Bangalore, Karnataka",
+    phone: "+91-9876543210",
+    email: "alex.morgan.dev@example.com",
+    github: "github.com/alexmorgan-dev",
+    linkedin: "linkedin.com/in/alex-morgan-developer",
+    liveProjects: "Portfolio | E-Commerce | Invoice Management | AI Chatbot | Cloud Services",
+    portfolio: "alexmorgan.dev",
+    portfolioLink: "https://alexmorgan.dev"
   },
   skills: "Languages: JavaScript, TypeScript, HTML5, CSS3\nFrontend: React, Redux, React Hooks, Angular, NgRx, Bootstrap, Tailwind CSS\nBackend: Node.js, Express.js, NestJS, RESTful API Design\nDatabases: MongoDB, MySQL, Supabase\nSecurity: JWT Authentication, Role-Based Access(RBAC), bcrypt Password Hashing, Email OTP Verification\nTools & Platforms: AWS S3, Git, Postman, VSCode, Swagger, Nodemailer, Vite\nDeployment & Hosting: Vercel, Render, Netlify\nOther: Data Structures and Algorithms (DSA)",
   experience: [
     {
       id: 1,
       role: "MERN Stack Developer (Training)",
-      company: "Sharpener",
+      company: "Apex Software Labs",
       date: "May 2025 – April 2026",
       tech: "React, Express.js, MongoDB, JWT, Razorpay, AWS S3, Nodemailer",
       bullets: "Completed comprehensive MERN Stack training (11 months) with focus on real-world application development and industry best practices.\nBuilt multiple full-stack projects from scratch using React, Express.js, and MongoDB with production-grade code quality.\nImplemented secure JWT-based authentication systems with bcrypt password hashing and role-based access control.\nDesigned and developed RESTful APIs supporting CRUD operations with proper validation and error handling.\nCreated responsive and interactive user interfaces using React hooks, state management, and component composition patterns.\nIntegrated third-party services: Razorpay for payment processing, AWS S3 for file storage, Nodemailer for email services."
@@ -130,43 +122,43 @@ const DEFAULT_RESUME_DATA: ResumeData = {
       name: "StoreAndManage E-Commerce Platform",
       tech: "React, Vite, Node.js, Express.js, MongoDB, Swagger, Tailwind CSS, Bootstrap",
       bullets: "Developed modern, scalable e-commerce platform with Men's Wear, Women's Wear, and Kids Wear categories using React.\nBuilt responsive frontend using React 19 and Vite with clean, modern UI design using Tailwind CSS and Bootstrap.\nEngineered robust backend API with comprehensive Swagger API documentation for seamless integration and developer experience.\nImplemented category-based product filtering, product management, inventory handling, and comprehensive product catalog.\nIntegrated user authentication with JWT tokens, email OTP verification, and secure password reset functionality.\nImplemented role-based access control (user, admin roles) and Nodemailer for transactional email notifications.",
-      demoLabel: "shop.virattom.com",
-      demoLink: "https://shop.virattom.com"
+      demoLabel: "store.example.com",
+      demoLink: "https://store.example.com"
     },
     {
       id: 2,
       name: "Expense Tracker",
       tech: "React, Node.js, Express.js, MongoDB, Razorpay, AWS S3, JWT",
       bullets: "Built full-stack expense management application for tracking daily, monthly, and yearly expenses with analytics and reporting.\nImplemented secure JWT-based authentication with bcrypt password hashing and token-based session management.\nCreated interactive React components for expense visualization, filtering, and reporting using React hooks and state management.\nIntegrated Razorpay payment gateway for premium account upgrades with transaction logging and error handling.\nDeveloped RESTful APIs with pagination, filtering, sorting, leaderboard rankings, and premium membership feature validation.\nIntegrated AWS S3 for server-side expense report storage enabling users to generate, download, and manage reports.\nImplemented email-based password reset functionality with secure token validation and transactional email service integration.",
-      demoLabel: "expense.virattom.com",
-      demoLink: "https://expense.virattom.com"
+      demoLabel: "expense.example.com",
+      demoLink: "https://expense.example.com"
     },
     {
       id: 3,
       name: "Invoice Management System",
       tech: "React, Node.js, Express.js, MongoDB, JWT, Tailwind CSS",
       bullets: "Enterprise invoice system with role-based access control (SUPER_ADMIN, ADMIN, UNIT_MANAGER, USER).\nImplemented invoice validation: unique invoice numbers per financial year and date sequencing between invoices.\nBuilt pagination, filtering by financial year, date range, and search by invoice number functionality.\nDesigned hierarchical user creation flow with system-generated User IDs (SA1, A1, UM1, U1).\nImplemented timezone validation during login and user profile management with update capabilities.",
-      demoLabel: "invoice.virattom.com",
-      demoLink: "https://invoice.virattom.com"
+      demoLabel: "invoice.example.com",
+      demoLink: "https://invoice.example.com"
     }
   ],
   education: [
     {
       id: 1,
       degree: "B.Tech. Electrical and Electronics Engineering",
-      institution: "VIGNAN Institute of Technology & Science, Hyderabad",
+      institution: "Apex Institute of Engineering & Technology, Bangalore",
       date: "Graduated: July 2022",
-      score: "CGPA: 7.32 / 10"
+      score: "CGPA: 8.10 / 10"
     },
     {
       id: 2,
       degree: "Intermediate (MPC)",
-      institution: "SR Junior College, Nizamabad",
+      institution: "Apex Junior College, Bangalore",
       date: "Completed: March 2018",
-      score: "Percentage: 93%"
+      score: "Percentage: 92%"
     }
   ],
-  certifications: "Wipro Certification in Java/J2EE (2022): Comprehensive training in Java fundamentals, object-oriented programming, and enterprise application development."
+  certifications: "Enterprise Certification in Java/J2EE (2022): Comprehensive training in Java fundamentals, object-oriented programming, and enterprise application development."
 };
 
 /* ------------------------------------------------------------------ */
@@ -179,8 +171,13 @@ export const Resume = () => {
     try {
       const saved = localStorage.getItem('virattom_resume_custom_draft');
       if (saved) {
+        const parsed = JSON.parse(saved) as ResumeData;
+        if (parsed?.header?.name?.toLowerCase().includes('suraj') || parsed?.header?.phone?.includes('96666')) {
+          localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(DEFAULT_RESUME_DATA));
+          return DEFAULT_RESUME_DATA;
+        }
         console.log('[Resume] Restored customized draft from localStorage');
-        return JSON.parse(saved) as ResumeData;
+        return parsed;
       }
     } catch (e) {
       console.warn('[Resume] Could not parse stored resume draft:', e);
@@ -188,19 +185,24 @@ export const Resume = () => {
     return DEFAULT_RESUME_DATA;
   });
 
-  // Stored Verified Recruiter State
-  const [verifiedRecruiter, setVerifiedRecruiter] = useState<VerifiedRecruiter | null>(() => {
+  // Stored Verified User Email State (for auto-saving & remembering resume per user)
+  const [verifiedEmail, setVerifiedEmail] = useState<string>(() => {
     try {
-      const saved = localStorage.getItem('virattom_verified_recruiter');
+      const saved = localStorage.getItem('virattom_verified_user_email') || '';
       if (saved) {
-        const parsed = JSON.parse(saved) as VerifiedRecruiter;
-        console.log('[Resume] Recognized returning verified recruiter:', parsed.email);
-        return parsed;
+        console.log('[Resume] Recognized returning user email:', saved);
+        return saved;
+      }
+      // Backward compatibility with previous recruiter object
+      const oldRecruiter = localStorage.getItem('virattom_verified_recruiter');
+      if (oldRecruiter) {
+        const parsed = JSON.parse(oldRecruiter);
+        if (parsed && parsed.email) return parsed.email;
       }
     } catch (e) {
-      console.warn('[Resume] Could not parse stored recruiter profile:', e);
+      console.warn('[Resume] Could not parse stored user email:', e);
     }
-    return null;
+    return '';
   });
 
   // UI States
@@ -213,14 +215,8 @@ export const Resume = () => {
   // Verification Modal States
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [verificationStep, setVerificationStep] = useState<'form' | 'otp'>('form');
-  const [recruiterForm, setRecruiterForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company: ''
-  });
-  const [recruiterOtp, setRecruiterOtp] = useState('');
-  const [devOtpHint, setDevOtpHint] = useState('');
+  const [inputEmail, setInputEmail] = useState('');
+  const [userOtp, setUserOtp] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [verificationError, setVerificationError] = useState('');
@@ -228,15 +224,18 @@ export const Resume = () => {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Save draft changes to localStorage automatically
+  // Save draft changes to localStorage automatically (both general draft and email-specific)
   useEffect(() => {
     try {
       localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(data));
+      if (verifiedEmail) {
+        localStorage.setItem(`virattom_resume_user_${verifiedEmail}`, JSON.stringify(data));
+      }
       setHasCustomEdits(JSON.stringify(data) !== JSON.stringify(DEFAULT_RESUME_DATA));
     } catch (e) {
       console.warn('[Resume] Failed to save draft:', e);
     }
-  }, [data]);
+  }, [data, verifiedEmail]);
 
   // Resend Countdown Timer
   useEffect(() => {
@@ -367,7 +366,7 @@ export const Resume = () => {
       console.log('[Resume Download] Requesting PDF generation from /api/resume...', {
         candidate: data.header.name,
         pageCount: dynamicPages.length,
-        downloader: verifiedRecruiter ? verifiedRecruiter.email : 'Direct / Verified Session'
+        downloader: verifiedEmail ? verifiedEmail : 'Direct / Verified Session'
       });
 
       const res = await fetch('/api/resume', {
@@ -396,58 +395,51 @@ export const Resume = () => {
     }
   };
 
-  // 2. Download Initiator
+  // 2. Download Initiator (Direct download if verified, otherwise ask for Email OTP)
   const handleInitiateDownload = () => {
-    if (verifiedRecruiter) {
-      console.log('[Resume Download] Recognized returning verified recruiter:', verifiedRecruiter);
+    if (verifiedEmail) {
+      console.log('[Resume Download] Recognized returning verified user:', verifiedEmail);
+      // Ensure the latest draft is saved for this email before downloading
+      try {
+        localStorage.setItem(`virattom_resume_user_${verifiedEmail}`, JSON.stringify(data));
+      } catch (e) {
+        console.warn('Failed to sync user draft:', e);
+      }
       executeDirectDownload();
     } else {
-      console.log('[Resume Download] First-time visitor detected. Opening Email OTP Verification modal...');
+      console.log('[Resume Download] Email not yet verified. Opening Email OTP modal...');
       setShowVerificationModal(true);
       setVerificationStep('form');
       setVerificationError('');
-      setRecruiterOtp('');
-      setDevOtpHint('');
+      setUserOtp('');
+      setInputEmail(data.header.email || '');
     }
   };
 
-  // 3. Send Verification Email OTP
+  // 3. Send Verification Email OTP (Email-only)
   const handleSendVerificationOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setVerificationError('');
 
-    const cleanEmail = recruiterForm.email.trim().toLowerCase();
-    const cleanPhone = recruiterForm.phone.replace(/\D/g, '').slice(-10);
+    const cleanEmail = inputEmail.trim().toLowerCase();
 
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
       setVerificationError('Please enter a valid email address.');
       return;
     }
 
-    if (cleanPhone.length !== 10) {
-      setVerificationError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
     setIsSendingOtp(true);
-    console.log('[Resume Verification] Sending Email OTP request...', {
-      name: recruiterForm.name.trim(),
-      email: cleanEmail,
-      phone: cleanPhone,
-      company: recruiterForm.company.trim()
-    });
+    console.log('[Resume Verification] Sending Email OTP request for:', cleanEmail);
 
     try {
       const res = await fetch('/api/lead/request-email-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: recruiterForm.name.trim(),
+          name: data.header.name || 'Resume User',
           email: cleanEmail,
-          phone: cleanPhone,
-          company: recruiterForm.company.trim(),
-          projectType: 'Recruiter / Resume Download',
-          scope: recruiterForm.company.trim() ? `Recruiter at ${recruiterForm.company.trim()}` : 'Resume Downloader'
+          projectType: 'Resume User',
+          scope: `Resume download & sync by ${cleanEmail}`
         })
       });
 
@@ -459,9 +451,6 @@ export const Resume = () => {
         return;
       }
 
-      if (result.devOtp) {
-        setDevOtpHint(result.devOtp);
-      }
       setVerificationStep('otp');
       setResendCountdown(30);
     } catch (err) {
@@ -472,14 +461,13 @@ export const Resume = () => {
     }
   };
 
-  // 4. Verify OTP & Persist Profile & Auto-Download PDF
+  // 4. Verify OTP, Persist & Link Resume to Email, Auto-Download PDF
   const handleVerifyOtpAndDownload = async (e: React.FormEvent) => {
     e.preventDefault();
     setVerificationError('');
 
-    const cleanEmail = recruiterForm.email.trim().toLowerCase();
-    const cleanPhone = recruiterForm.phone.replace(/\D/g, '').slice(-10);
-    const cleanOtp = recruiterOtp.trim();
+    const cleanEmail = inputEmail.trim().toLowerCase();
+    const cleanOtp = userOtp.trim();
 
     if (cleanOtp.length !== 6) {
       setVerificationError('Please enter the 6-digit verification code.');
@@ -497,12 +485,10 @@ export const Resume = () => {
           email: cleanEmail,
           otp: cleanOtp,
           leadData: {
-            name: recruiterForm.name.trim(),
+            name: data.header.name || 'Resume User',
             email: cleanEmail,
-            phone: cleanPhone,
-            company: recruiterForm.company.trim(),
-            projectType: 'Recruiter / Resume Download',
-            scope: `Resume downloaded by ${recruiterForm.name.trim()}${recruiterForm.company.trim() ? ` (${recruiterForm.company.trim()})` : ''}`
+            projectType: 'Resume User',
+            scope: `Resume verified & downloaded by ${cleanEmail}`
           }
         })
       });
@@ -515,18 +501,27 @@ export const Resume = () => {
         return;
       }
 
-      const profile: VerifiedRecruiter = {
-        name: recruiterForm.name.trim(),
-        email: cleanEmail,
-        phone: cleanPhone,
-        company: recruiterForm.company.trim(),
-        verifiedAt: new Date().toISOString()
-      };
+      // Store verified user email
+      localStorage.setItem('virattom_verified_user_email', cleanEmail);
+      setVerifiedEmail(cleanEmail);
 
-      localStorage.setItem('virattom_verified_recruiter', JSON.stringify(profile));
-      setVerifiedRecruiter(profile);
+      // Check if user previously had a saved resume for this email
+      const previousSavedResume = localStorage.getItem(`virattom_resume_user_${cleanEmail}`);
+      if (previousSavedResume && !hasCustomEdits) {
+        try {
+          const parsed = JSON.parse(previousSavedResume);
+          setData(parsed);
+          console.log('[Resume Verification] Restored previously remembered resume for:', cleanEmail);
+        } catch (err) {
+          console.warn('Could not parse previous saved resume:', err);
+        }
+      } else {
+        // Save current customized resume to this user email
+        localStorage.setItem(`virattom_resume_user_${cleanEmail}`, JSON.stringify(data));
+      }
+
       setShowVerificationModal(false);
-      console.log('[Resume Verification] Success! Recruiter profile stored to localStorage:', profile);
+      console.log('[Resume Verification] Success! Verified & linked to:', cleanEmail);
 
       executeDirectDownload();
     } catch (err) {
@@ -539,22 +534,25 @@ export const Resume = () => {
 
   // 5. Reset Custom Resume Draft to Defaults
   const handleResetResumeToDefault = () => {
-    if (window.confirm("Reset all resume sections to Suraj's original defaults?")) {
+    if (window.confirm("Reset all resume sections to standard defaults?")) {
       setData(DEFAULT_RESUME_DATA);
       localStorage.removeItem('virattom_resume_custom_draft');
+      if (verifiedEmail) {
+        localStorage.removeItem(`virattom_resume_user_${verifiedEmail}`);
+      }
       setHasCustomEdits(false);
-      console.log('[Resume] Reset to Suraj original defaults.');
+      console.log('[Resume] Reset to default template.');
     }
   };
 
-  // 6. Clear Verified Recruiter Profile
-  const handleSwitchProfile = () => {
-    localStorage.removeItem('virattom_verified_recruiter');
-    setVerifiedRecruiter(null);
-    setRecruiterForm({ name: '', email: '', phone: '', company: '' });
-    setRecruiterOtp('');
-    setDevOtpHint('');
-    console.log('[Resume] Cleared stored recruiter profile.');
+  // 6. Switch / Change Email
+  const handleSwitchEmail = () => {
+    localStorage.removeItem('virattom_verified_user_email');
+    setVerifiedEmail('');
+    setInputEmail('');
+    setUserOtp('');
+    setShowVerificationModal(true);
+    setVerificationStep('form');
   };
 
   const updateHeader = (field: keyof HeaderData, value: string) => {
@@ -902,10 +900,10 @@ export const Resume = () => {
               </Link>
               <div className="hidden sm:block">
                 <h1 className="text-[15px] font-semibold text-apple-black dark:text-white leading-none">
-                  Suraj Nyavanandi
+                  Virattom Resume Template
                 </h1>
                 <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mt-0.5">
-                  Resume & Verification
+                  Developer CV & Live Editor
                 </p>
               </div>
             </div>
@@ -936,16 +934,16 @@ export const Resume = () => {
 
             {/* Right Action Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {verifiedRecruiter && (
+              {verifiedEmail && (
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
                   <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
                   <span className="truncate max-w-35 sm:max-w-50">
-                    {verifiedRecruiter.name} {verifiedRecruiter.company ? `(${verifiedRecruiter.company})` : ''}
+                    {verifiedEmail}
                   </span>
                   <button
-                    onClick={handleSwitchProfile}
+                    onClick={handleSwitchEmail}
                     className="text-[11px] underline hover:text-emerald-700 dark:hover:text-emerald-300 ml-1 cursor-pointer"
-                    title="Switch user / clear memory"
+                    title="Switch email / change user"
                   >
                     Switch
                   </button>
@@ -997,7 +995,7 @@ export const Resume = () => {
           >
             <div className="max-w-2xl mx-auto space-y-6 pb-24">
 
-              {verifiedRecruiter ? (
+              {verifiedEmail ? (
                 <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3 text-left">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -1005,19 +1003,27 @@ export const Resume = () => {
                     </div>
                     <div>
                       <div className="text-[13px] font-semibold text-apple-black dark:text-white">
-                        Verified Recruiter: {verifiedRecruiter.name}
+                        Linked Account: {verifiedEmail}
                       </div>
                       <div className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
-                        {verifiedRecruiter.email} • 1-Click Instant Download Active
+                        Edits auto-saved to this email • 1-Click Instant Downloads
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={handleSwitchProfile}
-                    className="text-[12px] font-medium text-apple-gray-500 hover:text-apple-black dark:hover:text-white underline cursor-pointer shrink-0"
-                  >
-                    Change
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleResetResumeToDefault}
+                      className="text-[12px] font-medium text-apple-gray-500 hover:text-apple-red dark:hover:text-apple-red underline cursor-pointer shrink-0"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      onClick={handleSwitchEmail}
+                      className="text-[12px] font-medium text-apple-blue hover:underline cursor-pointer shrink-0"
+                    >
+                      Switch Email
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="p-4 rounded-2xl bg-apple-blue/5 border border-apple-blue/15 flex items-center justify-between gap-3 text-left">
@@ -1027,10 +1033,10 @@ export const Resume = () => {
                     </div>
                     <div>
                       <div className="text-[13px] font-semibold text-apple-black dark:text-white">
-                        Official Resume & Editor
+                        Live Resume Builder
                       </div>
                       <div className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
-                        Verify your email once to save your profile and enable one-click PDF downloads.
+                        When downloading, we verify your email once so your edits are remembered for future visits.
                       </div>
                     </div>
                   </div>
@@ -1480,7 +1486,7 @@ export const Resume = () => {
                   }}
                 >
                   <div 
-                    className="page-sheet bg-white text-black shadow-[0_20px_50px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] rounded-xs transition-transform duration-200 relative overflow-hidden"
+                    className="page-sheet bg-white text-black shadow-[0_20px_50px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.06)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.6)] rounded-xs transition-transform duration-200 relative overflow-hidden flex flex-col justify-between"
                     style={{
                       width: '794px',
                       height: '1123px',
@@ -1492,7 +1498,18 @@ export const Resume = () => {
                       lineHeight: '1.3'
                     }}
                   >
-                    {pageChunks.map((chunk: ResumeChunk, chunkIndex: number) => renderResumeChunk(chunk, pageChunks, chunkIndex))}
+                    <div>
+                      {pageChunks.map((chunk: ResumeChunk, chunkIndex: number) => renderResumeChunk(chunk, pageChunks, chunkIndex))}
+                    </div>
+
+                    {/* Ultra-minimal, elegant footer watermark */}
+                    <div 
+                      className="w-full pt-2 flex items-center justify-between text-[8pt] text-gray-400 select-none opacity-80 border-t border-gray-100"
+                      style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+                    >
+                      <span>Crafted with Virattom Resume Template</span>
+                      <span>virattom.com</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1518,19 +1535,21 @@ export const Resume = () => {
 
               <div className="text-center mb-6">
                 <div className="h-12 w-12 rounded-2xl bg-apple-blue/10 text-apple-blue flex items-center justify-center mx-auto mb-3">
-                  {verificationStep === 'form' ? <FileText size={24} /> : <Mail size={24} />}
+                  {verificationStep === 'form' ? <Mail size={24} /> : <ShieldCheck size={24} />}
                 </div>
                 <h3 className="text-[20px] font-bold text-apple-black dark:text-white">
-                  {verificationStep === 'form' ? 'Download Official Resume' : 'Enter Verification Code'}
+                  {verificationStep === 'form' ? 'Save & Download Resume' : 'Enter Verification Code'}
                 </h3>
-                <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1 leading-relaxed">
-                  {verificationStep === 'form' 
-                    ? 'Enter your contact details to receive a 6-digit verification code before downloading.' 
-                    : `We sent a 6-digit verification code to `}
-                  {verificationStep === 'otp' && (
-                    <span className="font-semibold text-apple-black dark:text-white block mt-0.5">
-                      {recruiterForm.email}
-                    </span>
+                <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1.5 leading-relaxed">
+                  {verificationStep === 'form' ? (
+                    'Enter your email to receive a 6-digit OTP. Your customized resume will be remembered for your email address so you never lose your edits.'
+                  ) : (
+                    <>
+                      We sent a 6-digit verification code to{' '}
+                      <span className="font-semibold text-apple-black dark:text-white block mt-0.5">
+                        {inputEmail}
+                      </span>
+                    </>
                   )}
                 </p>
               </div>
@@ -1539,71 +1558,18 @@ export const Resume = () => {
                 <form onSubmit={handleSendVerificationOtp} className="space-y-4">
                   <div>
                     <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-1.5">
-                      Your Full Name <span className="text-apple-red">*</span>
-                    </label>
-                    <Input 
-                      type="text"
-                      required
-                      placeholder="e.g. Rahul Sharma / John Doe"
-                      value={recruiterForm.name}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setRecruiterForm({ ...recruiterForm, name: e.target.value });
-                        if (verificationError) setVerificationError('');
-                      }}
-                      className="rounded-xl h-11 text-[14px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-1.5">
-                      Work / Personal Email <span className="text-apple-red">*</span>
+                      Email Address <span className="text-apple-red">*</span>
                     </label>
                     <Input 
                       type="email"
                       required
-                      placeholder="e.g. recruiter@company.com"
-                      value={recruiterForm.email}
+                      autoFocus
+                      placeholder="e.g. yourname@domain.com"
+                      value={inputEmail}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setRecruiterForm({ ...recruiterForm, email: e.target.value });
+                        setInputEmail(e.target.value);
                         if (verificationError) setVerificationError('');
                       }}
-                      className="rounded-xl h-11 text-[14px]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-1.5">
-                      10-Digit Mobile Number <span className="text-apple-red">*</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <span className="absolute left-3.5 text-[14px] font-medium text-apple-gray-500 select-none">
-                        +91
-                      </span>
-                      <Input 
-                        type="tel"
-                        required
-                        maxLength={10}
-                        placeholder="9876543210"
-                        value={recruiterForm.phone}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                          setRecruiterForm({ ...recruiterForm, phone: val });
-                          if (verificationError) setVerificationError('');
-                        }}
-                        className="pl-12 rounded-xl h-11 text-[14px]"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-1.5">
-                      Company / Organization (Optional)
-                    </label>
-                    <Input 
-                      type="text"
-                      placeholder="e.g. Google, Infosys, Freelance"
-                      value={recruiterForm.company}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRecruiterForm({ ...recruiterForm, company: e.target.value })}
                       className="rounded-xl h-11 text-[14px]"
                     />
                   </div>
@@ -1619,28 +1585,15 @@ export const Resume = () => {
                     className="w-full h-11 rounded-xl text-[14px] font-semibold mt-2" 
                     isLoading={isSendingOtp}
                   >
-                    Send Verification Code
+                    Send 6-Digit Code
                   </Button>
 
                   <p className="text-[11px] text-apple-gray-400 text-center pt-1">
-                    Your details are remembered in your browser for seamless 1-click future downloads.
+                    Your customized resume is automatically linked to this email for future visits.
                   </p>
                 </form>
               ) : (
                 <form onSubmit={handleVerifyOtpAndDownload} className="space-y-4">
-                  {devOtpHint && (
-                    <div className="p-3.5 rounded-xl bg-apple-blue/5 border border-apple-blue/20 text-apple-blue text-[13px] text-center flex items-center justify-between">
-                      <span>Verification Code: <strong className="font-mono font-bold tracking-widest">{devOtpHint}</strong></span>
-                      <button
-                        type="button"
-                        onClick={() => setRecruiterOtp(devOtpHint)}
-                        className="text-[12px] font-semibold underline hover:text-blue-700 cursor-pointer ml-2"
-                      >
-                        Auto-fill
-                      </button>
-                    </div>
-                  )}
-
                   <div>
                     <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-2 text-center">
                       Enter 6-Digit Email OTP
@@ -1651,9 +1604,9 @@ export const Resume = () => {
                       maxLength={6}
                       autoFocus
                       placeholder="• • • • • •" 
-                      value={recruiterOtp} 
+                      value={userOtp} 
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setRecruiterOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
+                        setUserOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
                         if (verificationError) setVerificationError('');
                       }} 
                       className="text-center text-[22px] tracking-[0.3em] font-mono font-bold rounded-xl h-12"
@@ -1671,7 +1624,7 @@ export const Resume = () => {
                     className="w-full h-11 rounded-xl text-[14px] font-semibold" 
                     isLoading={isVerifyingOtp}
                   >
-                    Verify & Download PDF
+                    Verify, Save & Download PDF
                   </Button>
 
                   <div className="flex items-center justify-between text-[13px] pt-1">
@@ -1691,12 +1644,12 @@ export const Resume = () => {
                       type="button" 
                       onClick={() => {
                         setVerificationStep('form');
-                        setRecruiterOtp('');
+                        setUserOtp('');
                         setVerificationError('');
                       }} 
                       className="text-apple-gray-500 hover:text-black dark:hover:text-white cursor-pointer text-[12px]"
                     >
-                      Change Details
+                      Change Email
                     </button>
                   </div>
                 </form>

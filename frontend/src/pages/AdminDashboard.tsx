@@ -192,8 +192,8 @@ export const AdminDashboard: React.FC = () => {
           clientPortalApproved: projectForm.clientPortalApproved
         })
       });
-      const data = await res.json();
-      if (data && data.id) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data && data.id) {
         setProjects([data, ...projects]);
         setShowNewProjectModal(false);
         setProjectForm({
@@ -206,10 +206,12 @@ export const AdminDashboard: React.FC = () => {
           clientPortalApproved: true,
           advancePaid: false
         });
+      } else {
+        alert(data?.error || `Error creating project (${res.status}). Please check all required fields.`);
       }
     } catch (err) {
       console.error("Error creating project:", err);
-      alert("Error creating project. Please try again.");
+      alert("Network error creating project. Please check your connection and try again.");
     }
   };
 

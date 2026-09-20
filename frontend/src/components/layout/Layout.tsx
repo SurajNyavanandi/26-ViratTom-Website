@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Header } from './Header';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { ChatWidget } from '../chat/ChatWidget';
 
@@ -50,7 +50,11 @@ export const Layout = () => {
             <div>
               <h3 className="font-semibold text-[14px] mb-4">Resources</h3>
               <ul className="space-y-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
-                <li>Resume Generator</li>
+                <li>
+                  <Link to="/resume" className="hover:text-apple-black dark:hover:text-white transition-colors">
+                    Resume Template
+                  </Link>
+                </li>
                 <li>Blog</li>
                 <li>Support</li>
               </ul>

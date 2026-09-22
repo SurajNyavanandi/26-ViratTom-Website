@@ -10,7 +10,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 /**
  * Global Express Error Handling Middleware
  */
-const errorHandler = (err, req, res, next) => { // eslint-disable-line no-unused-vars
+const errorHandler = (err, req, res, _next) => {
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   const message = err.message || 'Internal Server Error';
 

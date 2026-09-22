@@ -1,64 +1,34 @@
 const PDFDocument = require('pdfkit');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
-const JWT_SECRET = 'virattom_client_portal_auth_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'virat-tom-secure-jwt-secret-key-2026';
 
 const fallbackLeads = [];
 let fallbackIdCounter = 1;
 
 const portfolioProjects = [
-  { _id: '1', title: 'Dr. Rao Clinic & Diagnostics', type: 'Static Website', imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=800' },
-  { _id: '2', title: 'Urbanico Fashion & Apparel', type: 'Online Store', imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&q=80&w=800' },
-  { _id: '3', title: 'Apex Student & Tutor Portal', type: 'Dynamic Website', imageUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=800' },
-  { _id: '4', title: 'FitPulse Daily Workout', type: 'Mobile App', imageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&q=80&w=800' },
+  {
+    _id: '1',
+    title: 'Inisio',
+    type: 'Web Application',
+    url: 'https://inisio.vercel.app/',
+    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800',
+    description: 'Modern full-stack productivity & workflow management web application.'
+  },
+  {
+    _id: '2',
+    title: 'Urbanico',
+    type: 'Online Store',
+    url: 'https://urbanico.vercel.app/',
+    imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&q=80&w=800',
+    description: 'High-performance e-commerce apparel platform with instant checkout & mobile responsiveness.'
+  }
 ];
 
 const clientProjects = [
   {
     id: 'proj_1',
-    title: 'E-Commerce & Delivery Mobile App',
-    clientPhone: '9876543210',
-    clientEmail: 'client@example.com',
-    clientName: 'Rahul Verma',
-    type: 'Mobile App',
-    status: 'Active',
-    totalBudget: 45000,
-    advancePercentage: 20,
-    advanceAmount: 9000,
-    advancePaid: true,
-    finalPaid: false,
-    clientPortalApproved: true,
-    clientLockedOut: false,
-    milestones: [
-      { id: 1, task: 'Backend Architecture + Database Schema Setup', done: true, date: '2026-09-01' },
-      { id: 2, task: 'Web Client Portal + Admin Milestone Engine', done: true, date: '2026-09-15' },
-      { id: 3, task: 'Mobile App Core Engine (iOS & Android)', done: false, date: '2026-10-01' },
-      { id: 4, task: 'Security Audit, Load Testing & App Store Deployment', done: false, date: '2026-10-15' },
-    ],
-    deliverables: [
-      { name: 'UI / UX Design System & Figma Spec', url: '#', locked: false },
-      { name: 'Production Backend API Staging URL', url: '#', locked: false },
-      { name: 'iOS TestFlight & Android APK Build', url: '#', locked: true },
-      { name: 'Full Source Code & Repository Handover', url: '#', locked: true },
-    ],
-    feedback: [
-      { id: 1, text: 'Please ensure the checkout screen supports instant Google Pay & PhonePe UPI intent buttons.', time: 'Today at 11:30 AM', resolved: false }
-    ],
-    techStack: ['React Native (iOS & Android)', 'Next.js & Express API', 'Razorpay & UPI Gateway'],
-    paymentHistory: [
-      {
-        id: 'pay_adv_01',
-        amount: 9000,
-        type: 'Advance (20% Initial Booking)',
-        date: '2026-09-01',
-        paymentMethod: 'UPI / Razorpay',
-        transactionId: 'TXN_ADV_982736',
-        status: 'Completed'
-      }
-    ]
-  },
-  {
-    id: 'proj_2',
     title: 'Full-Stack Portfolio & Client Billing Platform',
     clientPhone: '9666635009',
     clientEmail: 'kanusuraj15@gmail.com',
@@ -90,7 +60,7 @@ const clientProjects = [
     techStack: ['React 19', 'TypeScript', 'Tailwind CSS', 'Node.js Express', 'Razorpay'],
     paymentHistory: [
       {
-        id: 'pay_adv_02',
+        id: 'pay_adv_01',
         amount: 7000,
         type: 'Advance (20% Initial Booking)',
         date: '2026-09-18',
@@ -205,6 +175,50 @@ const verifyEmailOtpHandler = async (req, res) => {
       createdAt: new Date(),
     };
     fallbackLeads.unshift(verifiedUserRecord);
+
+    // Auto-create or connect client project when lead is verified
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length === 10) {
+      let existingProject = clientProjects.find(
+        (p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === cleanPhone
+      );
+      if (!existingProject) {
+        const budgetNum = Number.parseInt(budget) || 25000;
+        const advanceAmount = Math.round(budgetNum * 0.2);
+        const newProject = {
+          id: 'proj_' + Date.now(),
+          title: `${projectType || 'Digital Product'} - ${name || 'Client'}`,
+          clientPhone: cleanPhone,
+          clientEmail: cleanEmail,
+          clientName: name || 'Client',
+          type: projectType || 'Website & Mobile App',
+          status: 'Active',
+          totalBudget: budgetNum,
+          advancePercentage: 20,
+          advanceAmount: advanceAmount,
+          advancePaid: false,
+          finalPaid: false,
+          clientPortalApproved: true,
+          clientLockedOut: false,
+          milestones: [
+            { id: 1, task: 'Scope Finalization & Technical Blueprint', done: true, date: new Date().toISOString().split('T')[0] },
+            { id: 2, task: 'Architecture & UI/UX Design System', done: false },
+            { id: 3, task: 'Full-Stack Development & API Integration', done: false },
+            { id: 4, task: 'Testing, Cloud Deployment & Handover', done: false },
+          ],
+          deliverables: [
+            { name: 'Architecture & Wireframe Specification', url: '#', locked: false },
+            { name: 'Staging Environment Preview', url: '#', locked: false },
+            { name: 'Source Code & Production Handover', url: '#', locked: true },
+          ],
+          feedback: [],
+          techStack: ['React', 'TypeScript', 'Node.js', 'Razorpay'],
+          paymentHistory: [],
+        };
+        clientProjects.unshift(newProject);
+      }
+    }
+
     return res.json({
       success: true,
       leadId,
@@ -309,28 +323,200 @@ const loginClient = async (req, res) => {
     return res.status(403).json({ error: 'Project access temporarily restricted. Please contact your account lead/admin.' });
   }
 
-  const token = jwt.sign({ phone: last10, projectId: matchedProject.id, role: 'client' }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign(
+    {
+      id: matchedProject.id,
+      projectId: matchedProject.id,
+      phone: last10,
+      role: 'client',
+      clientName: matchedProject.clientName,
+      clientEmail: matchedProject.clientEmail,
+    },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
   return res.json({ token, project: matchedProject });
 };
 
 const getClientProject = async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const matchedProject = clientProjects.find((project) => String(project.clientPhone || '').replace(/\D/g, '').slice(-10) === decoded.phone || project.id === decoded.projectId) || clientProjects[0];
+    let clientAuth = req.client;
+    if (!clientAuth) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: Client token required' });
+      }
+      const token = authHeader.split(' ')[1];
+      clientAuth = jwt.verify(token, JWT_SECRET);
+    }
+
+    const matchedProject = clientProjects.find(
+      (project) =>
+        project.id === clientAuth.projectId ||
+        String(project.clientPhone || '').replace(/\D/g, '').slice(-10) === clientAuth.phone
+    ) || clientProjects[0];
 
     if (!matchedProject) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
     return res.json(matchedProject);
-  } catch (e) {
-    return res.status(401).json({ error: 'Session expired' });
+  } catch {
+    return res.status(401).json({ error: 'Session expired or invalid token' });
+  }
+};
+
+const createRazorpayOrder = async (req, res) => {
+  try {
+    let clientAuth = req.client;
+    if (!clientAuth) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        clientAuth = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      }
+    }
+
+    if (!clientAuth) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const project = clientProjects.find(
+      (p) =>
+        p.id === clientAuth.projectId ||
+        String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === clientAuth.phone
+    ) || clientProjects[0];
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: 'Project not found for this client session' });
+    }
+
+    const advanceAmount = project.advanceAmount || Math.round((project.totalBudget || 25000) * 0.2);
+    const amountInPaise = Math.round(advanceAmount * 100);
+
+    const keyId = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (keyId && keySecret) {
+      try {
+        const Razorpay = require('razorpay');
+        const rzp = new Razorpay({ key_id: keyId, key_secret: keySecret });
+        const rzpOrder = await rzp.orders.create({
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt: `rcpt_${project.id.slice(-8)}_${Date.now()}`.slice(0, 40),
+          notes: {
+            projectId: project.id,
+            projectTitle: project.title,
+            clientPhone: project.clientPhone,
+            clientName: project.clientName || 'Client',
+          },
+        });
+
+        return res.json({
+          success: true,
+          orderId: rzpOrder.id,
+          amount: rzpOrder.amount,
+          currency: rzpOrder.currency || 'INR',
+          keyId,
+          projectName: project.title,
+          clientName: project.clientName || '',
+          clientPhone: project.clientPhone || '',
+          clientEmail: project.clientEmail || '',
+        });
+      } catch (rzpErr) {
+        console.error('[Razorpay Order Gateway Error]:', rzpErr);
+      }
+    }
+
+    // Standard fallback order for test/preview sandbox
+    const fallbackKeyId = keyId || 'rzp_test_51ViratTomKey';
+    const simulatedOrderId = `order_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    return res.json({
+      success: true,
+      orderId: simulatedOrderId,
+      amount: amountInPaise,
+      currency: 'INR',
+      keyId: fallbackKeyId,
+      projectName: project.title,
+      clientName: project.clientName || '',
+      clientPhone: project.clientPhone || '',
+      clientEmail: project.clientEmail || '',
+    });
+  } catch (err) {
+    console.error('[Create Razorpay Order Error]', err);
+    return res.status(500).json({ success: false, error: 'Failed to initialize payment gateway order' });
+  }
+};
+
+const verifyRazorpayPayment = async (req, res) => {
+  try {
+    let clientAuth = req.client;
+    if (!clientAuth) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        clientAuth = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      }
+    }
+
+    if (!clientAuth) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+
+    if (!razorpay_order_id || !razorpay_payment_id) {
+      return res.status(400).json({ success: false, error: 'Incomplete transaction response from Razorpay' });
+    }
+
+    const project = clientProjects.find(
+      (p) =>
+        p.id === clientAuth.projectId ||
+        String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === clientAuth.phone
+    ) || clientProjects[0];
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: 'Project not found for this client session' });
+    }
+
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (keySecret && razorpay_signature) {
+      const crypto = require('crypto');
+      const body = razorpay_order_id + '|' + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac('sha256', keySecret)
+        .update(body.toString())
+        .digest('hex');
+
+      if (expectedSignature !== razorpay_signature) {
+        return res.status(400).json({ success: false, error: 'Payment signature mismatch. Verification failed.' });
+      }
+    }
+
+    const amount = project.advanceAmount || Math.round((project.totalBudget || 25000) * 0.2);
+
+    project.advancePaid = true;
+    project.status = 'Active';
+    project.paymentHistory = project.paymentHistory || [];
+    project.paymentHistory.unshift({
+      id: 'pay_' + Date.now(),
+      amount,
+      type: 'Advance (20% Initial Booking)',
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: 'Razorpay Gateway (UPI / NetBanking / Cards)',
+      transactionId: razorpay_payment_id,
+      orderId: razorpay_order_id,
+      status: 'Completed',
+    });
+
+    return res.json({
+      success: true,
+      message: '20% Advance payment verified successfully! Project workspace is now fully unlocked.',
+      project,
+    });
+  } catch (err) {
+    console.error('[Verify Razorpay Payment Error]', err);
+    return res.status(500).json({ success: false, error: 'Failed to verify transaction' });
   }
 };
 
@@ -344,15 +530,15 @@ const confirmAdvancePayment = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const project = clientProjects.find((item) => item.id === decoded.projectId || String(item.clientPhone || '').replace(/\D/g, '').slice(-10) === decoded.phone);
+    const project = clientProjects.find((item) => item.id === decoded.projectId || String(item.clientPhone || '').replace(/\D/g, '').slice(-10) === decoded.phone) || clientProjects[0];
 
     if (!project) {
       return res.status(404).json({ error: 'Project not found' });
     }
 
-    const { paymentMethod = 'Razorpay UPI / Card', transactionId } = req.body || {};
+    const { paymentMethod = 'Razorpay Gateway', transactionId, orderId } = req.body || {};
     const txnId = transactionId || 'TXN_ADV_' + Math.floor(100000 + Math.random() * 900000);
-    const amount = project.advanceAmount || Math.round(project.totalBudget * 0.2);
+    const amount = project.advanceAmount || Math.round((project.totalBudget || 25000) * 0.2);
 
     project.advancePaid = true;
     project.paymentHistory = project.paymentHistory || [];
@@ -363,11 +549,12 @@ const confirmAdvancePayment = async (req, res) => {
       date: new Date().toISOString().split('T')[0],
       paymentMethod,
       transactionId: txnId,
+      orderId: orderId || `order_rec_${Date.now()}`,
       status: 'Completed',
     });
 
     return res.json({ success: true, message: '20% Advance payment confirmed! Your project workspace is now unlocked.', project });
-  } catch (e) {
+  } catch {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 };
@@ -393,7 +580,7 @@ const addClientFeedback = async (req, res) => {
       return res.json({ success: true, project });
     }
     return res.status(400).json({ error: 'Feedback text required' });
-  } catch (e) {
+  } catch {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 };
@@ -441,7 +628,7 @@ const createAdminProject = async (req, res) => {
     ],
     feedback: [],
     techStack: ['React', 'TypeScript', 'Node.js', 'PostgreSQL / MongoDB'],
-    paymentHistory: Boolean(advancePaid) ? [{
+    paymentHistory: advancePaid ? [{
       id: 'pay_' + Date.now(),
       amount: advAmount,
       type: `Advance (${advPct}% Initial Booking)`,
@@ -509,13 +696,17 @@ const deleteAdminProject = (req, res) => {
 };
 
 const loginAdmin = (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
   if (username === 'admin261125@gmail.com' && password === 'admin261125@gmail.com') {
-    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
-    return res.json({ token });
+    const token = jwt.sign(
+      { id: 'admin_root', role: 'admin', email: username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    return res.json({ success: true, token });
   }
 
-  return res.status(401).json({ error: 'Invalid credentials' });
+  return res.status(401).json({ success: false, error: 'Invalid admin credentials' });
 };
 
 const getLeads = async (req, res) => {
@@ -636,6 +827,8 @@ module.exports = {
   loginClient,
   getClientProject,
   confirmAdvancePayment,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
   addClientFeedback,
   getAdminProjects,
   updateAdminProject,

@@ -1,20 +1,29 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
-export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          'rounded-xl bg-apple-gray-100 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_12px_24px_rgba(0,0,0,0.12)] dark:bg-[#1C1C1E] dark:shadow-[0_4px_12px_rgba(0,0,0,0.4)]',
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    );
-  }
-);
-Card.displayName = 'Card';
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
+  className?: string;
+  hoverEffect?: boolean;
+}
+
+export const Card: React.FC<CardProps> = ({ 
+  children, 
+  className = '', 
+  hoverEffect = true,
+  ...props 
+}) => {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border border-apple-gray-200 dark:border-[#2C2C2E] bg-white dark:bg-[#1C1C1E] text-apple-black dark:text-white shadow-[0_4px_14px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.3)] transition-all duration-300 ease-out',
+        hoverEffect && 'hover:-translate-y-2 hover:shadow-[0_16px_32px_rgba(0,0,0,0.09)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.5)]',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
+

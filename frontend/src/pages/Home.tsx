@@ -1,25 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, KeyRound, Mail, MessageSquare, Phone, ExternalLink, FileText } from 'lucide-react';
+import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const PROJECT_MIN_PRICES: Record<string, number> = {
-  'Static Website': 4999,
-  'Dynamic Website': 14999,
-  'Online Store': 25999,
-  'Online Store (E-Commerce)': 25999,
-  'Mobile App': 39000,
-  'Website + Mobile App': 49000,
-};
-
-const getMinPrice = (type: string): number => {
-  return PROJECT_MIN_PRICES[type] || 4999;
-};
+import { getMinPrice, getWhatsAppUrl } from '@/lib/utils';
 
 export const Home = () => {
+  const location = useLocation();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formState, setFormState] = useState({ 
@@ -36,7 +25,6 @@ export const Home = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setLoading(true);
     fetch('/api/projects')
       .then(res => res.json())
       .then(data => {
@@ -52,6 +40,24 @@ export const Home = () => {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Handle URL hash scrolling (e.g. #services, #pricing, #projects, #contact)
+  useEffect(() => {
+    if (location.hash) {
+      const targetId = location.hash.replace('#', '');
+      const scroll = () => {
+        const element = document.getElementById(targetId) ||
+          (targetId === 'services' ? document.getElementById('process') : null) ||
+          (targetId === 'projects' ? document.getElementById('work') : null);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
+      scroll();
+      const timer = setTimeout(scroll, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash, loading]);
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,13 +175,14 @@ export const Home = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-3 inline-flex items-center">
+          <div className="mb-4 inline-flex items-center">
             <Link
               to="/resume"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-apple-gray-100 dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white text-[12px] sm:text-[13px] font-medium transition-all hover:scale-[1.02] shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white text-[13px] font-medium transition-all hover:scale-[1.01] shadow-xs cursor-pointer"
             >
               <FileText className="h-3.5 w-3.5 text-apple-blue" />
-              <span>Looking for a developer CV? <span className="text-apple-blue font-semibold underline">Download resume template at Virattom</span> &rarr;</span>
+              <span>Resume Template</span>
+              <ArrowRight className="h-3 w-3 text-apple-blue" />
             </Link>
           </div>
           <br />
@@ -200,7 +207,7 @@ export const Home = () => {
             <Button 
               variant="secondary" 
               className="w-full sm:w-auto h-12 rounded-xl text-[15px]"
-              onClick={() => document.getElementById('work')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => (document.getElementById('projects') || document.getElementById('work'))?.scrollIntoView({ behavior: 'smooth' })}
             >
               View work
             </Button>
@@ -208,81 +215,162 @@ export const Home = () => {
         </motion.div>
       </section>
 
-      {/* Features Grid */}
-      <section id="process" className="w-full py-24 bg-apple-gray-100 dark:bg-[#1C1C1E]">
+      {/* Features Grid - What We Build */}
+      <section id="process" className="w-full py-20 sm:py-24 bg-[#F5F5F7] dark:bg-[#111112] relative">
+        <div id="services" className="absolute -top-16 left-0" />
         <div className="mx-auto max-w-360 px-4 sm:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-[34px] font-semibold tracking-[-0.02em]">What We Build</h2>
-            <p className="mt-4 text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center mb-14 sm:mb-16"
+          >
+            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black dark:text-white">
+              What We Build
+            </h2>
+            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
               Clear, simple solutions tailored for every business need.
             </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="bg-white dark:bg-black">
-              <Code className="h-8 w-8 text-apple-blue mb-4" />
-              <h3 className="text-[20px] font-semibold mb-2">Static Websites</h3>
-              <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
-                Simple, fast websites for businesses, clinics, and personal portfolios with instant WhatsApp buttons.
-              </p>
-            </Card>
-            <Card className="bg-white dark:bg-black">
-              <Zap className="h-8 w-8 text-apple-blue mb-4" />
-              <h3 className="text-[20px] font-semibold mb-2">Dynamic Websites</h3>
-              <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
-                Interactive websites with customer logins, membership portals, and automated databases.
-              </p>
-            </Card>
-            <Card className="bg-white dark:bg-black">
-              <Smartphone className="h-8 w-8 text-apple-blue mb-4" />
-              <h3 className="text-[20px] font-semibold mb-2">Mobile Apps</h3>
-              <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
-                Installable smartphone apps for Android phones and Apple iPhones with push notifications.
-              </p>
-            </Card>
-            <Card className="bg-white dark:bg-black">
-              <Shield className="h-8 w-8 text-apple-blue mb-4" />
-              <h3 className="text-[20px] font-semibold mb-2">Online Stores (E-Commerce)</h3>
-              <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
-                Shopping websites with product catalogs, shopping carts, and direct UPI or card payments.
-              </p>
-            </Card>
-            <Card className="bg-white dark:bg-black">
-              <CheckCircle className="h-8 w-8 text-apple-blue mb-4" />
-              <h3 className="text-[20px] font-semibold mb-2">Super Fast Loading</h3>
-              <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
-                Every page opens in 1 second, optimized for mobile phones and low data connections.
-              </p>
-            </Card>
-            <Card className="bg-white dark:bg-black">
-              <ArrowRight className="h-8 w-8 text-apple-blue mb-4" />
-              <h3 className="text-[20px] font-semibold mb-2">Plain English & Support</h3>
-              <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
-                Zero confusing developer jargon. We guide you step-by-step and handle all maintenance.
-              </p>
-            </Card>
-          </div>
+          </motion.div>
+
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.08,
+                },
+              },
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
+          >
+            {[
+              {
+                icon: Code,
+                title: 'Static Websites',
+                desc: 'Simple, fast websites for businesses, clinics, and personal portfolios with instant WhatsApp buttons.',
+              },
+              {
+                icon: Zap,
+                title: 'Dynamic Websites',
+                desc: 'Interactive websites with customer logins, membership portals, and automated databases.',
+              },
+              {
+                icon: Smartphone,
+                title: 'Mobile Apps',
+                desc: 'Installable smartphone apps for Android phones and Apple iPhones with push notifications.',
+              },
+              {
+                icon: Shield,
+                title: 'Online Stores (E-Commerce)',
+                desc: 'Shopping websites with product catalogs, shopping carts, and direct UPI or card payments.',
+              },
+              {
+                icon: CheckCircle,
+                title: 'Super Fast Loading',
+                desc: 'Every page opens in 1 second, optimized for mobile phones and low data connections.',
+              },
+              {
+                icon: ArrowRight,
+                title: 'Plain English & Support',
+                desc: 'Zero confusing developer jargon. We guide you step-by-step and handle all maintenance.',
+              },
+            ].map((service, index) => {
+              const Icon = service.icon;
+              return (
+                <motion.div
+                  key={index}
+                  variants={{
+                    hidden: { opacity: 0, y: 24 },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      transition: {
+                        duration: 0.5,
+                        ease: [0.16, 1, 0.3, 1],
+                      },
+                    },
+                  }}
+                  whileHover={{ 
+                    y: -6, 
+                    transition: { duration: 0.22, ease: "easeOut" } 
+                  }}
+                  className="group rounded-2xl bg-white dark:bg-[#1C1C1E] p-7 border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300 flex flex-col justify-start text-left cursor-default"
+                >
+                  <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.2] transition-transform duration-300 group-hover:scale-110" />
+                  <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black dark:text-white mb-2 tracking-tight">
+                    {service.title}
+                  </h3>
+                  <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 leading-relaxed">
+                    {service.desc}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </motion.div>
         </div>
       </section>
 
       {/* Selected Works */}
-      <section id="work" className="w-full max-w-360 px-4 sm:px-8 py-24 mx-auto">
-        <div className="text-center mb-16">
+      <section id="work" className="w-full max-w-360 px-4 sm:px-8 py-24 mx-auto relative">
+        <div id="projects" className="absolute -top-16 left-0" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-16"
+        >
           <h2 className="text-[34px] font-semibold tracking-[-0.02em]">Selected Projects</h2>
-        </div>
+        </motion.div>
         
         {loading ? (
           <div className="flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-apple-blue border-t-transparent" /></div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.1,
+                },
+              },
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 gap-10"
+          >
             {projects.map((project: any) => {
               const projectUrl = project.url || (project.title === 'Inisio' ? 'https://inisio.vercel.app/' : 'https://urbanico.vercel.app/');
               return (
-                <a 
+                <motion.a 
                   key={project._id} 
                   href={projectUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative block overflow-hidden rounded-2xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#2C2C2E] shadow-sm hover:shadow-lg transition-all text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
+                  variants={{
+                    hidden: { opacity: 0, y: 24 },
+                    visible: {
+                      opacity: 1,
+                      y: 0,
+                      transition: {
+                        duration: 0.5,
+                        ease: [0.16, 1, 0.3, 1],
+                      },
+                    },
+                  }}
+                  whileHover={{ 
+                    y: -6, 
+                    transition: { duration: 0.22, ease: "easeOut" } 
+                  }}
+                  className="group relative block overflow-hidden rounded-2xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#2C2C2E] shadow-sm hover:shadow-xl transition-shadow duration-300 text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
                 >
                   <div className="aspect-16/10 overflow-hidden bg-apple-gray-100 dark:bg-[#2C2C2E] relative">
                     <img 
@@ -314,55 +402,112 @@ export const Home = () => {
                       </p>
                     )}
                   </div>
-                </a>
+                </motion.a>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="w-full py-24 bg-apple-gray-100 dark:bg-[#1C1C1E]">
+      <section id="pricing" className="w-full py-20 sm:py-24 bg-[#F5F5F7] dark:bg-[#111112]">
         <div className="mx-auto max-w-360 px-4 sm:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-[34px] font-semibold tracking-[-0.02em]">Pricing & Services</h2>
-            <p className="mt-4 text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center mb-14 sm:mb-16"
+          >
+            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black dark:text-white">
+              Pricing & Services
+            </h2>
+            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
               Every project is unique. Pick the plan that fits your business to request a customized quote.
             </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          </motion.div>
+
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.08,
+                },
+              },
+            }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto"
+          >
             {/* Static Website */}
-            <Card className="bg-white dark:bg-black p-8 text-center flex flex-col h-full border border-apple-gray-200 dark:border-[#38383A]">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                },
+              }}
+              whileHover={{ 
+                y: -6, 
+                transition: { duration: 0.22, ease: "easeOut" } 
+              }}
+              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+            >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 Easiest to Start
               </div>
-              <h3 className="text-[22px] font-bold mb-1">Static Website</h3>
-              <p className="text-[14px] text-apple-gray-500 mb-6">Simple 1 to 5 Page Website with WhatsApp Chat</p>
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Static Website</h3>
+              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Simple 1 to 5 Page Website with WhatsApp Chat</p>
               <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Direct developer attention</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1">
+              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • Direct collaboration</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Simple business brochure / visiting card</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 1-tap WhatsApp message button</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Fast loading on all mobile phones</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Google search (SEO) ready</li>
-                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Direct 1-on-1 developer collaboration & updates</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Dedicated 1-on-1 support & updates</li>
               </ul>
               <Button onClick={() => {
                 setFormState({...formState, projectType: 'Static Website'});
                 document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
               }} className="w-full mt-auto" variant="outline">Choose Static Website</Button>
-            </Card>
+            </motion.div>
 
             {/* Dynamic Website */}
-            <Card className="bg-white dark:bg-black p-8 text-center flex flex-col h-full border border-apple-gray-200 dark:border-[#38383A]">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                },
+              }}
+              whileHover={{ 
+                y: -6, 
+                transition: { duration: 0.22, ease: "easeOut" } 
+              }}
+              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+            >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 For Portals & Logins
               </div>
-              <h3 className="text-[22px] font-bold mb-1">Dynamic Website</h3>
-              <p className="text-[14px] text-apple-gray-500 mb-6">Interactive Website with User Logins & Database</p>
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Dynamic Website</h3>
+              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Interactive Website with User Logins & Database</p>
               <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Database included</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1">
+              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • Database included</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> User accounts & password login</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Database that saves customer or student data</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Admin panel to edit info anytime</li>
@@ -373,18 +518,35 @@ export const Home = () => {
                 setFormState({...formState, projectType: 'Dynamic Website'});
                 document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
               }} className="w-full mt-auto" variant="outline">Choose Dynamic Website</Button>
-            </Card>
+            </motion.div>
 
             {/* Online Store (E-Commerce) */}
-            <Card className="bg-white dark:bg-black p-8 text-center flex flex-col h-full border border-apple-gray-200 dark:border-[#38383A]">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                },
+              }}
+              whileHover={{ 
+                y: -6, 
+                transition: { duration: 0.22, ease: "easeOut" } 
+              }}
+              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+            >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 Sell Products Online
               </div>
-              <h3 className="text-[22px] font-bold mb-1">Online Store</h3>
-              <p className="text-[14px] text-apple-gray-500 mb-6">Website to Sell Products with Shopping Cart</p>
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Online Store</h3>
+              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Website to Sell Products with Shopping Cart</p>
               <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Orders & Payments</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1">
+              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • Orders & Payments</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Product catalog with photos & prices</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Shopping cart & customer checkout</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Online payments (UPI, GPay, Cards)</li>
@@ -395,18 +557,35 @@ export const Home = () => {
                 setFormState({...formState, projectType: 'Online Store'});
                 document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
               }} className="w-full mt-auto" variant="outline">Choose Online Store</Button>
-            </Card>
+            </motion.div>
 
             {/* Mobile App */}
-            <Card className="bg-white dark:bg-black p-8 text-center flex flex-col h-full border border-apple-gray-200 dark:border-[#38383A]">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                },
+              }}
+              whileHover={{ 
+                y: -6, 
+                transition: { duration: 0.22, ease: "easeOut" } 
+              }}
+              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+            >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 For Smartphones
               </div>
-              <h3 className="text-[22px] font-bold mb-1">Mobile App</h3>
-              <p className="text-[14px] text-apple-gray-500 mb-6">Smartphone App for Android & iPhone</p>
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Mobile App</h3>
+              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Smartphone App for Android & iPhone</p>
               <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • App Stores ready</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1">
+              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • App Stores ready</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Installable app for Android & iPhone</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Daily phone push notifications</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Smooth touch gestures & offline mode</li>
@@ -417,12 +596,29 @@ export const Home = () => {
                 setFormState({...formState, projectType: 'Mobile App'});
                 document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
               }} className="w-full mt-auto" variant="outline">Choose Mobile App</Button>
-            </Card>
+            </motion.div>
 
             {/* Website + Mobile App */}
-            <Card className="bg-apple-black text-white p-8 text-center flex flex-col h-full md:col-span-2 lg:col-span-2 border border-[#38383A] shadow-xl relative overflow-hidden">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                },
+              }}
+              whileHover={{ 
+                y: -6, 
+                transition: { duration: 0.22, ease: "easeOut" } 
+              }}
+              className="bg-apple-black text-white p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full md:col-span-2 lg:col-span-2 border border-[#38383A] shadow-xl hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-shadow duration-300 relative overflow-hidden"
+            >
               <div className="absolute top-0 right-0 bg-apple-blue text-[11px] font-bold px-3 py-1 rounded-bl-lg">POPULAR ALL-IN-ONE</div>
-              <h3 className="text-[22px] font-bold mb-1">Website + Mobile App</h3>
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-white">Website + Mobile App</h3>
               <p className="text-[14px] text-gray-400 mb-6">Complete Digital Presence: Website & Phone App Combined</p>
               <div className="text-[24px] font-bold mb-2 text-white">Custom Quote</div>
               <p className="text-[12px] text-gray-400 mb-6">Tailored to your needs • All-in-one package</p>
@@ -442,8 +638,8 @@ export const Home = () => {
               }} className="w-full mt-auto bg-apple-blue text-white hover:bg-blue-600 border-none">
                 Start Complete Combo Project
               </Button>
-            </Card>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
@@ -665,46 +861,26 @@ export const Home = () => {
                 )}
 
                 <Button type="submit" className="w-full h-11 rounded-xl text-[14px]" isLoading={formStatus === 'submitting'}>
-                  Continue to Email Verification
+                  Continue
                 </Button>
+
+                <div className="pt-2 flex items-center justify-center">
+                  <a
+                    href={getWhatsAppUrl()}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-400 hover:text-[#25D366] dark:hover:text-[#25D366] transition-colors py-1.5 px-3.5 rounded-full hover:bg-[#25D366]/10"
+                    title="Chat on WhatsApp"
+                  >
+                    <div className="h-6 w-6 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-xs">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </div>
+                    <span>Chat on WhatsApp</span>
+                  </a>
+                </div>
               </form>
             )}
           </Card>
-
-          {/* WhatsApp Business Connect Card */}
-          {(() => {
-            const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/\D/g, '');
-            const whatsappUrl = rawWaNumber 
-              ? `https://wa.me/${rawWaNumber}?text=Hello%20Virattom%20Team,%20I%20would%20like%20to%20discuss%20a%20project.`
-              : `https://wa.me/?text=Hello%20Virattom%20Team,%20I%20would%20like%20to%20discuss%20a%20project.`;
-
-            return (
-              <div className="mt-8 p-5 rounded-2xl bg-linear-to-r from-[#25D366]/10 to-[#128C7E]/10 border border-[#25D366]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
-                <div className="flex items-center gap-3.5">
-                  <div className="h-11 w-11 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <MessageSquare className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-[15px] text-apple-black dark:text-white">
-                      Prefer WhatsApp?
-                    </h4>
-                    <p className="text-[13px] text-apple-gray-600 dark:text-apple-gray-300">
-                      Chat directly with our business desk for instant project estimates.
-                    </p>
-                  </div>
-                </div>
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366] text-white text-[13px] font-semibold hover:bg-[#20bd5a] active:scale-95 transition-all shadow-xs shrink-0 self-start sm:self-auto"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  <span>Chat on WhatsApp</span>
-                </a>
-              </div>
-            );
-          })()}
         </div>
       </section>
     </div>

@@ -1,24 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Sparkles, RotateCcw, ArrowRight, Bot, User } from 'lucide-react';
+import { MessageCircle, MessageSquare, X, Send, Sparkles, RotateCcw, ArrowRight, Bot, User } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { Button } from '@/components/ui/Button';
-
-interface Message {
-  id: string;
-  role: 'assistant' | 'user';
-  text: string;
-  timestamp: string;
-}
+import { getWhatsAppUrl } from '@/lib/utils';
+import type { ChatMessage } from '@/types';
 
 export const ChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      text: "Hello! 👋 I'm here to help you. Ask me anything about websites, mobile apps, pricing, or how we can help your business in simple words!",
+      text: "Hello! How can I help you with your project today?",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -43,7 +38,7 @@ export const ChatWidget: React.FC = () => {
     const textToSend = (customText || input).trim();
     if (!textToSend || isLoading) return;
 
-    const userMessage: Message = {
+    const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
       text: textToSend,
@@ -56,7 +51,7 @@ export const ChatWidget: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const history = updatedMessages.slice(-6).map(m => ({
+      const history = messages.slice(-6).map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         text: m.text
       }));
@@ -81,7 +76,7 @@ export const ChatWidget: React.FC = () => {
       }
 
       const data = await res.json();
-      const replyText = data?.reply || "I am right here to help! Could you please tell me a bit more about your idea?";
+      const replyText = data?.reply || "How can I help you with your project today?";
 
       setMessages(prev => [
         ...prev,
@@ -99,7 +94,7 @@ export const ChatWidget: React.FC = () => {
         {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          text: "Thanks for reaching out! We build clean, high-speed websites and mobile apps for any business. If you'd like a direct quote or want to discuss your project, you can also fill out the **Start a Project** form on our homepage!",
+          text: "We build custom websites and mobile apps with a 20% advance milestone model. Feel free to ask any question or submit your project via the homepage form.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -235,7 +230,7 @@ export const ChatWidget: React.FC = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask any question in simple words..." 
+                placeholder="Type your message..." 
                 disabled={isLoading}
                 className="flex-1 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-100/80 dark:bg-[#2C2C2E] px-3.5 py-2.5 text-[13.5px] text-apple-black dark:text-white focus:outline-none focus:ring-2 focus:ring-apple-blue transition-all disabled:opacity-50 placeholder:text-apple-gray-400" 
               />
@@ -263,19 +258,26 @@ export const ChatWidget: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="relative group">
+        <div className="flex items-center gap-2 bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-md p-1.5 rounded-full border border-apple-gray-200/80 dark:border-[#38383A] shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.16)] transition-all">
+          <a
+            href={getWhatsAppUrl()}
+            target="_blank"
+            rel="noreferrer"
+            className="h-10 w-10 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-transform cursor-pointer shadow-xs"
+            aria-label="WhatsApp"
+            title="WhatsApp Quick Contact"
+          >
+            <MessageSquare className="h-4.5 w-4.5" />
+          </a>
           <button 
             onClick={() => setIsOpen(true)}
-            className="relative h-14 w-14 rounded-full bg-apple-blue text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-            aria-label="Open AI Assistant"
+            className="h-10 px-4 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white text-[13px] font-medium flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all duration-200 cursor-pointer shadow-xs"
+            aria-label="Chat with Assistant"
+            title="Chat with AI Assistant"
           >
-            <MessageCircle className="h-6 w-6" />
+            <MessageCircle className="h-4 w-4" />
+            <span className="font-medium">Assistant</span>
           </button>
-
-          {/* Tooltip on desktop */}
-          <div className="hidden sm:block absolute right-16 top-1/2 -translate-y-1/2 bg-apple-black text-white text-[12px] font-medium px-3 py-1.5 rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Chat with VIRATTOM Assistant 👋
-          </div>
         </div>
       )}
     </div>

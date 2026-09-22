@@ -17,6 +17,9 @@ const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxy (Google Cloud Run / Nginx)
+app.set('trust proxy', 1);
+
 // Initialize Database Connection
 connectDB();
 
@@ -37,6 +40,8 @@ const limiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
+  keyGenerator: (req) => req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1',
   message: {
     success: false,
     message: 'Too many requests, please try again later.',

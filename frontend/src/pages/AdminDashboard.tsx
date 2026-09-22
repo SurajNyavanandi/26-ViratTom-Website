@@ -28,37 +28,8 @@ import {
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-
-interface Lead {
-  _id?: string;
-  id?: string;
-  name: string;
-  email?: string;
-  phone: string;
-  projectType?: string;
-  budget?: string | number;
-  scope?: string;
-  verified?: boolean;
-  createdAt?: string;
-}
-
-interface ClientProject {
-  id: string;
-  title: string;
-  clientPhone: string;
-  clientEmail?: string;
-  clientName?: string;
-  type: string;
-  status: string;
-  totalBudget: number;
-  advancePercentage: number;
-  advanceAmount: number;
-  advancePaid: boolean;
-  finalPaid: boolean;
-  clientPortalApproved: boolean;
-  milestones?: Array<{ id: number; task: string; done: boolean; date?: string }>;
-  deliverables?: Array<{ name: string; url: string; locked: boolean }>;
-}
+import type { Lead, ClientProject } from '@/types';
+import { formatCurrency, sanitizePhone } from '@/lib/utils';
 
 export const AdminDashboard: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<'leads' | 'projects'>('leads');
@@ -101,7 +72,19 @@ export const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    const token = localStorage.getItem('admin_token');
+    Promise.all([
+      fetch('/api/admin/leads', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
+      fetch('/api/admin/projects', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
+    ])
+      .then(([leadsData, projectsData]) => {
+        setLeads(Array.isArray(leadsData) ? leadsData : []);
+        setProjects(Array.isArray(projectsData) ? projectsData : []);
+      })
+      .catch((err) => {
+        console.error("Admin data fetch error:", err);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleCopyPhone = (phone: string, id: string) => {
@@ -261,11 +244,8 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
-            Administrator Command Center
+            Admin Dashboard
           </h1>
-          <p className="text-[14px] text-apple-gray-500 mt-1">
-            Manage client inquiry leads, grant portal permissions, and track 20% advance milestone payments.
-          </p>
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-auto">
@@ -676,7 +656,7 @@ export const AdminDashboard: React.FC = () => {
                   <label className="block text-[13px] font-semibold mb-1">Client Name</label>
                   <Input
                     required
-                    placeholder="e.g. Shree Shiva"
+                    placeholder="Rama"
                     value={projectForm.clientName}
                     onChange={e => setProjectForm({ ...projectForm, clientName: e.target.value })}
                     className="rounded-xl"
@@ -700,7 +680,7 @@ export const AdminDashboard: React.FC = () => {
                 <label className="block text-[13px] font-semibold mb-1">Client Email (Optional)</label>
                 <Input
                   type="email"
-                  placeholder="e.g. client@example.com"
+                  placeholder="rama@gmail.com"
                   value={projectForm.clientEmail}
                   onChange={e => setProjectForm({ ...projectForm, clientEmail: e.target.value })}
                   className="rounded-xl"

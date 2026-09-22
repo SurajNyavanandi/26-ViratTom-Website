@@ -52,7 +52,7 @@ export const Layout = () => {
               <ul className="space-y-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
                 <li>
                   <Link to="/resume" className="hover:text-apple-black dark:hover:text-white transition-colors">
-                    Resume Template
+                    Resume Builder
                   </Link>
                 </li>
                 <li>Blog</li>

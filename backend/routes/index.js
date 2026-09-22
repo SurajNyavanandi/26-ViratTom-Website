@@ -15,6 +15,8 @@ const {
   loginClient,
   getClientProject,
   confirmAdvancePayment,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
   addClientFeedback,
   getAdminProjects,
   updateAdminProject,
@@ -22,6 +24,7 @@ const {
   deleteAdminProject,
 } = require('../controllers/siteController');
 const { handleAssistantChat } = require('../controllers/assistantController');
+const { protectAdmin, protectClient } = require('../middleware/authMiddleware');
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
@@ -34,17 +37,23 @@ router.post('/verify-otp', verifyOtp);
 router.post('/resume', generateResume);
 router.post('/chat', handleAssistantChat);
 
+// Client portal authentication & authorized operations
 router.post('/client/check-phone', checkClientPhone);
 router.post('/client/login', loginClient);
-router.get('/client/project', getClientProject);
-router.post('/client/confirm-advance', confirmAdvancePayment);
-router.post('/client/feedback', addClientFeedback);
+router.get('/client/project', protectClient, getClientProject);
+router.post('/client/razorpay/create-order', protectClient, createRazorpayOrder);
+router.post('/client/create-razorpay-order', protectClient, createRazorpayOrder);
+router.post('/client/razorpay/verify', protectClient, verifyRazorpayPayment);
+router.post('/client/verify-razorpay-payment', protectClient, verifyRazorpayPayment);
+router.post('/client/confirm-advance', protectClient, confirmAdvancePayment);
+router.post('/client/feedback', protectClient, addClientFeedback);
 
+// Admin portal authentication & authorized operations
 router.post('/admin/login', loginAdmin);
-router.get('/admin/leads', getLeads);
-router.get('/admin/projects', getAdminProjects);
-router.put('/admin/projects/:id', updateAdminProject);
-router.post('/admin/projects', createAdminProject);
-router.delete('/admin/projects/:id', deleteAdminProject);
+router.get('/admin/leads', protectAdmin, getLeads);
+router.get('/admin/projects', protectAdmin, getAdminProjects);
+router.put('/admin/projects/:id', protectAdmin, updateAdminProject);
+router.post('/admin/projects', protectAdmin, createAdminProject);
+router.delete('/admin/projects/:id', protectAdmin, deleteAdminProject);
 
 module.exports = router;

@@ -24,61 +24,20 @@ import {
   CheckCircle2,
   X,
   RotateCcw,
-  Check
+  Check,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 
-/* ------------------------------------------------------------------ */
-/* TYPES                                                               */
-/* ------------------------------------------------------------------ */
-
-interface HeaderData {
-  name: string;
-  role: string;
-  location: string;
-  phone: string;
-  email: string;
-  github: string;
-  linkedin: string;
-  liveProjects: string;
-  portfolio: string;
-  portfolioLink: string;
-}
-
-interface ExperienceItem {
-  id: number;
-  role: string;
-  company: string;
-  date: string;
-  tech: string;
-  bullets: string;
-}
-
-interface ProjectItem {
-  id: number;
-  name: string;
-  tech: string;
-  bullets: string;
-  demoLabel: string;
-  demoLink: string;
-}
-
-interface EducationItem {
-  id: number;
-  degree: string;
-  institution: string;
-  date: string;
-  score: string;
-}
-
-interface ResumeData {
-  header: HeaderData;
-  skills: string;
-  experience: ExperienceItem[];
-  projects: ProjectItem[];
-  education: EducationItem[];
-  certifications: string;
-}
+import type { 
+  ResumeData, 
+  ResumeHeader as HeaderData, 
+  ExperienceItem, 
+  ProjectItem, 
+  EducationItem 
+} from '@/types';
 
 type ResumeChunk =
   | { type: 'header' }
@@ -94,16 +53,16 @@ type ResumeChunk =
 
 const DEFAULT_RESUME_DATA: ResumeData = {
   header: {
-    name: "Alex Morgan",
+    name: "Rama",
     role: "MERN Stack Developer",
     location: "Bangalore, Karnataka",
     phone: "+91-9876543210",
-    email: "alex.morgan.dev@example.com",
-    github: "github.com/alexmorgan-dev",
-    linkedin: "linkedin.com/in/alex-morgan-developer",
+    email: "rama@gmail.com",
+    github: "github.com/rama-dev",
+    linkedin: "linkedin.com/in/rama-developer",
     liveProjects: "Portfolio | E-Commerce | Invoice Management | AI Chatbot | Cloud Services",
-    portfolio: "alexmorgan.dev",
-    portfolioLink: "https://alexmorgan.dev"
+    portfolio: "rama.dev",
+    portfolioLink: "https://rama.dev"
   },
   skills: "Languages: JavaScript, TypeScript, HTML5, CSS3\nFrontend: React, Redux, React Hooks, Angular, NgRx, Bootstrap, Tailwind CSS\nBackend: Node.js, Express.js, NestJS, RESTful API Design\nDatabases: MongoDB, MySQL, Supabase\nSecurity: JWT Authentication, Role-Based Access(RBAC), bcrypt Password Hashing, Email OTP Verification\nTools & Platforms: AWS S3, Git, Postman, VSCode, Swagger, Nodemailer, Vite\nDeployment & Hosting: Vercel, Render, Netlify\nOther: Data Structures and Algorithms (DSA)",
   experience: [
@@ -166,13 +125,19 @@ const DEFAULT_RESUME_DATA: ResumeData = {
 /* ------------------------------------------------------------------ */
 
 export const Resume = () => {
+  const { isDark, toggleTheme } = useTheme();
   // Preserve EXACT resume content with persistent local storage
   const [data, setData] = useState<ResumeData>(() => {
     try {
       const saved = localStorage.getItem('virattom_resume_custom_draft');
       if (saved) {
         const parsed = JSON.parse(saved) as ResumeData;
-        if (parsed?.header?.name?.toLowerCase().includes('suraj') || parsed?.header?.phone?.includes('96666')) {
+        if (
+          parsed?.header?.name?.toLowerCase().includes('suraj') ||
+          parsed?.header?.phone?.includes('96666') ||
+          parsed?.header?.name?.toLowerCase().includes('alex') ||
+          parsed?.header?.email?.includes('alex.morgan')
+        ) {
           localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(DEFAULT_RESUME_DATA));
           return DEFAULT_RESUME_DATA;
         }
@@ -210,7 +175,7 @@ export const Resume = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'header' | 'skills' | 'experience' | 'projects' | 'education' | 'certifications'>('all');
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
   const [isDownloading, setIsDownloading] = useState(false);
-  const [hasCustomEdits, setHasCustomEdits] = useState(false);
+  const hasCustomEdits = useMemo(() => JSON.stringify(data) !== JSON.stringify(DEFAULT_RESUME_DATA), [data]);
 
   // Verification Modal States
   const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -231,7 +196,6 @@ export const Resume = () => {
       if (verifiedEmail) {
         localStorage.setItem(`virattom_resume_user_${verifiedEmail}`, JSON.stringify(data));
       }
-      setHasCustomEdits(JSON.stringify(data) !== JSON.stringify(DEFAULT_RESUME_DATA));
     } catch (e) {
       console.warn('[Resume] Failed to save draft:', e);
     }
@@ -900,10 +864,10 @@ export const Resume = () => {
               </Link>
               <div className="hidden sm:block">
                 <h1 className="text-[15px] font-semibold text-apple-black dark:text-white leading-none">
-                  Virattom Resume Template
+                  Resume Builder
                 </h1>
                 <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mt-0.5">
-                  Developer CV & Live Editor
+                  Create & Edit
                 </p>
               </div>
             </div>
@@ -961,6 +925,15 @@ export const Resume = () => {
                 </button>
               )}
 
+              <button
+                onClick={toggleTheme}
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#1C1C1E] text-apple-gray-600 hover:text-apple-black dark:text-apple-gray-300 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                aria-label="Toggle theme"
+                title={isDark ? 'Switch to Light theme' : 'Switch to Dark theme'}
+              >
+                {isDark ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+
               <button 
                 onClick={handleInitiateDownload} 
                 disabled={isDownloading}
@@ -1006,7 +979,7 @@ export const Resume = () => {
                         Linked Account: {verifiedEmail}
                       </div>
                       <div className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
-                        Edits auto-saved to this email • 1-Click Instant Downloads
+                        Auto-saved
                       </div>
                     </div>
                   </div>
@@ -1507,7 +1480,7 @@ export const Resume = () => {
                       className="w-full pt-2 flex items-center justify-between text-[8pt] text-gray-400 select-none opacity-80 border-t border-gray-100"
                       style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
                     >
-                      <span>Crafted with Virattom Resume Template</span>
+                      <span>Created with ViratTom</span>
                       <span>virattom.com</span>
                     </div>
                   </div>
@@ -1589,7 +1562,7 @@ export const Resume = () => {
                   </Button>
 
                   <p className="text-[11px] text-apple-gray-400 text-center pt-1">
-                    Your customized resume is automatically linked to this email for future visits.
+                    Edits are automatically saved to your email.
                   </p>
                 </form>
               ) : (

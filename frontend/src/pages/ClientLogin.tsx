@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { ArrowLeft, ShieldCheck, Lock, AlertCircle, Sparkles } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, AlertCircle } from 'lucide-react';
+import { sanitizePhone } from '@/lib/utils';
 
 export const ClientLogin = () => {
   const [phone, setPhone] = useState('');
@@ -13,7 +14,7 @@ export const ClientLogin = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
+    const cleanPhone = sanitizePhone(phone);
     if (cleanPhone.length !== 10) {
       setError('Please enter your 10-digit registered mobile number.');
       return;
@@ -81,15 +82,12 @@ export const ClientLogin = () => {
             <div className="h-14 w-14 rounded-2xl bg-apple-blue/10 flex items-center justify-center text-apple-blue mx-auto mb-4">
               <ShieldCheck className="h-7 w-7" />
             </div>
-            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">Client Project Portal</h1>
-            <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mt-2">
-              Enter your registered mobile number to access your active project, track progress, and manage deliverables.
-            </p>
+            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">Client Portal</h1>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-[14px] font-semibold mb-2">Registered Mobile Number</label>
+              <label className="block text-[14px] font-medium mb-2">Mobile Number</label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] text-apple-gray-400 font-semibold">
                   +91
@@ -102,7 +100,7 @@ export const ClientLogin = () => {
                   className="pl-14 rounded-xl h-12 text-[16px] font-medium"
                   value={phone}
                   onChange={e => {
-                    setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                    setPhone(sanitizePhone(e.target.value));
                     if (error) setError('');
                   }}
                 />
@@ -117,15 +115,9 @@ export const ClientLogin = () => {
             )}
 
             <Button type="submit" className="w-full rounded-xl h-12 text-[15px] font-semibold" isLoading={loading}>
-              Access Project Workspace
+              Continue
             </Button>
           </form>
-
-          <div className="mt-6 pt-5 border-t border-apple-gray-200 dark:border-[#38383A] text-center">
-            <p className="text-[12px] text-apple-gray-400">
-              Only numbers approved by the administrator can access client project workspaces.
-            </p>
-          </div>
         </Card>
       </div>
     </div>

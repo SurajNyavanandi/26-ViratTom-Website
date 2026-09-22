@@ -1,40 +1,47 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline';
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', isLoading, children, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center rounded-xl font-medium transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-apple-blue focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none capitalize';
-    
-    const sizes = {
-      sm: 'px-3.5 py-1.5 text-[13px]',
-      md: 'px-6 py-3 text-[14px]',
-      lg: 'px-8 py-3.5 text-[16px]',
-    };
+export const Button: React.FC<ButtonProps> = ({
+  children,
+  className = '',
+  variant = 'primary',
+  size = 'md',
+  isLoading = false,
+  disabled,
+  ...props
+}) => {
+  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-300 ease-out cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none focus:outline-none min-h-[44px]';
 
-    const variants = {
-      primary: 'bg-apple-blue text-white hover:bg-blue-600 hover:-translate-y-[2px] hover:shadow-lg',
-      secondary: 'bg-apple-gray-100 text-apple-black hover:bg-apple-gray-200 dark:bg-[#2C2C2E] dark:text-white dark:hover:bg-[#3A3A3C] hover:-translate-y-[2px]',
-      outline: 'border border-apple-gray-300 text-apple-black hover:bg-apple-gray-100 dark:border-[#38383A] dark:text-white dark:hover:bg-[#2C2C2E] hover:-translate-y-[2px]',
-    };
+  const variantStyles = {
+    primary: 'bg-[#0071E3] hover:bg-[#0077ED] text-white shadow-[0_2px_8px_rgba(0,113,227,0.25)] hover:shadow-[0_6px_16px_rgba(0,113,227,0.35)] hover:-translate-y-[2px] active:translate-y-0 active:scale-[0.99]',
+    secondary: 'bg-[#F5F5F7] hover:bg-[#E5E5EA] dark:bg-[#2C2C2E] dark:hover:bg-[#3A3A3C] text-apple-black dark:text-white shadow-xs hover:shadow-md hover:-translate-y-[2px] active:translate-y-0 active:scale-[0.99]',
+    outline: 'border border-apple-gray-300 dark:border-[#38383A] bg-transparent hover:bg-apple-gray-100/70 dark:hover:bg-[#2C2C2E] text-apple-black dark:text-white hover:shadow-sm hover:-translate-y-[2px] active:translate-y-0 active:scale-[0.99]',
+    danger: 'bg-[#FF3B30] hover:bg-[#FF453A] text-white shadow-xs hover:shadow-md hover:-translate-y-[2px] active:scale-[0.98]',
+    ghost: 'bg-transparent hover:bg-apple-gray-100/50 dark:hover:bg-[#2C2C2E]/50 text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white',
+  };
 
-    return (
-      <button
-        ref={ref}
-        className={cn(baseStyles, sizes[size], variants[variant], className)}
-        disabled={isLoading || props.disabled}
-        {...props}
-      >
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {children}
-      </button>
-    );
-  }
-);
-Button.displayName = 'Button';
+  const sizeStyles = {
+    sm: 'text-[13px] px-3.5 py-2 rounded-[10px] gap-1.5 min-h-[38px]',
+    md: 'text-[15px] px-6 py-3 rounded-[12px] gap-2 min-h-[44px]',
+    lg: 'text-[16px] px-8 py-3.5 rounded-[12px] gap-2.5 min-h-[48px]',
+  };
+
+  return (
+    <button
+      className={cn(baseStyles, variantStyles[variant], sizeStyles[size], className)}
+      disabled={disabled || isLoading}
+      {...props}
+    >
+      {isLoading && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+      {children}
+    </button>
+  );
+};
+

@@ -18,14 +18,16 @@ import {
   Save,
   AlertCircle
 } from 'lucide-react';
+import type { ClientProject, Milestone } from '@/types';
+import { sanitizePhone } from '@/lib/utils';
 
 export const AdminProjects: React.FC = () => {
-  const [projects, setProjects] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ClientProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [clientPhone, setClientPhone] = useState('');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneSaveSuccess, setPhoneSaveSuccess] = useState(false);
-  const [milestones, setMilestones] = useState<Array<{ id: number; task: string; done: boolean; date?: string }>>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [newMilestoneText, setNewMilestoneText] = useState('');
   const [notified, setNotified] = useState(false);
   const [feedbackResolved, setFeedbackResolved] = useState(false);
@@ -34,7 +36,10 @@ export const AdminProjects: React.FC = () => {
   const [newProjectPhone, setNewProjectPhone] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/projects')
+    const token = localStorage.getItem('admin_token') || '';
+    fetch('/api/admin/projects', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
@@ -55,10 +60,14 @@ export const AdminProjects: React.FC = () => {
   const handleTogglePortalAccess = async () => {
     if (!currentProject) return;
     const updatedApproved = currentProject.clientPortalApproved === false ? true : false;
+    const token = localStorage.getItem('admin_token') || '';
     try {
       await fetch(`/api/admin/projects/${selectedProjectId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ clientPortalApproved: updatedApproved })
       });
       setProjects(projects.map(p => p.id === selectedProjectId ? { ...p, clientPortalApproved: updatedApproved } : p));
@@ -70,10 +79,14 @@ export const AdminProjects: React.FC = () => {
   const handleSavePhone = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = clientPhone.replace(/\D/g, '').slice(-10);
+    const token = localStorage.getItem('admin_token') || '';
     try {
       await fetch(`/api/admin/projects/${selectedProjectId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ clientPhone: cleanPhone })
       });
       setPhoneSaveSuccess(true);
@@ -87,10 +100,14 @@ export const AdminProjects: React.FC = () => {
   const toggleMilestone = async (id: number) => {
     const updated = milestones.map(m => m.id === id ? { ...m, done: !m.done } : m);
     setMilestones(updated);
+    const token = localStorage.getItem('admin_token') || '';
     try {
       await fetch(`/api/admin/projects/${selectedProjectId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ milestones: updated })
       });
     } catch (e) {
@@ -107,10 +124,14 @@ export const AdminProjects: React.FC = () => {
     ];
     setMilestones(updated);
     setNewMilestoneText('');
+    const token = localStorage.getItem('admin_token') || '';
     try {
       await fetch(`/api/admin/projects/${selectedProjectId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ milestones: updated })
       });
     } catch (e) {
@@ -121,10 +142,14 @@ export const AdminProjects: React.FC = () => {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectTitle.trim() || !newProjectPhone.trim()) return;
+    const token = localStorage.getItem('admin_token') || '';
     try {
       const res = await fetch('/api/admin/projects', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           title: newProjectTitle.trim(),
           clientPhone: newProjectPhone.trim()

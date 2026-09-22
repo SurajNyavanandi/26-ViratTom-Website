@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '..//components/ui/Button';
 import { Lock, ArrowLeft, ShieldCheck, AlertCircle, KeyRound } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -132,7 +131,7 @@ export const Login: React.FC = () => {
 
       {/* Minimal Footer */}
       <footer className="w-full max-w-360 mx-auto px-4 py-6 text-center text-[12px] text-apple-gray-400">
-        &copy; {new Date().getFullYear()} VIRATTOM. All rights reserved.
+        &copy; {new Date().getFullYear()} ViratTom. All rights reserved.
       </footer>
     </div>
   );

@@ -31,7 +31,7 @@ import { safeFetchJson } from '@/utils/utils';
 import { Validation } from '@/utils/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
-import { toJpeg } from 'html-to-image';
+import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 import type { 
@@ -357,10 +357,209 @@ export const Resume = () => {
     };
   }, [mobileView]);
 
+  // Recursively copies all resolved computed styles from live preview DOM nodes to cloned nodes
+  const inlineComputedStyles = (sourceEl: Element, targetEl: HTMLElement) => {
+    const computed = window.getComputedStyle(sourceEl);
+    
+    const propertiesToCopy = [
+      'font-family',
+      'font-size',
+      'font-weight',
+      'font-style',
+      'line-height',
+      'letter-spacing',
+      'word-spacing',
+      'text-align',
+      'text-decoration-line',
+      'text-decoration-color',
+      'text-decoration-style',
+      'text-transform',
+      'color',
+      'background-color',
+      'display',
+      'flex-direction',
+      'flex-wrap',
+      'flex-grow',
+      'flex-shrink',
+      'flex-basis',
+      'align-items',
+      'align-content',
+      'align-self',
+      'justify-content',
+      'justify-items',
+      'justify-self',
+      'column-gap',
+      'row-gap',
+      'gap',
+      'margin-top',
+      'margin-right',
+      'margin-bottom',
+      'margin-left',
+      'padding-top',
+      'padding-right',
+      'padding-bottom',
+      'padding-left',
+      'border-top-width',
+      'border-top-style',
+      'border-top-color',
+      'border-bottom-width',
+      'border-bottom-style',
+      'border-bottom-color',
+      'border-left-width',
+      'border-left-style',
+      'border-left-color',
+      'border-right-width',
+      'border-right-style',
+      'border-right-color',
+      'border-radius',
+      'width',
+      'min-width',
+      'max-width',
+      'height',
+      'min-height',
+      'max-height',
+      'box-sizing',
+      'white-space',
+      'word-break',
+      'overflow-wrap',
+      'opacity',
+      'vertical-align',
+    ];
+
+    for (const prop of propertiesToCopy) {
+      const val = computed.getPropertyValue(prop);
+      if (val && val !== 'initial') {
+        targetEl.style.setProperty(prop, val, 'important');
+      }
+    }
+
+    const sourceChildren = Array.from(sourceEl.children);
+    const targetChildren = Array.from(targetEl.children) as HTMLElement[];
+
+    for (let i = 0; i < sourceChildren.length && i < targetChildren.length; i++) {
+      inlineComputedStyles(sourceChildren[i], targetChildren[i]);
+    }
+  };
+
+  // Helper to render an HTML element directly to high-res JPEG via isolated iframe canvas with 100% computed style fidelity
+  const rasterizePageElement = async (
+    sourcePageElement: HTMLElement,
+    width = 794,
+    height = 1123,
+    scale = 2
+  ): Promise<{
+    imgData: string;
+    anchors: Array<{ href: string; relLeft: number; relTop: number; relWidth: number; relHeight: number }>;
+  }> => {
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '-99999px';
+      iframe.style.top = '0';
+      iframe.style.width = `${width}px`;
+      iframe.style.height = `${height}px`;
+      iframe.style.border = 'none';
+      iframe.style.zIndex = '-9999';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) {
+        document.body.removeChild(iframe);
+        return reject(new Error('Could not access iframe document'));
+      }
+
+      doc.open();
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #ffffff;
+              color: #000000;
+              width: ${width}px;
+              height: ${height}px;
+              overflow: hidden;
+              -webkit-font-smoothing: antialiased;
+            }
+          </style>
+        </head>
+        <body></body>
+        </html>
+      `);
+      doc.close();
+
+      const clonedPage = sourcePageElement.cloneNode(true) as HTMLElement;
+      clonedPage.style.transform = 'none';
+      clonedPage.style.boxShadow = 'none';
+      clonedPage.style.margin = '0';
+      clonedPage.style.width = `${width}px`;
+      clonedPage.style.height = `${height}px`;
+      clonedPage.style.maxWidth = `${width}px`;
+      clonedPage.style.maxHeight = `${height}px`;
+      clonedPage.style.minWidth = `${width}px`;
+      clonedPage.style.minHeight = `${height}px`;
+      clonedPage.style.boxSizing = 'border-box';
+      clonedPage.style.backgroundColor = '#ffffff';
+
+      // Inline all resolved computed styles from live DOM into cloned DOM
+      inlineComputedStyles(sourcePageElement, clonedPage);
+
+      doc.body.appendChild(clonedPage);
+
+      setTimeout(async () => {
+        try {
+          const anchorElements = clonedPage.querySelectorAll<HTMLAnchorElement>('a[href]');
+          const pageRect = clonedPage.getBoundingClientRect();
+          const anchors: Array<{ href: string; relLeft: number; relTop: number; relWidth: number; relHeight: number }> = [];
+
+          anchorElements.forEach((anchor) => {
+            const href = anchor.getAttribute('href');
+            if (href && href !== '#') {
+              const r = anchor.getBoundingClientRect();
+              anchors.push({
+                href,
+                relLeft: r.left - pageRect.left,
+                relTop: r.top - pageRect.top,
+                relWidth: r.width,
+                relHeight: r.height,
+              });
+            }
+          });
+
+          const canvas = await html2canvas(clonedPage, {
+            scale: scale,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            width: width,
+            height: height,
+            windowWidth: width,
+            windowHeight: height,
+          });
+
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+          resolve({ imgData, anchors });
+        } catch (err) {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+          reject(err);
+        }
+      }, 60);
+    });
+  };
+
   // 1. Direct PDF Download Execution (Exact pixel-for-pixel preview match)
   const executeDirectDownload = async () => {
     const previousMobileView = mobileView;
-    let hiddenContainer: HTMLElement | null = null;
 
     try {
       setIsDownloading(true);
@@ -393,54 +592,9 @@ export const Resume = () => {
         compress: true
       });
 
-      // Dedicated offscreen container with exact unscaled A4 dimensions (794px x 1123px at 96 DPI)
-      hiddenContainer = document.createElement('div');
-      hiddenContainer.id = 'resume-export-container';
-      hiddenContainer.style.position = 'fixed';
-      hiddenContainer.style.left = '-99999px';
-      hiddenContainer.style.top = '0';
-      hiddenContainer.style.width = '794px';
-      hiddenContainer.style.height = '1123px';
-      hiddenContainer.style.zIndex = '-9999';
-      hiddenContainer.style.backgroundColor = '#ffffff';
-      hiddenContainer.style.overflow = 'hidden';
-      document.body.appendChild(hiddenContainer);
-
       for (let i = 0; i < pageElements.length; i++) {
         const originalPage = pageElements[i];
-        const clonedPage = originalPage.cloneNode(true) as HTMLElement;
-
-        // Reset scale and shadows on clone for crisp, exact 1:1 render
-        clonedPage.style.transform = 'none';
-        clonedPage.style.boxShadow = 'none';
-        clonedPage.style.margin = '0';
-        clonedPage.style.width = '794px';
-        clonedPage.style.height = '1123px';
-        clonedPage.style.maxWidth = '794px';
-        clonedPage.style.maxHeight = '1123px';
-        clonedPage.style.minWidth = '794px';
-        clonedPage.style.minHeight = '1123px';
-        clonedPage.style.position = 'relative';
-        clonedPage.style.backgroundColor = '#ffffff';
-        clonedPage.style.color = '#000000';
-        clonedPage.style.boxSizing = 'border-box';
-        clonedPage.style.padding = '12.7mm';
-        clonedPage.style.fontFamily = '"Times New Roman", Times, "Computer Modern", Georgia, serif';
-        clonedPage.style.lineHeight = '1.3';
-
-        hiddenContainer.innerHTML = '';
-        hiddenContainer.appendChild(clonedPage);
-
-        await new Promise((r) => setTimeout(r, 60));
-
-        const imgData = await toJpeg(clonedPage, {
-          quality: 0.98,
-          pixelRatio: 2,
-          backgroundColor: '#ffffff',
-          width: 794,
-          height: 1123,
-          skipFonts: true,
-        });
+        const { imgData, anchors } = await rasterizePageElement(originalPage, 794, 1123, 2);
 
         if (i > 0) {
           pdf.addPage('a4', 'portrait');
@@ -450,19 +604,7 @@ export const Resume = () => {
         pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
 
         // Extract all link positions and embed clickable annotations into the PDF
-        const clonedPageRect = clonedPage.getBoundingClientRect();
-        const anchors = clonedPage.querySelectorAll<HTMLAnchorElement>('a[href]');
-
-        anchors.forEach((anchor) => {
-          const href = anchor.getAttribute('href');
-          if (!href || href === '#') return;
-
-          const rect = anchor.getBoundingClientRect();
-          const relLeft = rect.left - clonedPageRect.left;
-          const relTop = rect.top - clonedPageRect.top;
-          const relWidth = rect.width;
-          const relHeight = rect.height;
-
+        anchors.forEach(({ href, relLeft, relTop, relWidth, relHeight }) => {
           if (relWidth > 0 && relHeight > 0) {
             // Convert pixels (794 x 1123) to A4 mm (210 x 297)
             const x_mm = (relLeft / 794) * 210;
@@ -489,12 +631,9 @@ export const Resume = () => {
       pdf.save(`${safeName}_Resume.pdf`);
       console.log('[Resume Download] PDF successfully generated and downloaded with 100% exact preview fidelity and clickable links.');
     } catch (err) {
-      console.error('[Resume Download] Error generating PDF from preview:', err);
+      console.error('[Resume Download] Error generating PDF from preview, providing print dialog:', err);
       window.print();
     } finally {
-      if (hiddenContainer && document.body.contains(hiddenContainer)) {
-        document.body.removeChild(hiddenContainer);
-      }
       if (previousMobileView === 'editor') {
         setMobileView('editor');
       }
@@ -1518,11 +1657,27 @@ export const Resume = () => {
 
                     {/* Ultra-minimal, elegant footer watermark */}
                     <div 
-                      className="w-full pt-2 flex items-center justify-between text-[8pt] text-gray-400 select-none opacity-80 border-t border-gray-100"
+                      className="w-full pt-2 flex items-center justify-between text-[8pt] text-gray-400 opacity-80 border-t border-gray-100"
                       style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
                     >
-                      <span>Created with ViratTom</span>
-                      <span>virattom.com</span>
+                      <a 
+                        href="https://virattom.com" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                        title="Visit ViratTom"
+                      >
+                        Created with ViratTom
+                      </a>
+                      <a 
+                        href="https://virattom.com" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                        title="Visit virattom.com"
+                      >
+                        virattom.com
+                      </a>
                     </div>
                   </div>
                 </div>

@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getMinPrice, getWhatsAppUrl } from '@/lib/utils';
+import { getMinPrice, getWhatsAppUrl, safeFetchJson } from '@/lib/utils';
+import { Validation } from '@/lib/validation';
+import { useOtpVerification } from '@/hooks/useOtpVerification';
+import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
+import { DEFAULT_PORTFOLIO_PROJECTS, type PortfolioProject } from '@/types';
 
 export const Home = () => {
   const location = useLocation();
-  const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState<PortfolioProject[]>(DEFAULT_PORTFOLIO_PROJECTS);
+  const [loading, setLoading] = useState(false);
   const [formState, setFormState] = useState({ 
     name: '', 
     email: '', 
@@ -20,25 +24,57 @@ export const Home = () => {
     projectType: 'Static Website' 
   });
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'otp' | 'success'>('idle');
-  const [otp, setOtp] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
 
+  // Shared OTP hook
+  const {
+    otp,
+    countdown,
+    canResend,
+    isRequesting: isOtpRequesting,
+    isVerifying: isOtpVerifying,
+    error: otpHookError,
+    devOtp,
+    inputRefs,
+    setOtpDigit,
+    handleKeyDown,
+    handlePaste,
+    requestOtp,
+    verifyOtp,
+    resetOtp,
+  } = useOtpVerification({
+    cooldownSeconds: 60,
+    onSuccess: (data) => {
+      console.log('[Home Inquiry] Lead submitted and verified successfully! Lead ID:', data?.lead?._id);
+      setFormStatus('success');
+    },
+    onError: (err) => {
+      setError(err);
+    }
+  });
+
   useEffect(() => {
-    fetch('/api/projects')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setProjects(data);
-        } else {
-          setProjects([]);
-        }
-      })
-      .catch(err => {
-        console.error('[Home] Failed to load dynamic projects from backend:', err);
-        setProjects([]);
-      })
-      .finally(() => setLoading(false));
+    let isMounted = true;
+
+    const loadProjects = async (retry = true) => {
+      const res = await safeFetchJson<PortfolioProject[]>('/api/projects');
+      if (!isMounted) return;
+
+      if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
+        setProjects(res.data);
+      } else if (retry) {
+        // Retry once after cold-start delay
+        setTimeout(() => {
+          if (isMounted) loadProjects(false);
+        }, 2000);
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Handle URL hash scrolling (e.g. #services, #pricing, #projects, #contact)
@@ -59,19 +95,18 @@ export const Home = () => {
     }
   }, [location.hash, loading]);
 
-  const handleApply = async (e: React.FormEvent) => {
+  const handleApply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     const cleanEmail = formState.email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+    if (!Validation.isValidEmail(cleanEmail)) {
       setError('Please enter a valid email address to receive your verification code.');
       return;
     }
 
-    const digitsOnly = formState.phone.replace(/\D/g, '');
-    const cleanPhone = digitsOnly.slice(-10);
-    if (cleanPhone.length !== 10) {
+    const cleanPhone = Validation.sanitizePhone(formState.phone);
+    if (!Validation.isValidPhone(cleanPhone)) {
       setError('Please enter a valid 10-digit mobile number.');
       return;
     }
@@ -85,86 +120,36 @@ export const Home = () => {
     }
 
     setFormStatus('submitting');
-    try {
-      console.log(`[Home Inquiry] Requesting Email OTP for ${formState.name} (${cleanEmail})...`);
-      const res = await fetch('/api/lead/request-email-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          name: formState.name.trim(),
-          phone: cleanPhone,
-          budget: formState.budget,
-          scope: formState.scope,
-          projectType: formState.projectType
-        })
-      });
-      const data = await res.json();
+    const sent = await requestOtp({
+      email: cleanEmail,
+      name: formState.name.trim(),
+      phone: cleanPhone,
+      budget: formState.budget,
+      scope: formState.scope,
+      projectType: formState.projectType,
+    });
 
-      if (!res.ok || !data.success) {
-        setError(data.error || 'Failed to send verification code. Please try again.');
-        setFormStatus('idle');
-        return;
-      }
-
-      console.log('[Home Inquiry] Email OTP requested successfully.');
+    if (sent) {
       setFormStatus('otp');
-    } catch (err: any) {
-      console.error('[Home Inquiry] Error requesting email OTP:', err);
-      setError('Network error sending verification code. Please try again.');
+    } else {
       setFormStatus('idle');
     }
-  };
+  }, [formState, requestOtp]);
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyOtp = useCallback(async () => {
     setError('');
+    const cleanEmail = formState.email.trim().toLowerCase();
+    const cleanPhone = Validation.sanitizePhone(formState.phone);
 
-    const cleanOtp = otp.trim();
-    if (cleanOtp.length !== 6) {
-      setError('Please enter the complete 6-digit verification code.');
-      return;
-    }
-
-    setIsVerifying(true);
-    try {
-      const cleanEmail = formState.email.trim().toLowerCase();
-      const cleanPhone = formState.phone.replace(/\D/g, '').slice(-10);
-      console.log(`[Home Inquiry] Verifying Email OTP "${cleanOtp}" for ${cleanEmail}...`);
-      
-      const res = await fetch('/api/lead/verify-email-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          otp: cleanOtp,
-          leadData: {
-            name: formState.name.trim(),
-            email: cleanEmail,
-            phone: cleanPhone,
-            budget: formState.budget,
-            projectType: formState.projectType,
-            scope: formState.scope
-          }
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setError(data.error || 'Invalid or expired OTP code.');
-        setIsVerifying(false);
-        return;
-      }
-
-      console.log('[Home Inquiry] Lead submitted and verified successfully! Lead ID:', data.leadId);
-      setFormStatus('success');
-    } catch (err: any) {
-      console.error('[Home Inquiry] Verification error:', err);
-      setError('Verification failed. Please check your internet connection.');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
+    await verifyOtp({
+      name: formState.name.trim(),
+      email: cleanEmail,
+      phone: cleanPhone,
+      budget: formState.budget,
+      projectType: formState.projectType,
+      scope: formState.scope,
+    });
+  }, [formState, verifyOtp]);
 
   return (
     <div className="flex flex-col items-center">
@@ -676,64 +661,28 @@ export const Home = () => {
                 </div>
               </div>
             ) : formStatus === 'otp' ? (
-              <form onSubmit={handleVerifyOtp} className="space-y-6">
-                <div className="text-center mb-4">
-                  <div className="h-12 w-12 rounded-2xl bg-apple-blue/10 flex items-center justify-center text-apple-blue mx-auto mb-3">
-                    <Mail className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-[20px] font-bold text-apple-black dark:text-white">Verify Your Email Address</h3>
-                  <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mt-1">
-                    We sent a 6-digit verification code to <span className="font-semibold text-apple-black dark:text-white">{formState.email}</span>
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-[14px] font-medium mb-2">6-Digit Email OTP</label>
-                  <Input 
-                    type="text" 
-                    required 
-                    maxLength={6}
-                    placeholder="• • • • • •" 
-                    value={otp} 
-                    onChange={e => {
-                      setOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                      if (error) setError('');
-                    }} 
-                    className="text-center text-[22px] tracking-[0.3em] font-mono font-bold rounded-xl h-12"
-                  />
-                </div>
-
-                {error && (
-                  <p className="text-[13px] text-apple-red text-center bg-apple-red/10 p-3 rounded-xl border border-apple-red/20">
-                    {error}
-                  </p>
-                )}
-
-                <Button type="submit" className="w-full h-11 rounded-xl text-[14px]" isLoading={isVerifying}>
-                  Verify & Submit Application
-                </Button>
-
-                <div className="flex items-center justify-between text-[13px] pt-1">
-                  <button 
-                    type="button" 
-                    onClick={handleApply} 
-                    className="text-apple-blue hover:underline font-medium cursor-pointer"
-                  >
-                    Resend Code
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      setFormStatus('idle');
-                      setOtp('');
-                      setError('');
-                    }} 
-                    className="text-apple-gray-500 hover:text-black dark:hover:text-white cursor-pointer"
-                  >
-                    Change Email / Number
-                  </button>
-                </div>
-              </form>
+              <OtpVerificationView
+                recipient={formState.email}
+                type="email"
+                otp={otp}
+                inputRefs={inputRefs}
+                onDigitChange={setOtpDigit}
+                onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
+                onVerify={handleVerifyOtp}
+                onResend={handleApply as any}
+                onCancel={() => {
+                  setFormStatus('idle');
+                  resetOtp();
+                  setError('');
+                }}
+                isVerifying={isOtpVerifying}
+                isRequesting={isOtpRequesting}
+                countdown={countdown}
+                canResend={canResend}
+                error={error || otpHookError}
+                devOtp={devOtp}
+              />
             ) : (
               <form onSubmit={handleApply} className="space-y-5">
                 <div>
@@ -784,7 +733,7 @@ export const Home = () => {
                   <Input 
                     type="text" 
                     required 
-                    placeholder="e.g. Shree Shiva"
+                    placeholder="e.g. Shree Rama"
                     value={formState.name} 
                     onChange={e => setFormState({...formState, name: e.target.value})} 
                     className="rounded-xl"
@@ -796,7 +745,7 @@ export const Home = () => {
                   <Input 
                     type="email" 
                     required 
-                    placeholder="e.g. shree@example.com"
+                    placeholder="e.g. shreerama@gmail.com"
                     value={formState.email} 
                     onChange={e => {
                       setFormState({...formState, email: e.target.value});

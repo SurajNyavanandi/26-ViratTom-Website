@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
@@ -8,7 +8,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   isLoading?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = React.memo<ButtonProps>(({
   children,
   className = '',
   variant = 'primary',
@@ -43,5 +43,6 @@ export const Button: React.FC<ButtonProps> = ({
       {children}
     </button>
   );
-};
+});
 
+Button.displayName = 'Button';

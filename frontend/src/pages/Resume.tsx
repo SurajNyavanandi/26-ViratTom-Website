@@ -24,12 +24,15 @@ import {
   CheckCircle2,
   X,
   RotateCcw,
-  Check,
-  Sun,
-  Moon
+  Check
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useTheme } from '../context/ThemeContext';
+import { safeFetchJson } from '@/utils/utils';
+import { Validation } from '@/utils/validation';
+import { useOtpVerification } from '@/hooks/useOtpVerification';
+import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
+import { toJpeg } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 import type { 
   ResumeData, 
@@ -125,7 +128,6 @@ const DEFAULT_RESUME_DATA: ResumeData = {
 /* ------------------------------------------------------------------ */
 
 export const Resume = () => {
-  const { isDark, toggleTheme } = useTheme();
   // Preserve EXACT resume content with persistent local storage
   const [data, setData] = useState<ResumeData>(() => {
     try {
@@ -181,11 +183,52 @@ export const Resume = () => {
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [verificationStep, setVerificationStep] = useState<'form' | 'otp'>('form');
   const [inputEmail, setInputEmail] = useState('');
-  const [userOtp, setUserOtp] = useState('');
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [verificationError, setVerificationError] = useState('');
-  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // Shared OTP hook for resume verification
+  const {
+    otp: resumeOtp,
+    countdown: resumeOtpCountdown,
+    canResend: canResendResumeOtp,
+    isRequesting: isResumeOtpRequesting,
+    isVerifying: isResumeOtpVerifying,
+    error: resumeOtpHookError,
+    devOtp: resumeDevOtp,
+    inputRefs: resumeOtpInputRefs,
+    setOtpDigit: setResumeOtpDigit,
+    handleKeyDown: handleResumeOtpKeyDown,
+    handlePaste: handleResumeOtpPaste,
+    requestOtp: requestResumeOtp,
+    verifyOtp: verifyResumeOtp,
+    resetOtp: resetResumeOtp,
+  } = useOtpVerification({
+    cooldownSeconds: 30,
+    onSuccess: (_resData?: any) => {
+      const cleanEmail = inputEmail.trim().toLowerCase();
+      localStorage.setItem('virattom_verified_user_email', cleanEmail);
+      setVerifiedEmail(cleanEmail);
+
+      const previousSavedResume = localStorage.getItem(`virattom_resume_user_${cleanEmail}`);
+      if (previousSavedResume && !hasCustomEdits) {
+        try {
+          const parsed = JSON.parse(previousSavedResume);
+          setData(parsed);
+          console.log('[Resume Verification] Restored previously remembered resume for:', cleanEmail);
+        } catch (err) {
+          console.warn('Could not parse previous saved resume:', err);
+        }
+      } else {
+        localStorage.setItem(`virattom_resume_user_${cleanEmail}`, JSON.stringify(data));
+      }
+
+      setShowVerificationModal(false);
+      console.log('[Resume Verification] Success! Verified & linked to:', cleanEmail);
+      executeDirectDownload();
+    },
+    onError: (err: string) => {
+      setVerificationError(err);
+    }
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -200,15 +243,6 @@ export const Resume = () => {
       console.warn('[Resume] Failed to save draft:', e);
     }
   }, [data, verifiedEmail]);
-
-  // Resend Countdown Timer
-  useEffect(() => {
-    if (resendCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setResendCountdown(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [resendCountdown]);
 
   // Dynamic Pagination Budget and Logic
   const dynamicPages = useMemo<ResumeChunk[][]>(() => {
@@ -323,38 +357,147 @@ export const Resume = () => {
     };
   }, [mobileView]);
 
-  // 1. Direct PDF Download Execution
+  // 1. Direct PDF Download Execution (Exact pixel-for-pixel preview match)
   const executeDirectDownload = async () => {
+    const previousMobileView = mobileView;
+    let hiddenContainer: HTMLElement | null = null;
+
     try {
       setIsDownloading(true);
-      console.log('[Resume Download] Requesting PDF generation from /api/resume...', {
+      console.log('[Resume Download] Initiating exact preview-matching PDF generation...', {
         candidate: data.header.name,
         pageCount: dynamicPages.length,
         downloader: verifiedEmail ? verifiedEmail : 'Direct / Verified Session'
       });
 
-      const res = await fetch('/api/resume', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, pages: dynamicPages }),
+      // Ensure preview DOM is active even on mobile editor tab
+      if (mobileView === 'editor') {
+        setMobileView('preview');
+        await new Promise((r) => setTimeout(r, 120));
+      }
+
+      // Wait a tick for fonts/layout to settle
+      await new Promise((r) => setTimeout(r, 60));
+
+      const pageElements = document.querySelectorAll<HTMLElement>('.page-sheet');
+      if (!pageElements || pageElements.length === 0) {
+        console.warn('[Resume Download] No .page-sheet elements found in DOM, falling back to print');
+        window.print();
+        return;
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
       });
 
-      if (!res.ok) throw new Error('Failed to generate PDF');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
+      // Dedicated offscreen container with exact unscaled A4 dimensions (794px x 1123px at 96 DPI)
+      hiddenContainer = document.createElement('div');
+      hiddenContainer.id = 'resume-export-container';
+      hiddenContainer.style.position = 'fixed';
+      hiddenContainer.style.left = '-99999px';
+      hiddenContainer.style.top = '0';
+      hiddenContainer.style.width = '794px';
+      hiddenContainer.style.height = '1123px';
+      hiddenContainer.style.zIndex = '-9999';
+      hiddenContainer.style.backgroundColor = '#ffffff';
+      hiddenContainer.style.overflow = 'hidden';
+      document.body.appendChild(hiddenContainer);
+
+      for (let i = 0; i < pageElements.length; i++) {
+        const originalPage = pageElements[i];
+        const clonedPage = originalPage.cloneNode(true) as HTMLElement;
+
+        // Reset scale and shadows on clone for crisp, exact 1:1 render
+        clonedPage.style.transform = 'none';
+        clonedPage.style.boxShadow = 'none';
+        clonedPage.style.margin = '0';
+        clonedPage.style.width = '794px';
+        clonedPage.style.height = '1123px';
+        clonedPage.style.maxWidth = '794px';
+        clonedPage.style.maxHeight = '1123px';
+        clonedPage.style.minWidth = '794px';
+        clonedPage.style.minHeight = '1123px';
+        clonedPage.style.position = 'relative';
+        clonedPage.style.backgroundColor = '#ffffff';
+        clonedPage.style.color = '#000000';
+        clonedPage.style.boxSizing = 'border-box';
+        clonedPage.style.padding = '12.7mm';
+        clonedPage.style.fontFamily = '"Times New Roman", Times, "Computer Modern", Georgia, serif';
+        clonedPage.style.lineHeight = '1.3';
+
+        hiddenContainer.innerHTML = '';
+        hiddenContainer.appendChild(clonedPage);
+
+        await new Promise((r) => setTimeout(r, 60));
+
+        const imgData = await toJpeg(clonedPage, {
+          quality: 0.98,
+          pixelRatio: 2,
+          backgroundColor: '#ffffff',
+          width: 794,
+          height: 1123,
+          skipFonts: true,
+        });
+
+        if (i > 0) {
+          pdf.addPage('a4', 'portrait');
+        }
+
+        // Standard A4: 210mm x 297mm
+        pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+
+        // Extract all link positions and embed clickable annotations into the PDF
+        const clonedPageRect = clonedPage.getBoundingClientRect();
+        const anchors = clonedPage.querySelectorAll<HTMLAnchorElement>('a[href]');
+
+        anchors.forEach((anchor) => {
+          const href = anchor.getAttribute('href');
+          if (!href || href === '#') return;
+
+          const rect = anchor.getBoundingClientRect();
+          const relLeft = rect.left - clonedPageRect.left;
+          const relTop = rect.top - clonedPageRect.top;
+          const relWidth = rect.width;
+          const relHeight = rect.height;
+
+          if (relWidth > 0 && relHeight > 0) {
+            // Convert pixels (794 x 1123) to A4 mm (210 x 297)
+            const x_mm = (relLeft / 794) * 210;
+            const y_mm = (relTop / 1123) * 297;
+            const w_mm = (relWidth / 794) * 210;
+            const h_mm = (relHeight / 1123) * 297;
+
+            let formattedUrl = href.trim();
+            if (
+              !formattedUrl.startsWith('http://') &&
+              !formattedUrl.startsWith('https://') &&
+              !formattedUrl.startsWith('mailto:') &&
+              !formattedUrl.startsWith('tel:')
+            ) {
+              formattedUrl = `https://${formattedUrl}`;
+            }
+
+            pdf.link(x_mm, y_mm, w_mm, h_mm, { url: formattedUrl });
+          }
+        });
+      }
+
       const safeName = (data.header.name || 'Resume').replace(/[^a-zA-Z0-9_-]/g, '_');
-      a.download = `${safeName}_Resume.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-      console.log('[Resume Download] PDF successfully downloaded to client device.');
+      pdf.save(`${safeName}_Resume.pdf`);
+      console.log('[Resume Download] PDF successfully generated and downloaded with 100% exact preview fidelity and clickable links.');
     } catch (err) {
-      console.error('[Resume Download] Error generating PDF:', err);
+      console.error('[Resume Download] Error generating PDF from preview:', err);
       window.print();
     } finally {
+      if (hiddenContainer && document.body.contains(hiddenContainer)) {
+        document.body.removeChild(hiddenContainer);
+      }
+      if (previousMobileView === 'editor') {
+        setMobileView('editor');
+      }
       setIsDownloading(false);
     }
   };
@@ -375,125 +518,45 @@ export const Resume = () => {
       setShowVerificationModal(true);
       setVerificationStep('form');
       setVerificationError('');
-      setUserOtp('');
+      resetResumeOtp();
       setInputEmail(data.header.email || '');
     }
   };
 
   // 3. Send Verification Email OTP (Email-only)
-  const handleSendVerificationOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendVerificationOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setVerificationError('');
 
     const cleanEmail = inputEmail.trim().toLowerCase();
-
-    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+    if (!Validation.isValidEmail(cleanEmail)) {
       setVerificationError('Please enter a valid email address.');
       return;
     }
 
-    setIsSendingOtp(true);
-    console.log('[Resume Verification] Sending Email OTP request for:', cleanEmail);
+    const sent = await requestResumeOtp({
+      name: data.header.name || 'Resume User',
+      email: cleanEmail,
+      projectType: 'Resume User',
+      scope: `Resume download & sync by ${cleanEmail}`,
+    });
 
-    try {
-      const res = await fetch('/api/lead/request-email-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: data.header.name || 'Resume User',
-          email: cleanEmail,
-          projectType: 'Resume User',
-          scope: `Resume download & sync by ${cleanEmail}`
-        })
-      });
-
-      const result = await res.json();
-      console.log('[Resume Verification] Server response for OTP request:', result);
-
-      if (!res.ok) {
-        setVerificationError(result.error || 'Failed to dispatch verification code.');
-        return;
-      }
-
+    if (sent) {
       setVerificationStep('otp');
-      setResendCountdown(30);
-    } catch (err) {
-      console.error('[Resume Verification] Network error sending OTP:', err);
-      setVerificationError('Network error. Could not connect to verification service.');
-    } finally {
-      setIsSendingOtp(false);
     }
   };
 
   // 4. Verify OTP, Persist & Link Resume to Email, Auto-Download PDF
-  const handleVerifyOtpAndDownload = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyOtpAndDownload = async () => {
     setVerificationError('');
-
     const cleanEmail = inputEmail.trim().toLowerCase();
-    const cleanOtp = userOtp.trim();
 
-    if (cleanOtp.length !== 6) {
-      setVerificationError('Please enter the 6-digit verification code.');
-      return;
-    }
-
-    setIsVerifyingOtp(true);
-    console.log(`[Resume Verification] Verifying OTP "${cleanOtp}" for ${cleanEmail}...`);
-
-    try {
-      const res = await fetch('/api/lead/verify-email-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          otp: cleanOtp,
-          leadData: {
-            name: data.header.name || 'Resume User',
-            email: cleanEmail,
-            projectType: 'Resume User',
-            scope: `Resume verified & downloaded by ${cleanEmail}`
-          }
-        })
-      });
-
-      const result = await res.json();
-      console.log('[Resume Verification] OTP verification result:', result);
-
-      if (!res.ok) {
-        setVerificationError(result.error || 'Verification code failed.');
-        return;
-      }
-
-      // Store verified user email
-      localStorage.setItem('virattom_verified_user_email', cleanEmail);
-      setVerifiedEmail(cleanEmail);
-
-      // Check if user previously had a saved resume for this email
-      const previousSavedResume = localStorage.getItem(`virattom_resume_user_${cleanEmail}`);
-      if (previousSavedResume && !hasCustomEdits) {
-        try {
-          const parsed = JSON.parse(previousSavedResume);
-          setData(parsed);
-          console.log('[Resume Verification] Restored previously remembered resume for:', cleanEmail);
-        } catch (err) {
-          console.warn('Could not parse previous saved resume:', err);
-        }
-      } else {
-        // Save current customized resume to this user email
-        localStorage.setItem(`virattom_resume_user_${cleanEmail}`, JSON.stringify(data));
-      }
-
-      setShowVerificationModal(false);
-      console.log('[Resume Verification] Success! Verified & linked to:', cleanEmail);
-
-      executeDirectDownload();
-    } catch (err) {
-      console.error('[Resume Verification] Error during verification:', err);
-      setVerificationError('Network error while verifying OTP.');
-    } finally {
-      setIsVerifyingOtp(false);
-    }
+    await verifyResumeOtp({
+      name: data.header.name || 'Resume User',
+      email: cleanEmail,
+      projectType: 'Resume User',
+      scope: `Resume verified & downloaded by ${cleanEmail}`,
+    });
   };
 
   // 5. Reset Custom Resume Draft to Defaults
@@ -504,7 +567,6 @@ export const Resume = () => {
       if (verifiedEmail) {
         localStorage.removeItem(`virattom_resume_user_${verifiedEmail}`);
       }
-      setHasCustomEdits(false);
       console.log('[Resume] Reset to default template.');
     }
   };
@@ -514,7 +576,7 @@ export const Resume = () => {
     localStorage.removeItem('virattom_verified_user_email');
     setVerifiedEmail('');
     setInputEmail('');
-    setUserOtp('');
+    resetResumeOtp();
     setShowVerificationModal(true);
     setVerificationStep('form');
   };
@@ -917,40 +979,25 @@ export const Resume = () => {
               {hasCustomEdits && (
                 <button
                   onClick={handleResetResumeToDefault}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#1C1C1E] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white text-[12px] font-medium transition-all cursor-pointer"
-                  title="Reset to default resume content"
+                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#1C1C1E] text-apple-gray-600 hover:text-apple-red dark:text-apple-gray-300 dark:hover:text-apple-red flex items-center justify-center transition-all cursor-pointer"
+                  title="Reset to default resume"
+                  aria-label="Reset resume"
                 >
-                  <RotateCcw size={13} />
-                  <span>Reset Defaults</span>
+                  <RotateCcw size={16} />
                 </button>
               )}
-
-              <button
-                onClick={toggleTheme}
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#1C1C1E] text-apple-gray-600 hover:text-apple-black dark:text-apple-gray-300 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer"
-                aria-label="Toggle theme"
-                title={isDark ? 'Switch to Light theme' : 'Switch to Dark theme'}
-              >
-                {isDark ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
 
               <button 
                 onClick={handleInitiateDownload} 
                 disabled={isDownloading}
-                className="h-9 sm:h-10 px-3.5 sm:px-4 rounded-full bg-apple-blue text-white flex items-center justify-center gap-2 text-[13px] sm:text-[14px] font-semibold shadow-sm hover:opacity-90 active:scale-95 disabled:opacity-70 transition-all cursor-pointer"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-apple-blue text-white flex items-center justify-center shadow-sm hover:opacity-90 active:scale-95 disabled:opacity-70 transition-all cursor-pointer"
                 title="Download PDF"
                 aria-label="Download PDF"
               >
                 {isDownloading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="hidden sm:inline">Generating PDF...</span>
-                  </>
+                  <Loader2 size={16} className="animate-spin" />
                 ) : (
-                  <>
-                    <Download size={16} />
-                    <span className="hidden sm:inline">Download PDF</span>
-                  </>
+                  <Download size={17} />
                 )}
               </button>
             </div>
@@ -984,12 +1031,6 @@ export const Resume = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleResetResumeToDefault}
-                      className="text-[12px] font-medium text-apple-gray-500 hover:text-apple-red dark:hover:text-apple-red underline cursor-pointer shrink-0"
-                    >
-                      Reset
-                    </button>
                     <button
                       onClick={handleSwitchEmail}
                       className="text-[12px] font-medium text-apple-blue hover:underline cursor-pointer shrink-0"
@@ -1506,126 +1547,83 @@ export const Resume = () => {
                 <X size={18} />
               </button>
 
-              <div className="text-center mb-6">
-                <div className="h-12 w-12 rounded-2xl bg-apple-blue/10 text-apple-blue flex items-center justify-center mx-auto mb-3">
-                  {verificationStep === 'form' ? <Mail size={24} /> : <ShieldCheck size={24} />}
-                </div>
-                <h3 className="text-[20px] font-bold text-apple-black dark:text-white">
-                  {verificationStep === 'form' ? 'Save & Download Resume' : 'Enter Verification Code'}
-                </h3>
-                <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1.5 leading-relaxed">
-                  {verificationStep === 'form' ? (
-                    'Enter your email to receive a 6-digit OTP. Your customized resume will be remembered for your email address so you never lose your edits.'
-                  ) : (
-                    <>
-                      We sent a 6-digit verification code to{' '}
-                      <span className="font-semibold text-apple-black dark:text-white block mt-0.5">
-                        {inputEmail}
-                      </span>
-                    </>
-                  )}
-                </p>
-              </div>
-
               {verificationStep === 'form' ? (
-                <form onSubmit={handleSendVerificationOtp} className="space-y-4">
-                  <div>
-                    <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-1.5">
-                      Email Address <span className="text-apple-red">*</span>
-                    </label>
-                    <Input 
-                      type="email"
-                      required
-                      autoFocus
-                      placeholder="e.g. yourname@domain.com"
-                      value={inputEmail}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setInputEmail(e.target.value);
-                        if (verificationError) setVerificationError('');
-                      }}
-                      className="rounded-xl h-11 text-[14px]"
-                    />
+                <>
+                  <div className="text-center mb-6">
+                    <div className="h-12 w-12 rounded-2xl bg-apple-blue/10 text-apple-blue flex items-center justify-center mx-auto mb-3">
+                      <Mail size={24} />
+                    </div>
+                    <h3 className="text-[20px] font-bold text-apple-black dark:text-white">
+                      Save & Download Resume
+                    </h3>
+                    <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1.5 leading-relaxed">
+                      Enter your email to receive a 6-digit OTP. Your customized resume will be remembered for your email address so you never lose your edits.
+                    </p>
                   </div>
 
-                  {verificationError && (
-                    <div className="text-[13px] text-apple-red bg-apple-red/10 p-3 rounded-xl border border-apple-red/20 text-center">
-                      {verificationError}
+                  <form onSubmit={handleSendVerificationOtp} className="space-y-4">
+                    <div>
+                      <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-1.5">
+                        Email Address <span className="text-apple-red">*</span>
+                      </label>
+                      <Input 
+                        type="email"
+                        required
+                        autoFocus
+                        placeholder="e.g. yourname@domain.com"
+                        value={inputEmail}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          setInputEmail(e.target.value);
+                          if (verificationError) setVerificationError('');
+                        }}
+                        className="rounded-xl h-11 text-[14px]"
+                      />
                     </div>
-                  )}
 
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 rounded-xl text-[14px] font-semibold mt-2" 
-                    isLoading={isSendingOtp}
-                  >
-                    Send 6-Digit Code
-                  </Button>
+                    {verificationError && (
+                      <div className="text-[13px] text-apple-red bg-apple-red/10 p-3 rounded-xl border border-apple-red/20 text-center">
+                        {verificationError}
+                      </div>
+                    )}
 
-                  <p className="text-[11px] text-apple-gray-400 text-center pt-1">
-                    Edits are automatically saved to your email.
-                  </p>
-                </form>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-11 rounded-xl text-[14px] font-semibold mt-2" 
+                      isLoading={isResumeOtpRequesting}
+                    >
+                      Send 6-Digit Code
+                    </Button>
+
+                    <p className="text-[11px] text-apple-gray-400 text-center pt-1">
+                      Edits are automatically saved to your email.
+                    </p>
+                  </form>
+                </>
               ) : (
-                <form onSubmit={handleVerifyOtpAndDownload} className="space-y-4">
-                  <div>
-                    <label className="block text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-300 mb-2 text-center">
-                      Enter 6-Digit Email OTP
-                    </label>
-                    <Input 
-                      type="text" 
-                      required 
-                      maxLength={6}
-                      autoFocus
-                      placeholder="• • • • • •" 
-                      value={userOtp} 
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setUserOtp(e.target.value.replace(/\D/g, '').slice(0, 6));
-                        if (verificationError) setVerificationError('');
-                      }} 
-                      className="text-center text-[22px] tracking-[0.3em] font-mono font-bold rounded-xl h-12"
-                    />
-                  </div>
-
-                  {verificationError && (
-                    <div className="text-[13px] text-apple-red bg-apple-red/10 p-3 rounded-xl border border-apple-red/20 text-center">
-                      {verificationError}
-                    </div>
-                  )}
-
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 rounded-xl text-[14px] font-semibold" 
-                    isLoading={isVerifyingOtp}
-                  >
-                    Verify, Save & Download PDF
-                  </Button>
-
-                  <div className="flex items-center justify-between text-[13px] pt-1">
-                    <button 
-                      type="button" 
-                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                        if (resendCountdown === 0) {
-                          handleSendVerificationOtp(e as unknown as React.FormEvent);
-                        }
-                      }} 
-                      disabled={resendCountdown > 0 || isSendingOtp}
-                      className="text-apple-blue hover:underline font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {resendCountdown > 0 ? `Resend code in ${resendCountdown}s` : 'Resend Code'}
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        setVerificationStep('form');
-                        setUserOtp('');
-                        setVerificationError('');
-                      }} 
-                      className="text-apple-gray-500 hover:text-black dark:hover:text-white cursor-pointer text-[12px]"
-                    >
-                      Change Email
-                    </button>
-                  </div>
-                </form>
+                <OtpVerificationView
+                  recipient={inputEmail}
+                  type="email"
+                  title="Verify Email & Save"
+                  subtitle={`Enter the 6-digit code sent to ${inputEmail}`}
+                  otp={resumeOtp}
+                  inputRefs={resumeOtpInputRefs}
+                  onDigitChange={setResumeOtpDigit}
+                  onKeyDown={handleResumeOtpKeyDown}
+                  onPaste={handleResumeOtpPaste}
+                  onVerify={handleVerifyOtpAndDownload}
+                  onResend={() => handleSendVerificationOtp()}
+                  onCancel={() => {
+                    setVerificationStep('form');
+                    resetResumeOtp();
+                    setVerificationError('');
+                  }}
+                  isVerifying={isResumeOtpVerifying}
+                  isRequesting={isResumeOtpRequesting}
+                  countdown={resumeOtpCountdown}
+                  canResend={canResendResumeOtp}
+                  error={verificationError || resumeOtpHookError}
+                  devOtp={resumeDevOtp}
+                />
               )}
 
             </div>

@@ -5,7 +5,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: string;
 }
 
-export const Input: React.FC<InputProps> = ({ className = '', error, ...props }) => {
+export const Input = React.memo<InputProps>(({ className = '', error, ...props }) => {
   return (
     <div className="w-full">
       <input
@@ -17,4 +17,6 @@ export const Input: React.FC<InputProps> = ({ className = '', error, ...props })
       {error && <p className="mt-1 text-[12px] text-apple-red">{error}</p>}
     </div>
   );
-};
+});
+
+Input.displayName = 'Input';

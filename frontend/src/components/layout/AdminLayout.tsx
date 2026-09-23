@@ -44,9 +44,9 @@ export const AdminLayout: React.FC = () => {
           <div className="h-9 w-9 rounded-xl bg-apple-blue/10 text-apple-blue flex items-center justify-center font-bold text-sm">
             VT
           </div>
-          <div>
+          <div className="overflow-hidden">
             <h2 className="font-semibold text-[14px]">ViratTom Console</h2>
-            <p className="text-[11px] text-apple-gray-400">Admin Workspace</p>
+            <p className="text-[11px] text-apple-gray-400 truncate" title="kanusuraj15@gmail.com">kanusuraj15@gmail.com</p>
           </div>
         </div>
 

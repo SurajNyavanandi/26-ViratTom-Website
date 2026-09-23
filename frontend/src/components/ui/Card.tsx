@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../utils/utils';
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
@@ -7,7 +7,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hoverEffect?: boolean;
 }
 
-export const Card: React.FC<CardProps> = ({ 
+export const Card = React.memo<CardProps>(({ 
   children, 
   className = '', 
   hoverEffect = true,
@@ -25,5 +25,6 @@ export const Card: React.FC<CardProps> = ({
       {children}
     </div>
   );
-};
+});
 
+Card.displayName = 'Card';

@@ -82,8 +82,8 @@ const protectAdmin = (req, res, next) => {
       token,
       process.env.JWT_SECRET || 'virat-tom-secure-jwt-secret-key-2026'
     );
-    if (decoded.role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Forbidden: Admin role required' });
+    if (decoded.role !== 'admin' || String(decoded.email || '').toLowerCase() !== 'kanusuraj15@gmail.com') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Unauthorized administrator' });
     }
     req.user = decoded;
     next();

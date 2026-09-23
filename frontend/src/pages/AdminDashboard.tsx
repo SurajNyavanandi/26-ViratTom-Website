@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import type { Lead, ClientProject } from '@/types';
-import { formatCurrency, sanitizePhone } from '@/lib/utils';
+import { formatCurrency, sanitizePhone, safeFetchJson } from '@/lib/utils';
 
 export const AdminDashboard: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<'leads' | 'projects'>('leads');
@@ -42,6 +42,7 @@ export const AdminDashboard: React.FC = () => {
 
   // New Project Modal State
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+
   const [projectForm, setProjectForm] = useState({
     title: '',
     clientName: '',
@@ -53,38 +54,46 @@ export const AdminDashboard: React.FC = () => {
     advancePaid: false
   });
 
-  const fetchData = () => {
-    setLoading(true);
+  const fetchData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
     const token = localStorage.getItem('admin_token');
+    const headers = { 'Authorization': `Bearer ${token || ''}` };
     
-    Promise.all([
-      fetch('/api/admin/leads', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/admin/projects', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
-    ])
-      .then(([leadsData, projectsData]) => {
-        setLeads(Array.isArray(leadsData) ? leadsData : []);
-        setProjects(Array.isArray(projectsData) ? projectsData : []);
-      })
-      .catch((err) => {
-        console.error("Admin data fetch error:", err);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [leadsRes, projectsRes] = await Promise.all([
+        safeFetchJson<Lead[]>('/api/admin/leads', { headers }),
+        safeFetchJson<ClientProject[]>('/api/admin/projects', { headers })
+      ]);
+      setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
+      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+    } catch (err) {
+      console.error("Admin data fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
+    let isMounted = true;
     const token = localStorage.getItem('admin_token');
+    const headers = { 'Authorization': `Bearer ${token || ''}` };
+
     Promise.all([
-      fetch('/api/admin/leads', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-      fetch('/api/admin/projects', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
-    ])
-      .then(([leadsData, projectsData]) => {
-        setLeads(Array.isArray(leadsData) ? leadsData : []);
-        setProjects(Array.isArray(projectsData) ? projectsData : []);
-      })
-      .catch((err) => {
-        console.error("Admin data fetch error:", err);
-      })
-      .finally(() => setLoading(false));
+      safeFetchJson<Lead[]>('/api/admin/leads', { headers }),
+      safeFetchJson<ClientProject[]>('/api/admin/projects', { headers })
+    ]).then(([leadsRes, projectsRes]) => {
+      if (!isMounted) return;
+      setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
+      setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+      setLoading(false);
+    }).catch((err) => {
+      console.error("Admin data fetch error:", err);
+      if (isMounted) setLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleCopyPhone = (phone: string, id: string) => {
@@ -248,7 +257,7 @@ export const AdminDashboard: React.FC = () => {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-auto">
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
           <button 
             onClick={fetchData} 
             disabled={loading}

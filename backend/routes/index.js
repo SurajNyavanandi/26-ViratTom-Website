@@ -8,6 +8,9 @@ const {
   verifyOtp,
   generateResume,
   loginAdmin,
+  requestAdminForgotPassword,
+  resetAdminPassword,
+  changeAdminPassword,
   getLeads,
   requestEmailOtpHandler,
   verifyEmailOtpHandler,
@@ -17,6 +20,7 @@ const {
   confirmAdvancePayment,
   createRazorpayOrder,
   verifyRazorpayPayment,
+  handleRazorpayWebhook,
   addClientFeedback,
   getAdminProjects,
   updateAdminProject,
@@ -25,6 +29,7 @@ const {
 } = require('../controllers/siteController');
 const { handleAssistantChat } = require('../controllers/assistantController');
 const { protectAdmin, protectClient } = require('../middleware/authMiddleware');
+const { dispatchAlert } = require('../services/alertService');
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
@@ -36,6 +41,10 @@ router.post('/lead/verify-email-otp', verifyEmailOtpHandler);
 router.post('/verify-otp', verifyOtp);
 router.post('/resume', generateResume);
 router.post('/chat', handleAssistantChat);
+
+// Razorpay Webhooks (Automated asynchronous reconciliation)
+router.post('/payment/razorpay-webhook', handleRazorpayWebhook);
+router.post('/razorpay/webhook', handleRazorpayWebhook);
 
 // Client portal authentication & authorized operations
 router.post('/client/check-phone', checkClientPhone);
@@ -50,10 +59,25 @@ router.post('/client/feedback', protectClient, addClientFeedback);
 
 // Admin portal authentication & authorized operations
 router.post('/admin/login', loginAdmin);
+router.post('/admin/forgot-password', requestAdminForgotPassword);
+router.post('/admin/reset-password', resetAdminPassword);
+router.post('/admin/change-password', protectAdmin, changeAdminPassword);
 router.get('/admin/leads', protectAdmin, getLeads);
 router.get('/admin/projects', protectAdmin, getAdminProjects);
 router.put('/admin/projects/:id', protectAdmin, updateAdminProject);
 router.post('/admin/projects', protectAdmin, createAdminProject);
 router.delete('/admin/projects/:id', protectAdmin, deleteAdminProject);
+
+// Admin trigger test alert
+router.post('/admin/test-alert', protectAdmin, async (req, res) => {
+  const { channel = 'all', message = 'Test alert from ViratTom Control Center' } = req.body || {};
+  await dispatchAlert({
+    type: 'ADMIN_TEST',
+    title: '🔔 System Test Alert',
+    message,
+    meta: { triggeredBy: req.user?.email || 'admin', channel, status: 'Active' },
+  });
+  return res.json({ success: true, message: 'Test alert sent across configured webhooks.' });
+});
 
 module.exports = router;

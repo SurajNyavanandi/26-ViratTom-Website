@@ -98,3 +98,31 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export interface PortfolioProject {
+  _id: string;
+  title: string;
+  type: string;
+  url: string;
+  imageUrl: string;
+  description: string;
+}
+
+export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
+  {
+    _id: '1',
+    title: 'Inisio',
+    type: 'Web Application',
+    url: 'https://inisio.vercel.app/',
+    imageUrl: '/projects/inisio.png',
+    description: 'Modern full-stack productivity & workflow management web application.'
+  },
+  {
+    _id: '2',
+    title: 'Urbanico',
+    type: 'Mobile App',
+    url: 'https://urbanico.vercel.app/',
+    imageUrl: '/projects/urbanico.png',
+    description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
+  }
+];

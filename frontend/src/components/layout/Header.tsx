@@ -69,13 +69,6 @@ export const Header: React.FC = () => {
             Services
           </a>
           <a 
-            href="/#pricing" 
-            onClick={(e) => handleSectionClick(e, 'pricing')}
-            className="hover:text-apple-black dark:hover:text-white transition-colors"
-          >
-            Pricing
-          </a>
-          <a 
             href="/#projects" 
             onClick={(e) => handleSectionClick(e, 'projects')}
             className="hover:text-apple-black dark:hover:text-white transition-colors"
@@ -105,13 +98,15 @@ export const Header: React.FC = () => {
 
         {/* Header Actions */}
         <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-apple-gray-500 hover:text-apple-black dark:hover:text-white hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer"
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          {location.pathname === '/' && (
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl text-apple-gray-500 hover:text-apple-black dark:hover:text-white hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer"
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          )}
           <a
             href="/#contact"
             onClick={(e) => handleSectionClick(e, 'contact')}
@@ -124,13 +119,15 @@ export const Header: React.FC = () => {
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden items-center gap-2">
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-apple-gray-500 hover:text-apple-black dark:hover:text-white"
-            aria-label="Toggle theme"
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          {location.pathname === '/' && (
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl text-apple-gray-500 hover:text-apple-black dark:hover:text-white"
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          )}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 rounded-xl text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E]"
@@ -150,13 +147,6 @@ export const Header: React.FC = () => {
             className="block py-2 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white"
           >
             Services
-          </a>
-          <a
-            href="/#pricing"
-            onClick={(e) => handleSectionClick(e, 'pricing')}
-            className="block py-2 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white"
-          >
-            Pricing
           </a>
           <a
             href="/#projects"

@@ -49,14 +49,64 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// CORS & Parsing
-app.use(
-  cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+// CORS Configuration
+const allowedOrigins = [
+  'https://virattom.com',
+  'https://www.virattom.com',
+  'http://virattom.com',
+  'http://www.virattom.com',
+  'https://virattom.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // Check allowed list
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow any localhost port (Vite, Next, custom dev servers)
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow virattom.com and all subdomains
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*virattom\.com$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow virattom.vercel.app and Vercel preview deployments
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow Google Cloud Run / AI Studio preview URLs
+    if (/^https?:\/\/([a-zA-Z0-9-]+\.)*run\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    // Optional CORS_ORIGIN env var support
+    if (process.env.CORS_ORIGIN && (process.env.CORS_ORIGIN === '*' || process.env.CORS_ORIGIN.split(',').includes(origin))) {
+      return callback(null, true);
+    }
+
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

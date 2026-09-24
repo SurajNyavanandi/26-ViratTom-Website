@@ -17,7 +17,6 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recipient, setRecipient] = useState<string>('');
-  const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -136,10 +135,6 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
           return false;
         }
 
-        if (res.data?.devOtp) {
-          setDevOtp(res.data.devOtp);
-        }
-
         setCountdown(cooldownSeconds);
         resetOtp();
         setIsRequesting(false);
@@ -222,7 +217,6 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
     isVerifying,
     error,
     recipient,
-    devOtp,
     inputRefs,
     setOtpDigit,
     handleKeyDown,

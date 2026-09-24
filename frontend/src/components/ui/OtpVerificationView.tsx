@@ -18,7 +18,6 @@ interface OtpVerificationViewProps {
   countdown?: number;
   canResend?: boolean;
   error?: string | null;
-  devOtp?: string | null;
   title?: string;
   subtitle?: string;
 }

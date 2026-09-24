@@ -7,6 +7,8 @@ const {
   submitLead,
   verifyOtp,
   generateResume,
+  getResumeStats,
+  trackResumeDownload,
   loginAdmin,
   requestAdminForgotPassword,
   resetAdminPassword,
@@ -40,6 +42,8 @@ router.post('/lead/request-email-otp', requestEmailOtpHandler);
 router.post('/lead/verify-email-otp', verifyEmailOtpHandler);
 router.post('/verify-otp', verifyOtp);
 router.post('/resume', generateResume);
+router.get('/resume/stats', getResumeStats);
+router.post('/resume/track-download', trackResumeDownload);
 router.post('/chat', handleAssistantChat);
 
 // Razorpay Webhooks (Automated asynchronous reconciliation)

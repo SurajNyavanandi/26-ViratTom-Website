@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { 
@@ -24,7 +24,11 @@ import {
   CheckCircle2,
   X,
   RotateCcw,
-  Check
+  Check,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  FileCode2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { safeFetchJson } from '@/utils/utils';
@@ -123,33 +127,69 @@ const DEFAULT_RESUME_DATA: ResumeData = {
   certifications: "Enterprise Certification in Java/J2EE (2022): Comprehensive training in Java fundamentals, object-oriented programming, and enterprise application development."
 };
 
+const EMPTY_RESUME_DATA: ResumeData = {
+  header: {
+    name: "",
+    role: "",
+    location: "",
+    phone: "",
+    email: "",
+    github: "",
+    linkedin: "",
+    liveProjects: "",
+    portfolio: "",
+    portfolioLink: ""
+  },
+  skills: "",
+  experience: [],
+  projects: [],
+  education: [],
+  certifications: ""
+};
+
+const isResumeEmpty = (d: ResumeData): boolean => {
+  if (!d) return true;
+  const h = d.header;
+  const hasHeader = Boolean(
+    (h.name && h.name.trim()) ||
+    (h.role && h.role.trim()) ||
+    (h.location && h.location.trim()) ||
+    (h.phone && h.phone.trim()) ||
+    (h.email && h.email.trim()) ||
+    (h.github && h.github.trim()) ||
+    (h.linkedin && h.linkedin.trim()) ||
+    (h.liveProjects && h.liveProjects.trim()) ||
+    (h.portfolio && h.portfolio.trim())
+  );
+  const hasSkills = Boolean(d.skills && d.skills.trim());
+  const hasExperience = Array.isArray(d.experience) && d.experience.some(e => Boolean((e.role && e.role.trim()) || (e.company && e.company.trim()) || (e.bullets && e.bullets.trim())));
+  const hasProjects = Array.isArray(d.projects) && d.projects.some(p => Boolean((p.name && p.name.trim()) || (p.bullets && p.bullets.trim())));
+  const hasEducation = Array.isArray(d.education) && d.education.some(e => Boolean((e.degree && e.degree.trim()) || (e.institution && e.institution.trim())));
+  const hasCertifications = Boolean(d.certifications && d.certifications.trim());
+
+  return !hasHeader && !hasSkills && !hasExperience && !hasProjects && !hasEducation && !hasCertifications;
+};
+
 /* ------------------------------------------------------------------ */
 /* COMPONENT                                                           */
 /* ------------------------------------------------------------------ */
 
 export const Resume = () => {
-  // Preserve EXACT resume content with persistent local storage
+  // Preserve resume state - starts EMPTY with placeholders; shows lightweight dummy preview until user inputs data
   const [data, setData] = useState<ResumeData>(() => {
     try {
       const saved = localStorage.getItem('virattom_resume_custom_draft');
       if (saved) {
         const parsed = JSON.parse(saved) as ResumeData;
-        if (
-          parsed?.header?.name?.toLowerCase().includes('suraj') ||
-          parsed?.header?.phone?.includes('96666') ||
-          parsed?.header?.name?.toLowerCase().includes('alex') ||
-          parsed?.header?.email?.includes('alex.morgan')
-        ) {
-          localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(DEFAULT_RESUME_DATA));
-          return DEFAULT_RESUME_DATA;
+        if (parsed && !isResumeEmpty(parsed)) {
+          console.log('[Resume] Restored customized draft from localStorage');
+          return parsed;
         }
-        console.log('[Resume] Restored customized draft from localStorage');
-        return parsed;
       }
     } catch (e) {
       console.warn('[Resume] Could not parse stored resume draft:', e);
     }
-    return DEFAULT_RESUME_DATA;
+    return EMPTY_RESUME_DATA;
   });
 
   // Stored Verified User Email State (for auto-saving & remembering resume per user)
@@ -172,12 +212,30 @@ export const Resume = () => {
     return '';
   });
 
-  // UI States
+  // Check if form is currently empty (if empty -> show lightweight dummy resume preview)
+  const isDummyPreview = useMemo(() => isResumeEmpty(data), [data]);
+  const activeResumeData = useMemo(() => (isDummyPreview ? DEFAULT_RESUME_DATA : data), [isDummyPreview, data]);
+  const hasCustomEdits = useMemo(() => !isDummyPreview, [isDummyPreview]);
+
+  // UI States & Zoom Controls
   const [scale, setScale] = useState(0.85);
   const [activeTab, setActiveTab] = useState<'all' | 'header' | 'skills' | 'experience' | 'projects' | 'education' | 'certifications'>('all');
-  const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
+  const [mobileView, setMobileView] = useState<'editor' | 'preview'>('preview');
   const [isDownloading, setIsDownloading] = useState(false);
-  const hasCustomEdits = useMemo(() => JSON.stringify(data) !== JSON.stringify(DEFAULT_RESUME_DATA), [data]);
+  const [downloadCount, setDownloadCount] = useState<number>(26);
+
+  // Fetch download stats from server
+  useEffect(() => {
+    let isMounted = true;
+    safeFetchJson<{ success?: boolean; downloads?: number }>('/api/resume/stats').then((res) => {
+      if (isMounted && res.data?.downloads) {
+        setDownloadCount(res.data.downloads);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Verification Modal States
   const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -193,7 +251,6 @@ export const Resume = () => {
     isRequesting: isResumeOtpRequesting,
     isVerifying: isResumeOtpVerifying,
     error: resumeOtpHookError,
-    devOtp: resumeDevOtp,
     inputRefs: resumeOtpInputRefs,
     setOtpDigit: setResumeOtpDigit,
     handleKeyDown: handleResumeOtpKeyDown,
@@ -209,7 +266,7 @@ export const Resume = () => {
       setVerifiedEmail(cleanEmail);
 
       const previousSavedResume = localStorage.getItem(`virattom_resume_user_${cleanEmail}`);
-      if (previousSavedResume && !hasCustomEdits) {
+      if (previousSavedResume && isDummyPreview) {
         try {
           const parsed = JSON.parse(previousSavedResume);
           setData(parsed);
@@ -232,19 +289,21 @@ export const Resume = () => {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Save draft changes to localStorage automatically (both general draft and email-specific)
+  // Save draft changes to localStorage automatically when customized
   useEffect(() => {
     try {
-      localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(data));
-      if (verifiedEmail) {
-        localStorage.setItem(`virattom_resume_user_${verifiedEmail}`, JSON.stringify(data));
+      if (!isDummyPreview) {
+        localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(data));
+        if (verifiedEmail) {
+          localStorage.setItem(`virattom_resume_user_${verifiedEmail}`, JSON.stringify(data));
+        }
       }
     } catch (e) {
       console.warn('[Resume] Failed to save draft:', e);
     }
-  }, [data, verifiedEmail]);
+  }, [data, verifiedEmail, isDummyPreview]);
 
-  // Dynamic Pagination Budget and Logic
+  // Dynamic Pagination Budget and Logic (uses activeResumeData)
   const dynamicPages = useMemo<ResumeChunk[][]>(() => {
     const PAGE_BUDGET = 1010;
 
@@ -252,20 +311,20 @@ export const Resume = () => {
       switch (chunk.type) {
         case 'header': {
           let h = 35;
-          if (data.header.phone || data.header.email || data.header.github || data.header.linkedin) h += 20;
-          if (data.header.liveProjects) h += 18;
-          if (data.header.portfolio) h += 18;
+          if (activeResumeData.header.phone || activeResumeData.header.email || activeResumeData.header.github || activeResumeData.header.linkedin) h += 20;
+          if (activeResumeData.header.liveProjects) h += 18;
+          if (activeResumeData.header.portfolio) h += 18;
           return h + 12;
         }
         case 'skills': {
-          if (!data.skills) return 0;
-          const lines = data.skills.split('\n').filter(Boolean).length;
+          if (!activeResumeData.skills) return 0;
+          const lines = activeResumeData.skills.split('\n').filter(Boolean).length;
           return 30 + lines * 16.5 + 10;
         }
         case 'experience': {
-          if (!data.experience.length) return 0;
+          if (!activeResumeData.experience.length) return 0;
           let h = 30;
-          data.experience.forEach((exp: ExperienceItem) => {
+          activeResumeData.experience.forEach((exp: ExperienceItem) => {
             h += 38;
             const bullets = exp.bullets ? exp.bullets.split('\n').filter(Boolean).length : 0;
             h += bullets * 17;
@@ -274,7 +333,7 @@ export const Resume = () => {
           return h;
         }
         case 'project': {
-          const proj = data.projects[chunk.index];
+          const proj = activeResumeData.projects[chunk.index];
           if (!proj) return 0;
           let h = 20;
           const bullets = proj.bullets ? proj.bullets.split('\n').filter(Boolean).length : 0;
@@ -284,24 +343,24 @@ export const Resume = () => {
           return h;
         }
         case 'education': {
-          if (!data.education.length) return 0;
-          return 30 + data.education.length * 36 + 12;
+          if (!activeResumeData.education.length) return 0;
+          return 30 + activeResumeData.education.length * 36 + 12;
         }
         case 'certifications': {
-          if (!data.certifications) return 0;
-          const certLines = data.certifications.split('\n').filter(Boolean).length;
+          if (!activeResumeData.certifications) return 0;
+          const certLines = activeResumeData.certifications.split('\n').filter(Boolean).length;
           return 30 + certLines * 22 + 12;
         }
       }
     };
 
     const allChunks: ResumeChunk[] = [];
-    if (data.header.name) allChunks.push({ type: 'header' });
-    if (data.skills) allChunks.push({ type: 'skills' });
-    if (data.experience.length > 0) allChunks.push({ type: 'experience' });
-    data.projects.forEach((_: ProjectItem, i: number) => allChunks.push({ type: 'project', index: i }));
-    if (data.education.length > 0) allChunks.push({ type: 'education' });
-    if (data.certifications) allChunks.push({ type: 'certifications' });
+    if (activeResumeData.header.name || activeResumeData.header.role) allChunks.push({ type: 'header' });
+    if (activeResumeData.skills) allChunks.push({ type: 'skills' });
+    if (activeResumeData.experience.length > 0) allChunks.push({ type: 'experience' });
+    activeResumeData.projects.forEach((_: ProjectItem, i: number) => allChunks.push({ type: 'project', index: i }));
+    if (activeResumeData.education.length > 0) allChunks.push({ type: 'education' });
+    if (activeResumeData.certifications) allChunks.push({ type: 'certifications' });
 
     const pages: ResumeChunk[][] = [[]];
     let currentHeight = 0;
@@ -332,30 +391,111 @@ export const Resume = () => {
     });
 
     return pages;
-  }, [data]);
+  }, [activeResumeData]);
 
-  // Auto-fit calculation for responsiveness
-  useEffect(() => {
-    const handleResize = () => {
-      if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth - 32;
+  // Auto-fit calculation for responsiveness & mobile screens
+  const updateAutoFitScale = useCallback(() => {
+    if (containerRef.current) {
+      const clientWidth = containerRef.current.clientWidth || window.innerWidth;
+      if (clientWidth > 0) {
+        const isMobile = window.innerWidth < 1024;
+        const padding = isMobile ? 24 : 48;
+        const availableWidth = clientWidth - padding;
         const targetWidth = 794;
-        if (containerWidth > 0 && containerWidth < targetWidth) {
-          setScale(Math.max(0.3, Number((containerWidth / targetWidth).toFixed(2))));
-        } else if (containerWidth >= targetWidth) {
-          setScale(0.85);
+        
+        if (availableWidth < targetWidth) {
+          const calculatedScale = Number((availableWidth / targetWidth).toFixed(3));
+          setScale(Math.max(0.35, Math.min(1.0, calculatedScale)));
+        } else {
+          const desktopScale = Math.min(0.92, Number((availableWidth / targetWidth).toFixed(2)));
+          setScale(Math.max(0.75, desktopScale));
         }
       }
-    };
-    
-    handleResize();
-    const timeout = setTimeout(handleResize, 60);
-    window.addEventListener('resize', handleResize);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateAutoFitScale();
+    const t1 = setTimeout(updateAutoFitScale, 60);
+    const t2 = setTimeout(updateAutoFitScale, 200);
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateAutoFitScale();
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateAutoFitScale);
     return () => {
-      clearTimeout(timeout);
-      window.removeEventListener('resize', handleResize);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateAutoFitScale);
     };
-  }, [mobileView]);
+  }, [mobileView, updateAutoFitScale]);
+
+  // Helper to convert any modern CSS color (oklch, lch, lab, color-mix, etc.) to standard hex/rgb
+  const convertColorToRgb = (colorStr: string): string => {
+    if (!colorStr) return colorStr;
+    const lower = colorStr.toLowerCase().trim();
+    if (
+      lower === 'transparent' ||
+      lower === 'inherit' ||
+      lower === 'initial' ||
+      lower === 'currentcolor' ||
+      lower === 'none'
+    ) {
+      return colorStr;
+    }
+    if (
+      !lower.includes('oklch') &&
+      !lower.includes('lch') &&
+      !lower.includes('lab') &&
+      !lower.includes('color(') &&
+      !lower.includes('color-mix')
+    ) {
+      return colorStr;
+    }
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.fillStyle = '#000000';
+        ctx.fillStyle = colorStr;
+        return ctx.fillStyle;
+      }
+    } catch (e) {
+      console.warn('[Resume] Color conversion fallback for:', colorStr, e);
+    }
+
+    // Direct fallback mapping if canvas 2d parsing fails
+    if (lower.includes('blue')) return '#0071e3';
+    if (lower.includes('white')) return '#ffffff';
+    if (lower.includes('gray') || lower.includes('grey') || lower.includes('neutral')) return '#737373';
+    return '#000000';
+  };
+
+  const sanitizeOklchString = (str: string): string => {
+    if (!str) return str;
+    if (
+      !str.includes('oklch') &&
+      !str.includes('lch') &&
+      !str.includes('lab') &&
+      !str.includes('color(') &&
+      !str.includes('color-mix')
+    ) {
+      return str;
+    }
+    // Replace modern color syntax tokens with standard rgb/hex
+    return str.replace(/(?:oklch|lch|lab|color|color-mix)\([^)]+\)/gi, (match) => {
+      return convertColorToRgb(match);
+    });
+  };
 
   // Recursively copies all resolved computed styles from live preview DOM nodes to cloned nodes
   const inlineComputedStyles = (sourceEl: Element, targetEl: HTMLElement) => {
@@ -429,7 +569,8 @@ export const Resume = () => {
     for (const prop of propertiesToCopy) {
       const val = computed.getPropertyValue(prop);
       if (val && val !== 'initial') {
-        targetEl.style.setProperty(prop, val, 'important');
+        const cleanVal = sanitizeOklchString(val);
+        targetEl.style.setProperty(prop, cleanVal, 'important');
       }
     }
 
@@ -509,6 +650,32 @@ export const Resume = () => {
       // Inline all resolved computed styles from live DOM into cloned DOM
       inlineComputedStyles(sourcePageElement, clonedPage);
 
+      // Deep sanitize all elements in clonedPage to remove any oklch remnants
+      const allCloned = clonedPage.querySelectorAll<HTMLElement>('*');
+      allCloned.forEach((el) => {
+        const s = el.getAttribute('style');
+        if (s && (s.includes('oklch') || s.includes('lch') || s.includes('lab') || s.includes('color('))) {
+          el.setAttribute('style', sanitizeOklchString(s));
+        }
+        if (el.style) {
+          if (el.style.color && el.style.color.includes('oklch')) {
+            el.style.color = convertColorToRgb(el.style.color);
+          }
+          if (el.style.backgroundColor && el.style.backgroundColor.includes('oklch')) {
+            el.style.backgroundColor = convertColorToRgb(el.style.backgroundColor);
+          }
+          if (el.style.borderColor && el.style.borderColor.includes('oklch')) {
+            el.style.borderColor = convertColorToRgb(el.style.borderColor);
+          }
+          if (el.style.borderTopColor && el.style.borderTopColor.includes('oklch')) {
+            el.style.borderTopColor = convertColorToRgb(el.style.borderTopColor);
+          }
+          if (el.style.borderBottomColor && el.style.borderBottomColor.includes('oklch')) {
+            el.style.borderBottomColor = convertColorToRgb(el.style.borderBottomColor);
+          }
+        }
+      });
+
       doc.body.appendChild(clonedPage);
 
       setTimeout(async () => {
@@ -540,6 +707,25 @@ export const Resume = () => {
             height: height,
             windowWidth: width,
             windowHeight: height,
+            onclone: (clonedDoc) => {
+              const elements = clonedDoc.querySelectorAll<HTMLElement>('*');
+              elements.forEach((node) => {
+                if (node.style) {
+                  if (node.style.boxShadow && node.style.boxShadow.includes('oklch')) {
+                    node.style.boxShadow = 'none';
+                  }
+                  if (node.style.color && node.style.color.includes('oklch')) {
+                    node.style.color = convertColorToRgb(node.style.color);
+                  }
+                  if (node.style.backgroundColor && node.style.backgroundColor.includes('oklch')) {
+                    node.style.backgroundColor = convertColorToRgb(node.style.backgroundColor);
+                  }
+                  if (node.style.borderColor && node.style.borderColor.includes('oklch')) {
+                    node.style.borderColor = convertColorToRgb(node.style.borderColor);
+                  }
+                }
+              });
+            }
           });
 
           const imgData = canvas.toDataURL('image/jpeg', 0.98);
@@ -630,6 +816,17 @@ export const Resume = () => {
       const safeName = (data.header.name || 'Resume').replace(/[^a-zA-Z0-9_-]/g, '_');
       pdf.save(`${safeName}_Resume.pdf`);
       console.log('[Resume Download] PDF successfully generated and downloaded with 100% exact preview fidelity and clickable links.');
+
+      // Increment live download count on server and update UI count immediately
+      safeFetchJson<{ success?: boolean; downloads?: number }>('/api/resume/track-download', {
+        method: 'POST'
+      }).then((res) => {
+        if (res.data?.downloads) {
+          setDownloadCount(res.data.downloads);
+        }
+      }).catch(() => {
+        setDownloadCount((prev) => prev + 1);
+      });
     } catch (err) {
       console.error('[Resume Download] Error generating PDF from preview, providing print dialog:', err);
       window.print();
@@ -698,16 +895,40 @@ export const Resume = () => {
     });
   };
 
-  // 5. Reset Custom Resume Draft to Defaults
+  // 5. Load / Clear Form Actions
+  const handleLoadSampleData = () => {
+    setData(DEFAULT_RESUME_DATA);
+    localStorage.setItem('virattom_resume_custom_draft', JSON.stringify(DEFAULT_RESUME_DATA));
+  };
+
+  const handleClearForm = () => {
+    if (window.confirm("Clear all form details?")) {
+      setData(EMPTY_RESUME_DATA);
+      localStorage.removeItem('virattom_resume_custom_draft');
+    }
+  };
+
   const handleResetResumeToDefault = () => {
-    if (window.confirm("Reset all resume sections to standard defaults?")) {
-      setData(DEFAULT_RESUME_DATA);
+    if (window.confirm("Reset all resume sections to empty builder?")) {
+      setData(EMPTY_RESUME_DATA);
       localStorage.removeItem('virattom_resume_custom_draft');
       if (verifiedEmail) {
         localStorage.removeItem(`virattom_resume_user_${verifiedEmail}`);
       }
-      console.log('[Resume] Reset to default template.');
     }
+  };
+
+  // Zoom handlers
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(1.4, Number((prev + 0.1).toFixed(2))));
+  };
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(0.35, Number((prev - 0.1).toFixed(2))));
+  };
+
+  const handleResetZoom = () => {
+    updateAutoFitScale();
   };
 
   // 6. Switch / Change Email
@@ -796,51 +1017,73 @@ export const Resume = () => {
     pageChunks: ResumeChunk[],
     chunkIndex: number
   ) => {
+    const d = activeResumeData;
+    const txtCls = isDummyPreview ? 'text-[#555555] font-normal' : 'text-[#000000]';
+    const boldCls = isDummyPreview ? 'font-semibold text-[#333333]' : 'font-bold text-[#000000]';
+    const linkCls = isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#0000ee] hover:underline';
+
+    const renderSectionHeading = (title: string) => (
+      <div className="mb-1.5">
+        <div className={`text-[11pt] font-bold leading-tight ${isDummyPreview ? 'text-[#333333]' : 'text-[#000000]'}`}>
+          {title}
+        </div>
+        <div
+          className={`w-full ${isDummyPreview ? 'bg-[#d0d0d0]' : 'bg-[#000000]'}`}
+          style={{
+            height: '1px',
+            marginTop: '2px',
+            backgroundColor: isDummyPreview ? '#d0d0d0' : '#000000',
+            boxSizing: 'border-box'
+          }}
+        />
+      </div>
+    );
+
     switch (chunk.type) {
       case 'header':
         return (
-          <div key="header" className="text-center mb-2.5 text-black">
-            <div className="font-bold text-[13.5pt] text-black">
-              {[data.header.name, data.header.role, data.header.location].filter(Boolean).join(' — ')}
+          <div key="header" className={`text-center mb-2.5 ${txtCls}`}>
+            <div className={`text-[13.5pt] ${boldCls}`}>
+              {[d.header.name, d.header.role, d.header.location].filter(Boolean).join(' — ')}
             </div>
             
-            <div className="text-[9.5pt] flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-black mt-1">
-              {data.header.phone && (
-                <a href={`tel:${data.header.phone}`} className="text-black hover:underline whitespace-nowrap">
-                  {data.header.phone}
+            <div className={`text-[9.5pt] flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 mt-1 ${txtCls}`}>
+              {d.header.phone && (
+                <a href={`tel:${d.header.phone}`} className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}>
+                  {d.header.phone}
                 </a>
               )}
-              {data.header.phone && data.header.email && <span className="text-black select-none">|</span>}
-              {data.header.email && (
-                <a href={`mailto:${data.header.email}`} className="text-black hover:underline whitespace-nowrap">
-                  {data.header.email}
+              {d.header.phone && d.header.email && <span className="select-none opacity-50">|</span>}
+              {d.header.email && (
+                <a href={`mailto:${d.header.email}`} className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}>
+                  {d.header.email}
                 </a>
               )}
-              {data.header.email && data.header.github && <span className="text-black select-none">|</span>}
-              {data.header.github && (
-                <a href={`https://${data.header.github}`} target="_blank" rel="noreferrer" className="text-black hover:underline whitespace-nowrap">
-                  {data.header.github}
+              {d.header.email && d.header.github && <span className="select-none opacity-50">|</span>}
+              {d.header.github && (
+                <a href={`https://${d.header.github}`} target="_blank" rel="noreferrer" className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}>
+                  {d.header.github}
                 </a>
               )}
-              {data.header.github && data.header.linkedin && <span className="text-black select-none">|</span>}
-              {data.header.linkedin && (
-                <a href={`https://${data.header.linkedin}`} target="_blank" rel="noreferrer" className="text-black hover:underline whitespace-nowrap">
-                  {data.header.linkedin}
+              {d.header.github && d.header.linkedin && <span className="select-none opacity-50">|</span>}
+              {d.header.linkedin && (
+                <a href={`https://${d.header.linkedin}`} target="_blank" rel="noreferrer" className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}>
+                  {d.header.linkedin}
                 </a>
               )}
             </div>
             
-            {data.header.liveProjects && (
-              <div className="text-[9.2pt] text-black mt-0.5">
-                Live Projects: {data.header.liveProjects}
+            {d.header.liveProjects && (
+              <div className={`text-[9.2pt] mt-0.5 ${txtCls}`}>
+                Live Projects: {d.header.liveProjects}
               </div>
             )}
 
-            {data.header.portfolio && (
-              <div className="text-[9.2pt] text-black mt-0.5">
+            {d.header.portfolio && (
+              <div className={`text-[9.2pt] mt-0.5 ${txtCls}`}>
                 Portfolio:{' '}
-                <a href={data.header.portfolioLink || `https://${data.header.portfolio}`} target="_blank" rel="noreferrer" className="text-[#0000ee] hover:underline">
-                  {data.header.portfolio} Link &rarr;
+                <a href={d.header.portfolioLink || `https://${d.header.portfolio}`} target="_blank" rel="noreferrer" className={linkCls}>
+                  {d.header.portfolio} Link &rarr;
                 </a>
               </div>
             )}
@@ -850,16 +1093,14 @@ export const Resume = () => {
       case 'skills':
         return (
           <div key="skills" className="mb-2.5">
-            <h2 className="text-[11pt] font-bold text-black border-b border-black pb-0.5 mb-1.5">
-              Skills
-            </h2>
-            <div className="text-[9.5pt] leading-[1.3] text-black space-y-0.5">
-              {data.skills.split('\n').filter(Boolean).map((line: string, i: number) => {
+            {renderSectionHeading('Skills')}
+            <div className={`text-[9.5pt] leading-[1.3] space-y-0.5 ${txtCls}`}>
+              {d.skills.split('\n').filter(Boolean).map((line: string, i: number) => {
                 const parts = line.split(':');
                 if (parts.length > 1) {
                   return (
                     <div key={i}>
-                      <span className="font-bold text-black">{parts[0].trim()}: </span>
+                      <span className={boldCls}>{parts[0].trim()}: </span>
                       <span>{parts.slice(1).join(':').trim()}</span>
                     </div>
                   );
@@ -873,21 +1114,19 @@ export const Resume = () => {
       case 'experience':
         return (
           <div key="experience" className="mb-2.5">
-            <h2 className="text-[11pt] font-bold text-black border-b border-black pb-0.5 mb-1.5">
-              Experience
-            </h2>
-            {data.experience.map((exp: ExperienceItem) => (
+            {renderSectionHeading('Experience')}
+            {d.experience.map((exp: ExperienceItem) => (
               <div key={exp.id} className="mb-2">
-                <div className="flex justify-between items-baseline text-[10pt] text-black">
-                  <span className="font-bold">{exp.role}</span>
+                <div className={`flex justify-between items-baseline text-[10pt] ${txtCls}`}>
+                  <span className={boldCls}>{exp.role}</span>
                   <span className="text-[9.5pt]">{exp.date}</span>
                 </div>
-                <div className="flex justify-between items-baseline text-[9.5pt] italic text-black mb-1">
+                <div className={`flex justify-between items-baseline text-[9.5pt] italic mb-1 ${txtCls}`}>
                   <span>{exp.company}</span>
                   <span className="text-[9.2pt]">{exp.tech}</span>
                 </div>
                 {exp.bullets && (
-                  <div className="space-y-0.5 text-[9.5pt] leading-[1.35] text-black">
+                  <div className={`space-y-0.5 text-[9.5pt] leading-[1.35] ${txtCls}`}>
                     {exp.bullets.split('\n').filter(Boolean).map((bullet: string, i: number) => (
                       <div key={i} className="flex items-start">
                         <span className="mr-2 select-none">&ndash;</span>
@@ -902,18 +1141,14 @@ export const Resume = () => {
         );
 
       case 'project': {
-        const proj = data.projects[chunk.index];
+        const proj = d.projects[chunk.index];
         if (!proj) return null;
         const isFirstProjectOnThisPage = !pageChunks.slice(0, chunkIndex).some((c: ResumeChunk) => c.type === 'project');
         return (
           <div key={`project-${proj.id || chunk.index}`} className="mb-2.5">
-            {isFirstProjectOnThisPage && (
-              <h2 className="text-[11pt] font-bold text-black border-b border-black pb-0.5 mb-1.5">
-                Projects{chunk.index > 0 ? ' (Continued)' : ''}
-              </h2>
-            )}
-            <div className="text-[10pt] text-black mb-0.5">
-              <span className="font-bold">{proj.name}</span>
+            {isFirstProjectOnThisPage && renderSectionHeading(chunk.index > 0 ? 'Projects (Continued)' : 'Projects')}
+            <div className={`text-[10pt] mb-0.5 ${txtCls}`}>
+              <span className={boldCls}>{proj.name}</span>
               {proj.tech && (
                 <span className="italic">
                   {' | '}{proj.tech}
@@ -921,7 +1156,7 @@ export const Resume = () => {
               )}
             </div>
             {proj.bullets && (
-              <div className="space-y-0.5 text-[9.5pt] leading-[1.35] text-black">
+              <div className={`space-y-0.5 text-[9.5pt] leading-[1.35] ${txtCls}`}>
                 {proj.bullets.split('\n').filter(Boolean).map((bullet: string, i: number) => (
                   <div key={i} className="flex items-start">
                     <span className="mr-2 select-none">&ndash;</span>
@@ -931,11 +1166,11 @@ export const Resume = () => {
               </div>
             )}
             {proj.demoLabel && (
-              <div className="flex items-start text-[9.5pt] leading-[1.35] text-black mt-0.5">
+              <div className={`flex items-start text-[9.5pt] leading-[1.35] mt-0.5 ${txtCls}`}>
                 <span className="mr-2 select-none">&ndash;</span>
                 <span>
                   Live Demo:{' '}
-                  <a href={proj.demoLink || `https://${proj.demoLabel}`} target="_blank" rel="noreferrer" className="text-[#0000ee] hover:underline">
+                  <a href={proj.demoLink || `https://${proj.demoLabel}`} target="_blank" rel="noreferrer" className={linkCls}>
                     {proj.demoLabel} Link &rarr;
                   </a>
                 </span>
@@ -948,16 +1183,14 @@ export const Resume = () => {
       case 'education':
         return (
           <div key="education" className="mb-3">
-            <h2 className="text-[11pt] font-bold text-black border-b border-black pb-0.5 mb-1.5">
-              Education
-            </h2>
-            {data.education.map((edu: EducationItem) => (
+            {renderSectionHeading('Education')}
+            {d.education.map((edu: EducationItem) => (
               <div key={edu.id} className="mb-2">
-                <div className="flex justify-between items-baseline text-[10pt] text-black font-bold">
+                <div className={`flex justify-between items-baseline text-[10pt] ${boldCls}`}>
                   <span>{edu.degree}</span>
                   <span className="text-[9.5pt] font-normal">{edu.date}</span>
                 </div>
-                <div className="flex justify-between items-baseline text-[9.5pt] italic text-black">
+                <div className={`flex justify-between items-baseline text-[9.5pt] italic ${txtCls}`}>
                   <span>{edu.institution}</span>
                   <span>{edu.score}</span>
                 </div>
@@ -969,18 +1202,16 @@ export const Resume = () => {
       case 'certifications':
         return (
           <div key="certifications" className="mb-3">
-            <h2 className="text-[11pt] font-bold text-black border-b border-black pb-0.5 mb-1.5">
-              Certifications
-            </h2>
-            <div className="space-y-1 text-[9.5pt] leading-[1.35] text-black">
-              {data.certifications.split('\n').filter(Boolean).map((cert: string, i: number) => {
+            {renderSectionHeading('Certifications')}
+            <div className={`space-y-1 text-[9.5pt] leading-[1.35] ${txtCls}`}>
+              {d.certifications.split('\n').filter(Boolean).map((cert: string, i: number) => {
                 const parts = cert.split(':');
                 if (parts.length > 1) {
                   return (
                     <div key={i} className="flex items-start">
                       <span className="mr-2 select-none">•</span>
                       <span>
-                        <span className="font-bold">{parts[0].trim().replace(/^[-–•]\s*/, '')}: </span>
+                        <span className={boldCls}>{parts[0].trim().replace(/^[-–•]\s*/, '')}: </span>
                         <span>{parts.slice(1).join(':').trim()}</span>
                       </span>
                     </div>
@@ -1099,6 +1330,14 @@ export const Resume = () => {
 
             {/* Right Action Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Trust-building live download metric */}
+              <div className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-apple-gray-100 dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-[12px] font-medium text-apple-gray-600 dark:text-apple-gray-400 shadow-2xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>
+                  <strong className="text-apple-black dark:text-white font-semibold">{downloadCount.toLocaleString()}</strong> resumes downloaded
+                </span>
+              </div>
+
               {verifiedEmail && (
                 <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[12px] font-medium">
                   <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
@@ -1129,7 +1368,7 @@ export const Resume = () => {
               <button 
                 onClick={handleInitiateDownload} 
                 disabled={isDownloading}
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-apple-blue text-white flex items-center justify-center shadow-sm hover:opacity-90 active:scale-95 disabled:opacity-70 transition-all cursor-pointer"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-apple-blue hover:bg-apple-blue/90 text-white flex items-center justify-center shadow-sm active:scale-95 disabled:opacity-70 transition-all cursor-pointer"
                 title="Download PDF"
                 aria-label="Download PDF"
               >
@@ -1153,49 +1392,6 @@ export const Resume = () => {
             }`}
           >
             <div className="max-w-2xl mx-auto space-y-6 pb-24">
-
-              {verifiedEmail ? (
-                <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3 text-left">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                      <ShieldCheck size={18} />
-                    </div>
-                    <div>
-                      <div className="text-[13px] font-semibold text-apple-black dark:text-white">
-                        Linked Account: {verifiedEmail}
-                      </div>
-                      <div className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
-                        Auto-saved
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleSwitchEmail}
-                      className="text-[12px] font-medium text-apple-blue hover:underline cursor-pointer shrink-0"
-                    >
-                      Switch Email
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-apple-blue/5 border border-apple-blue/15 flex items-center justify-between gap-3 text-left">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-apple-blue/15 text-apple-blue flex items-center justify-center shrink-0">
-                      <Sparkles size={18} />
-                    </div>
-                    <div>
-                      <div className="text-[13px] font-semibold text-apple-black dark:text-white">
-                        Live Resume Builder
-                      </div>
-                      <div className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
-                        When downloading, we verify your email once so your edits are remembered for future visits.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center gap-1.5 p-1 bg-apple-gray-100 dark:bg-[#1C1C1E] rounded-2xl border border-apple-gray-200 dark:border-[#2C2C2E] overflow-x-auto scrollbar-none">
                 {sectionsNav.map((sec) => {
                   const Icon = sec.icon;
@@ -1623,15 +1819,85 @@ export const Resume = () => {
           {/* A4 PREVIEW CANVAS */}
           <main 
             ref={containerRef} 
-            className={`w-full lg:w-1/2 bg-apple-gray-100 dark:bg-[#0F0F10] py-6 px-4 flex flex-col items-center print:p-0 print:bg-white overflow-y-auto lg:h-[calc(100vh-64px)] pb-32 transition-colors ${
+            className={`w-full lg:w-1/2 bg-apple-gray-100 dark:bg-[#0F0F10] py-6 px-2 sm:px-4 flex flex-col items-center print:p-0 print:bg-white overflow-y-auto overflow-x-auto lg:h-[calc(100vh-64px)] pb-32 transition-colors ${
               mobileView === 'editor' ? 'hidden lg:flex' : 'flex'
             }`}
           >
+            {/* Top Preview Controls Toolbar */}
+            <div className="no-print flex items-center justify-between gap-3 w-full max-w-[794px] mb-4 px-2">
+              <div className="flex items-center gap-2 text-[12px] text-apple-gray-500 dark:text-apple-gray-400 font-medium">
+                <span>{dynamicPages.length} {dynamicPages.length === 1 ? 'Page' : 'Pages'}</span>
+                <span className="text-apple-gray-300 dark:text-[#38383A]">•</span>
+                <span className="inline-flex items-center gap-1 text-[11.5px] text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                  {downloadCount.toLocaleString()} downloaded
+                </span>
+                {isDummyPreview && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-medium border border-amber-500/20">
+                    Sample Preview (Lightweight)
+                  </span>
+                )}
+              </div>
+
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1 bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] rounded-xl p-1 shadow-xs">
+                <button
+                  onClick={handleZoomOut}
+                  className="p-1.5 rounded-lg text-apple-gray-500 hover:text-apple-black dark:text-apple-gray-400 dark:hover:text-white hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer"
+                  title="Zoom Out"
+                  aria-label="Zoom Out"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  onClick={handleResetZoom}
+                  className="px-2 py-1 rounded-lg text-[11.5px] font-semibold text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer min-w-12 text-center"
+                  title="Fit to Screen"
+                >
+                  {Math.round(scale * 100)}%
+                </button>
+                <button
+                  onClick={handleZoomIn}
+                  className="p-1.5 rounded-lg text-apple-gray-500 hover:text-apple-black dark:text-apple-gray-400 dark:hover:text-white hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer"
+                  title="Zoom In"
+                  aria-label="Zoom In"
+                >
+                  <ZoomIn size={14} />
+                </button>
+                <button
+                  onClick={handleResetZoom}
+                  className="p-1.5 rounded-lg text-apple-gray-500 hover:text-apple-black dark:text-apple-gray-400 dark:hover:text-white hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer ml-0.5"
+                  title="Reset Zoom / Fit Screen"
+                  aria-label="Fit Screen"
+                >
+                  <Maximize2 size={13} />
+                </button>
+              </div>
+            </div>
+
+            {/* Dummy Notice Banner */}
+            {isDummyPreview && (
+              <div className="no-print mb-4 w-full max-w-[794px] p-3 rounded-2xl bg-apple-blue/10 border border-apple-blue/20 text-apple-blue dark:text-blue-400 text-[12px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={15} className="shrink-0 text-apple-blue" />
+                  <span>
+                    <strong>Sample Preview Mode:</strong> Showing a 2-page sample resume in lightweight font. Fill in your details on the editor to preview your live resume!
+                  </span>
+                </div>
+                <button
+                  onClick={handleLoadSampleData}
+                  className="px-2.5 py-1 bg-apple-blue text-white rounded-lg text-[11px] font-medium hover:bg-apple-blue/90 shrink-0 cursor-pointer transition-all self-end sm:self-auto"
+                >
+                  Populate Form
+                </button>
+              </div>
+            )}
+
             <div className="flex flex-col items-center w-full">
               {dynamicPages.map((pageChunks: ResumeChunk[], pageIndex: number) => (
                 <div 
                   key={pageIndex}
-                  className="page-sheet-container relative transition-all duration-300"
+                  className="page-sheet-container relative shrink-0 mx-auto transition-all duration-200"
                   style={{
                     width: `${794 * scale}px`,
                     height: `${1123 * scale}px`,
@@ -1657,14 +1923,14 @@ export const Resume = () => {
 
                     {/* Ultra-minimal, elegant footer watermark */}
                     <div 
-                      className="w-full pt-2 flex items-center justify-between text-[8pt] text-gray-400 opacity-80 border-t border-gray-100"
+                      className="w-full pt-2 flex items-center justify-between text-[8pt] text-[#9ca3af] border-t border-[#e5e7eb]"
                       style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
                     >
                       <a 
                         href="https://virattom.com" 
                         target="_blank" 
                         rel="noreferrer"
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                        className="text-[#9ca3af] hover:text-[#4b5563] transition-colors cursor-pointer"
                         title="Visit ViratTom"
                       >
                         Created with ViratTom
@@ -1673,7 +1939,7 @@ export const Resume = () => {
                         href="https://virattom.com" 
                         target="_blank" 
                         rel="noreferrer"
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+                        className="text-[#9ca3af] hover:text-[#4b5563] transition-colors cursor-pointer"
                         title="Visit virattom.com"
                       >
                         virattom.com
@@ -1777,7 +2043,6 @@ export const Resume = () => {
                   countdown={resumeOtpCountdown}
                   canResend={canResendResumeOtp}
                   error={verificationError || resumeOtpHookError}
-                  devOtp={resumeDevOtp}
                 />
               )}
 

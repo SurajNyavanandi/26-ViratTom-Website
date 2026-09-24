@@ -34,7 +34,6 @@ export const Home = () => {
     isRequesting: isOtpRequesting,
     isVerifying: isOtpVerifying,
     error: otpHookError,
-    devOtp,
     inputRefs,
     setOtpDigit,
     handleKeyDown,
@@ -112,10 +111,8 @@ export const Home = () => {
     }
     
     const budget = parseInt(formState.budget);
-    const minBudget = getMinPrice(formState.projectType);
-
-    if (isNaN(budget) || budget < minBudget) {
-      setError(`Minimum budget is ₹${minBudget.toLocaleString('en-IN')}.`);
+    if (isNaN(budget) || budget <= 0) {
+      setError('Please enter your estimated budget.');
       return;
     }
 
@@ -167,6 +164,9 @@ export const Home = () => {
             >
               <FileText className="h-3.5 w-3.5 text-apple-blue" />
               <span>Resume Template</span>
+              <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md bg-apple-blue/10 text-apple-blue">
+                Free
+              </span>
               <ArrowRight className="h-3 w-3 text-apple-blue" />
             </Link>
           </div>
@@ -681,7 +681,6 @@ export const Home = () => {
                 countdown={countdown}
                 canResend={canResend}
                 error={error || otpHookError}
-                devOtp={devOtp}
               />
             ) : (
               <form onSubmit={handleApply} className="space-y-5">
@@ -741,11 +740,11 @@ export const Home = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[14px] font-medium mb-1.5">Email Address (for instant OTP verification)</label>
+                  <label className="block text-[14px] font-medium mb-1.5">Email Address</label>
                   <Input 
                     type="email" 
                     required 
-                    placeholder="e.g. shreerama@gmail.com"
+                    placeholder="e.g. yourname@gmail.com"
                     value={formState.email} 
                     onChange={e => {
                       setFormState({...formState, email: e.target.value});
@@ -783,7 +782,7 @@ export const Home = () => {
                     type="number" 
                     required 
                     min="1"
-                    placeholder={`e.g. ${getMinPrice(formState.projectType)}`}
+                    placeholder="Enter budget"
                     value={formState.budget} 
                     onChange={e => {
                       setFormState({...formState, budget: e.target.value});

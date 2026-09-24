@@ -24,7 +24,7 @@ export const Login: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'forgot_email' | 'forgot_otp'>('login');
 
   // Login form state
-  const [username, setUsername] = useState(ADMIN_EMAIL);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,12 +32,11 @@ export const Login: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
 
   // Forgot Password state
-  const [resetEmail, setResetEmail] = useState(ADMIN_EMAIL);
+  const [resetEmail, setResetEmail] = useState('');
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number>(0);
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -59,7 +58,7 @@ export const Login: React.FC = () => {
     
     const cleanEmail = username.trim().toLowerCase();
     if (cleanEmail !== ADMIN_EMAIL) {
-      setError(`Access denied. Only authorized administrator (${ADMIN_EMAIL}) is permitted.`);
+      setError('Access denied. Invalid administrator credentials.');
       setLoading(false);
       return;
     }
@@ -94,7 +93,7 @@ export const Login: React.FC = () => {
 
     const cleanEmail = resetEmail.trim().toLowerCase();
     if (cleanEmail !== ADMIN_EMAIL) {
-      setError(`Access denied. Password reset is restricted exclusively to ${ADMIN_EMAIL}.`);
+      setError('Access denied. Unable to process password reset for this email.');
       setLoading(false);
       return;
     }
@@ -109,8 +108,7 @@ export const Login: React.FC = () => {
 
       if (data.success) {
         setMode('forgot_otp');
-        setSuccessMessage(data.message || `Password reset code sent to ${ADMIN_EMAIL}`);
-        if (data.devOtp) setDevOtp(data.devOtp);
+        setSuccessMessage(data.message || 'Verification code sent to your email.');
         setCountdown(60);
         setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
       } else {
@@ -259,8 +257,8 @@ export const Login: React.FC = () => {
             </h1>
             <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1.5">
               {mode === 'login' && 'Secure administrative access to ViratTom Control Center.'}
-              {mode === 'forgot_email' && `Password reset is exclusively restricted to ${ADMIN_EMAIL}`}
-              {mode === 'forgot_otp' && `Enter the 6-digit code sent to ${ADMIN_EMAIL}`}
+              {mode === 'forgot_email' && 'Enter your registered administrator email address to receive a verification code.'}
+              {mode === 'forgot_otp' && 'Enter the 6-digit verification code sent to your registered email.'}
             </p>
           </div>
 
@@ -293,13 +291,10 @@ export const Login: React.FC = () => {
                     required
                     value={username}
                     onChange={e => setUsername(e.target.value)}
-                    placeholder={ADMIN_EMAIL}
+                    placeholder="admin@virattom.com"
                     className="w-full min-h-12 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#2C2C2E] px-4 py-3 text-[15px] text-apple-black dark:text-white placeholder:text-apple-gray-400 focus:outline-none focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
                   />
                 </div>
-                <p className="text-[11px] text-apple-gray-400 mt-1.5">
-                  Exclusive administrator account: <code className="font-semibold text-apple-blue">{ADMIN_EMAIL}</code>
-                </p>
               </div>
 
               <div>
@@ -361,7 +356,7 @@ export const Login: React.FC = () => {
             <form onSubmit={handleRequestResetOtp} className="space-y-5">
               <div>
                 <label className="block text-[14px] font-medium text-apple-black dark:text-white mb-2">
-                  Authorized Admin Email Address
+                  Admin Email Address
                 </label>
                 <div className="relative">
                   <input 
@@ -369,12 +364,12 @@ export const Login: React.FC = () => {
                     required
                     value={resetEmail}
                     onChange={e => setResetEmail(e.target.value)}
-                    placeholder={ADMIN_EMAIL}
+                    placeholder="admin@virattom.com"
                     className="w-full min-h-12 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#2C2C2E] px-4 py-3 text-[15px] text-apple-black dark:text-white placeholder:text-apple-gray-400 focus:outline-none focus:ring-2 focus:ring-apple-blue focus:border-transparent transition-all"
                   />
                 </div>
                 <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mt-2 leading-relaxed">
-                  We will dispatch a secure 6-digit one-time password (OTP) to your verified admin inbox.
+                  We will dispatch a secure 6-digit one-time password (OTP) to your registered email.
                 </p>
               </div>
 
@@ -453,14 +448,6 @@ export const Login: React.FC = () => {
                     />
                   ))}
                 </div>
-
-                {devOtp && (
-                  <div className="mt-2.5 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
-                    <p className="text-[12px] text-apple-blue">
-                      Development Mode Code: <strong className="font-mono font-bold tracking-widest">{devOtp}</strong>
-                    </p>
-                  </div>
-                )}
               </div>
 
               {/* New Password */}
@@ -545,7 +532,7 @@ export const Login: React.FC = () => {
 
       {/* Minimal Footer */}
       <footer className="w-full max-w-360 mx-auto px-4 py-6 text-center text-[12px] text-apple-gray-400">
-        &copy; {new Date().getFullYear()} ViratTom. Control Center &bull; Authorized Admin Only (<span className="text-apple-blue font-medium">{ADMIN_EMAIL}</span>)
+        &copy; {new Date().getFullYear()} ViratTom. Control Center &bull; Authorized Personnel Only
       </footer>
     </div>
   );

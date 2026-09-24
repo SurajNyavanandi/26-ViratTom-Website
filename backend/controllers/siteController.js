@@ -11,6 +11,7 @@ const Payment = require('../models/Payment');
 const EmailOtp = require('../models/EmailOtp');
 const ResumeDraft = require('../models/ResumeDraft');
 const User = require('../models/User');
+const SiteStat = require('../models/SiteStat');
 
 // Services
 const { sendOtpEmail, sendLeadConfirmationEmail, sendPaymentReceiptEmail } = require('../services/emailService');
@@ -21,6 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'virat-tom-secure-jwt-secret-key-20
 // In-Memory Fallbacks for zero-downtime resilience
 const fallbackLeads = [];
 let fallbackIdCounter = 1;
+let inMemoryResumeDownloads = 26;
 
 const portfolioProjects = [
   {
@@ -163,7 +165,6 @@ const requestEmailOtpHandler = async (req, res) => {
     return res.json({
       success: true,
       message: `Verification code sent to ${cleanEmail}`,
-      devOtp: code,
     });
   } catch (error) {
     console.error('[Email OTP Handler Error]', error);
@@ -304,7 +305,6 @@ const submitLead = async (req, res) => {
   return res.json({
     success: true,
     message: 'OTP generated. Please verify to confirm your inquiry.',
-    devOtp: code,
   });
 };
 
@@ -806,13 +806,10 @@ const requestAdminForgotPassword = async (req, res) => {
     console.warn('[Admin Forgot Password] Email sending error:', err);
   }
 
-  const isDev = process.env.NODE_ENV !== 'production' || !emailSent;
-
   return res.json({
     success: true,
-    message: `A 6-digit password reset code has been dispatched to ${ADMIN_EMAIL}`,
-    emailSent,
-    devOtp: isDev ? code : undefined
+    message: 'Verification code sent to your email.',
+    emailSent
   });
 };
 
@@ -1088,7 +1085,8 @@ const generateResume = (req, res) => {
 
     const addSection = (title) => {
       doc.moveDown(0.6);
-      doc.fontSize(10.5).font('Times-Bold').text(title.toUpperCase());
+      doc.fontSize(10.5).font('Times-Bold').text(title);
+      doc.moveDown(0.1);
       const currentY = doc.y;
       doc.strokeColor('#000000').lineWidth(0.75).moveTo(margin, currentY).lineTo(pageWidth - margin, currentY).stroke();
       doc.moveDown(0.3);
@@ -1177,11 +1175,54 @@ const generateResume = (req, res) => {
   }
 };
 
+const getResumeStats = async (req, res) => {
+  try {
+    const stat = await SiteStat.findOne({ key: 'resume_downloads' });
+    if (stat && typeof stat.value === 'number') {
+      if (stat.value > 1000) {
+        stat.value = 26;
+        await stat.save();
+      }
+      inMemoryResumeDownloads = stat.value;
+      return res.json({ success: true, downloads: stat.value });
+    }
+    // Seed initial stat in MongoDB if empty
+    try {
+      await SiteStat.create({ key: 'resume_downloads', value: inMemoryResumeDownloads });
+    } catch (_e) {
+      // Ignored if key exists
+    }
+    return res.json({ success: true, downloads: inMemoryResumeDownloads });
+  } catch {
+    return res.json({ success: true, downloads: inMemoryResumeDownloads });
+  }
+};
+
+const trackResumeDownload = async (req, res) => {
+  inMemoryResumeDownloads += 1;
+  try {
+    const stat = await SiteStat.findOneAndUpdate(
+      { key: 'resume_downloads' },
+      { $inc: { value: 1 }, $set: { lastUpdated: new Date() } },
+      { upsert: true, new: true }
+    );
+    if (stat && typeof stat.value === 'number') {
+      inMemoryResumeDownloads = stat.value;
+    }
+  } catch (err) {
+    console.warn('[SiteStat MongoDB sync warning]', err?.message);
+  }
+
+  return res.json({ success: true, downloads: inMemoryResumeDownloads });
+};
+
 module.exports = {
   getProjects,
   submitLead,
   verifyOtp,
   generateResume,
+  getResumeStats,
+  trackResumeDownload,
   loginAdmin,
   requestAdminForgotPassword,
   resetAdminPassword,

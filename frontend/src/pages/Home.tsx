@@ -160,7 +160,7 @@ export const Home = () => {
           <div className="mb-4 inline-flex items-center">
             <Link
               to="/resume"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white text-[13px] font-medium transition-all hover:scale-[1.01] shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-apple-gray-200 text-apple-gray-600 hover:text-apple-black text-[13px] font-medium transition-all hover:scale-[1.01] shadow-xs cursor-pointer"
             >
               <FileText className="h-3.5 w-3.5 text-apple-blue" />
               <span>Resume Template</span>
@@ -171,7 +171,7 @@ export const Home = () => {
             </Link>
           </div>
           <br />
-          <span className="text-[12px] sm:text-[14px] font-semibold tracking-widest text-apple-gray-500 dark:text-apple-gray-400 uppercase">
+          <span className="text-[12px] sm:text-[14px] font-semibold tracking-widest text-apple-gray-500 uppercase">
             VI<span className="font-bold text-apple-blue">R</span>
             <span className="font-bold text-apple-blue">A</span>T TO
             <span className="font-bold text-apple-blue">M</span>
@@ -179,7 +179,7 @@ export const Home = () => {
           <h1 className="mt-4 text-[32px] xs:text-[38px] sm:text-[48px] md:text-[56px] font-bold tracking-[-0.03em] leading-[1.15]">
             Website & Mobile App Development.
           </h1>
-          <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[16px] sm:text-[20px] text-apple-gray-500 dark:text-apple-gray-400 leading-relaxed">
+          <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[16px] sm:text-[20px] text-apple-gray-500 leading-relaxed">
             Fast, scalable apps and websites tailored to your business.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
@@ -201,7 +201,7 @@ export const Home = () => {
       </section>
 
       {/* Features Grid - What We Build */}
-      <section id="process" className="w-full py-20 sm:py-24 bg-[#F5F5F7] dark:bg-[#111112] relative">
+      <section id="process" className="w-full py-20 sm:py-24 bg-[#F5F5F7] relative">
         <div id="services" className="absolute -top-16 left-0" />
         <div className="mx-auto max-w-360 px-4 sm:px-8">
           <motion.div 
@@ -211,10 +211,10 @@ export const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-14 sm:mb-16"
           >
-            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black dark:text-white">
+            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black">
               What We Build
             </h2>
-            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
+            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500">
               Clear, simple solutions tailored for every business need.
             </p>
           </motion.div>
@@ -285,13 +285,13 @@ export const Home = () => {
                     y: -6, 
                     transition: { duration: 0.22, ease: "easeOut" } 
                   }}
-                  className="group rounded-2xl bg-white dark:bg-[#1C1C1E] p-7 border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300 flex flex-col justify-start text-left cursor-default"
+                  className="group rounded-2xl bg-white p-7 border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col justify-start text-left cursor-default"
                 >
                   <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.2] transition-transform duration-300 group-hover:scale-110" />
-                  <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black dark:text-white mb-2 tracking-tight">
+                  <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black mb-2 tracking-tight">
                     {service.title}
                   </h3>
-                  <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 leading-relaxed">
+                  <p className="text-[14px] text-apple-gray-500 leading-relaxed">
                     {service.desc}
                   </p>
                 </motion.div>
@@ -355,15 +355,15 @@ export const Home = () => {
                     y: -6, 
                     transition: { duration: 0.22, ease: "easeOut" } 
                   }}
-                  className="group relative block overflow-hidden rounded-2xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#2C2C2E] shadow-sm hover:shadow-xl transition-shadow duration-300 text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
+                  className="group relative block overflow-hidden rounded-2xl bg-white border border-apple-gray-200 shadow-sm hover:shadow-xl transition-shadow duration-300 text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
                 >
-                  <div className="aspect-16/10 overflow-hidden bg-apple-gray-100 dark:bg-[#2C2C2E] relative">
+                  <div className="aspect-16/10 overflow-hidden bg-apple-gray-100 relative">
                     <img 
                       src={project.imageUrl} 
                       alt={project.title} 
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
                     />
-                    <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[12px] font-medium text-apple-black dark:text-white flex items-center gap-1.5 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[12px] font-medium text-apple-black flex items-center gap-1.5 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
                       <span>Visit Live</span>
                       <ExternalLink className="h-3.5 w-3.5 text-apple-blue" />
                     </div>
@@ -373,16 +373,16 @@ export const Home = () => {
                       <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-blue/10 text-apple-blue">
                         {project.type}
                       </span>
-                      <span className="text-[13px] text-apple-gray-400 dark:text-apple-gray-500 font-mono flex items-center gap-1">
+                      <span className="text-[13px] text-apple-gray-400 font-mono flex items-center gap-1">
                         {projectUrl.replace('https://', '').replace('/', '')}
                       </span>
                     </div>
-                    <h3 className="text-[22px] font-bold text-apple-black dark:text-white group-hover:text-apple-blue transition-colors flex items-center justify-between">
+                    <h3 className="text-[22px] font-bold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between">
                       <span>{project.title}</span>
                       <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 text-apple-blue" />
                     </h3>
                     {project.description && (
-                      <p className="mt-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
+                      <p className="mt-2 text-[14px] text-apple-gray-500">
                         {project.description}
                       </p>
                     )}
@@ -395,7 +395,7 @@ export const Home = () => {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="w-full py-20 sm:py-24 bg-[#F5F5F7] dark:bg-[#111112]">
+      <section id="pricing" className="w-full py-20 sm:py-24 bg-[#F5F5F7]">
         <div className="mx-auto max-w-360 px-4 sm:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -404,10 +404,10 @@ export const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-14 sm:mb-16"
           >
-            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black dark:text-white">
+            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black">
               Pricing & Services
             </h2>
-            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
+            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500">
               Every project is unique. Pick the plan that fits your business to request a customized quote.
             </p>
           </motion.div>
@@ -444,16 +444,16 @@ export const Home = () => {
                 y: -6, 
                 transition: { duration: 0.22, ease: "easeOut" } 
               }}
-              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+              className="bg-white p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300"
             >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 Easiest to Start
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Static Website</h3>
-              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Simple 1 to 5 Page Website with WhatsApp Chat</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • Direct collaboration</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Static Website</h3>
+              <p className="text-[14px] text-apple-gray-500 mb-6">Simple 1 to 5 Page Website with WhatsApp Chat</p>
+              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Direct collaboration</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Simple business brochure / visiting card</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> 1-tap WhatsApp message button</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Fast loading on all mobile phones</li>
@@ -483,16 +483,16 @@ export const Home = () => {
                 y: -6, 
                 transition: { duration: 0.22, ease: "easeOut" } 
               }}
-              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+              className="bg-white p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300"
             >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 For Portals & Logins
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Dynamic Website</h3>
-              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Interactive Website with User Logins & Database</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • Database included</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Dynamic Website</h3>
+              <p className="text-[14px] text-apple-gray-500 mb-6">Interactive Website with User Logins & Database</p>
+              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Database included</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> User accounts & password login</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Database that saves customer or student data</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Admin panel to edit info anytime</li>
@@ -522,16 +522,16 @@ export const Home = () => {
                 y: -6, 
                 transition: { duration: 0.22, ease: "easeOut" } 
               }}
-              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+              className="bg-white p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300"
             >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 Sell Products Online
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Online Store</h3>
-              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Website to Sell Products with Shopping Cart</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • Orders & Payments</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Online Store</h3>
+              <p className="text-[14px] text-apple-gray-500 mb-6">Website to Sell Products with Shopping Cart</p>
+              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Orders & Payments</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Product catalog with photos & prices</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Shopping cart & customer checkout</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Online payments (UPI, GPay, Cards)</li>
@@ -561,16 +561,16 @@ export const Home = () => {
                 y: -6, 
                 transition: { duration: 0.22, ease: "easeOut" } 
               }}
-              className="bg-white dark:bg-[#1C1C1E] p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 dark:border-[#2C2C2E] shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_16px_32px_rgba(0,0,0,0.4)] transition-shadow duration-300"
+              className="bg-white p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300"
             >
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 For Smartphones
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black dark:text-white">Mobile App</h3>
-              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Smartphone App for Android & iPhone</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black dark:text-white">Custom Quote</div>
-              <p className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400 mb-6">Tailored to your needs • App Stores ready</p>
-              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black dark:text-apple-gray-200">
+              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Mobile App</h3>
+              <p className="text-[14px] text-apple-gray-500 mb-6">Smartphone App for Android & iPhone</p>
+              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • App Stores ready</p>
+              <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Installable app for Android & iPhone</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Daily phone push notifications</li>
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Smooth touch gestures & offline mode</li>
@@ -629,22 +629,22 @@ export const Home = () => {
       </section>
 
       {/* Application Gate */}
-      <section id="contact" className="w-full py-16 sm:py-24 border-t border-apple-gray-200 dark:border-[#38383A]">
+      <section id="contact" className="w-full py-16 sm:py-24 border-t border-apple-gray-200">
         <div className="mx-auto max-w-150 px-4">
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="text-[26px] sm:text-[34px] font-semibold tracking-[-0.02em]">Start a Project</h2>
-            <p className="mt-2 sm:mt-4 text-[14px] sm:text-[16px] text-apple-gray-500 dark:text-apple-gray-400">
+            <p className="mt-2 sm:mt-4 text-[14px] sm:text-[16px] text-apple-gray-500">
               Tell us about your requirements to get started.
             </p>
           </div>
 
-          <Card className="p-5 sm:p-8 rounded-2xl border border-apple-gray-200 dark:border-[#38383A]">
+          <Card className="p-5 sm:p-8 rounded-2xl border border-apple-gray-200">
             {formStatus === 'success' ? (
               <div className="text-center py-8">
                 <CheckCircle className="mx-auto h-12 w-12 text-apple-green mb-4" />
                 <h3 className="text-[20px] font-semibold mb-2">Application Received</h3>
-                <p className="text-[16px] text-apple-gray-500 dark:text-apple-gray-400 max-w-md mx-auto">
-                  Thank you, <span className="font-semibold text-apple-black dark:text-white">{formState.name}</span>! Your verified project details have been received. We will review your requirements and get in touch with you via email or phone shortly.
+                <p className="text-[16px] text-apple-gray-500 max-w-md mx-auto">
+                  Thank you, <span className="font-semibold text-apple-black">{formState.name}</span>! Your verified project details have been received. We will review your requirements and get in touch with you via email or phone shortly.
                 </p>
                 <div className="mt-6 flex justify-center">
                   <Button 
@@ -704,20 +704,20 @@ export const Home = () => {
                           }}
                           className={`cursor-pointer rounded-xl p-3.5 border transition-all flex items-start gap-3.5 ${
                             isSelected 
-                              ? 'border-apple-blue bg-apple-blue/5 dark:bg-apple-blue/10 shadow-sm' 
-                              : 'border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] hover:border-apple-gray-400'
+                              ? 'border-apple-blue bg-apple-blue/5 shadow-sm' 
+                              : 'border-apple-gray-200 bg-white hover:border-apple-gray-400'
                           }`}
                         >
                           <div className={`mt-0.5 h-4 w-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
-                            isSelected ? 'border-apple-blue bg-apple-blue' : 'border-apple-gray-400 dark:border-apple-gray-600'
+                            isSelected ? 'border-apple-blue bg-apple-blue' : 'border-apple-gray-400'
                           }`}>
                             {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className={`text-[15px] font-semibold ${isSelected ? 'text-apple-blue' : 'text-apple-black dark:text-white'}`}>
+                            <div className={`text-[15px] font-semibold ${isSelected ? 'text-apple-blue' : 'text-apple-black'}`}>
                               {type.label}
                             </div>
-                            <div className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-0.5">
+                            <div className="text-[13px] text-apple-gray-500 mt-0.5">
                               {type.desc}
                             </div>
                           </div>
@@ -795,7 +795,7 @@ export const Home = () => {
                 <div>
                   <label className="block text-[14px] font-medium mb-1.5">Project Scope / Requirements (Optional)</label>
                   <textarea 
-                    className="flex min-h-25 w-full rounded-xl border border-apple-gray-300 bg-white px-3.5 py-2.5 text-[15px] placeholder:text-apple-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue dark:border-[#38383A] dark:bg-[#1C1C1E] dark:text-white leading-relaxed"
+                    className="flex min-h-25 w-full rounded-xl border border-apple-gray-300 bg-white px-3.5 py-2.5 text-[15px] placeholder:text-apple-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue leading-relaxed"
                     placeholder="Describe what features you need or your business goals..."
                     value={formState.scope}
                     onChange={e => setFormState({...formState, scope: e.target.value})}
@@ -817,7 +817,7 @@ export const Home = () => {
                     href={getWhatsAppUrl()}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-[13px] font-medium text-apple-gray-600 dark:text-apple-gray-400 hover:text-[#25D366] dark:hover:text-[#25D366] transition-colors py-1.5 px-3.5 rounded-full hover:bg-[#25D366]/10"
+                    className="inline-flex items-center gap-2 text-[13px] font-medium text-apple-gray-600 hover:text-[#25D366] transition-colors py-1.5 px-3.5 rounded-full hover:bg-[#25D366]/10"
                     title="Chat on WhatsApp"
                   >
                     <div className="h-6 w-6 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-xs">

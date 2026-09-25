@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ArrowRight, Sun, Moon } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { Menu, X, ArrowRight } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isDark, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -47,37 +45,37 @@ export const Header: React.FC = () => {
     <header
       className={`sticky top-0 z-40 w-full transition-all duration-300 ${
         isScrolled
-          ? 'bg-white/80 dark:bg-apple-black/80 backdrop-blur-md border-b border-apple-gray-200 dark:border-[#38383A] shadow-xs'
-          : 'bg-white dark:bg-apple-black border-b border-apple-gray-100 dark:border-[#2C2C2E]'
+          ? 'bg-white/85 backdrop-blur-md border-b border-apple-gray-200 shadow-xs'
+          : 'bg-white border-b border-apple-gray-100'
       }`}
     >
       <div className="mx-auto max-w-[1440px] px-4 sm:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2 group">
-          <span className="uppercase tracking-widest text-[16px] font-semibold text-apple-black dark:text-white">
+          <span className="uppercase tracking-widest text-[16px] font-semibold text-apple-black">
             VI<span className="font-bold text-apple-blue">R</span><span className="font-bold text-apple-blue">A</span>T TO<span className="font-bold text-apple-blue">M</span>
           </span>
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-7 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300">
+        <nav className="hidden md:flex items-center gap-7 text-[14px] font-medium text-apple-gray-600">
           <a 
             href="/#services" 
             onClick={(e) => handleSectionClick(e, 'services')}
-            className="hover:text-apple-black dark:hover:text-white transition-colors"
+            className="hover:text-apple-black transition-colors"
           >
             Services
           </a>
           <a 
             href="/#projects" 
             onClick={(e) => handleSectionClick(e, 'projects')}
-            className="hover:text-apple-black dark:hover:text-white transition-colors"
+            className="hover:text-apple-black transition-colors"
           >
             Projects
           </a>
           <Link
             to="/resume"
-            className={`flex items-center gap-1.5 hover:text-apple-black dark:hover:text-white transition-colors ${
+            className={`flex items-center gap-1.5 hover:text-apple-black transition-colors ${
               location.pathname === '/resume' ? 'text-apple-blue font-semibold' : ''
             }`}
           >
@@ -88,7 +86,7 @@ export const Header: React.FC = () => {
           </Link>
           <Link
             to="/client-login"
-            className={`hover:text-apple-black dark:hover:text-white transition-colors ${
+            className={`hover:text-apple-black transition-colors ${
               location.pathname.startsWith('/client') ? 'text-apple-blue font-semibold' : ''
             }`}
           >
@@ -98,15 +96,6 @@ export const Header: React.FC = () => {
 
         {/* Header Actions */}
         <div className="hidden md:flex items-center gap-3">
-          {location.pathname === '/' && (
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl text-apple-gray-500 hover:text-apple-black dark:hover:text-white hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer"
-              aria-label="Toggle theme"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-          )}
           <a
             href="/#contact"
             onClick={(e) => handleSectionClick(e, 'contact')}
@@ -119,18 +108,9 @@ export const Header: React.FC = () => {
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden items-center gap-2">
-          {location.pathname === '/' && (
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl text-apple-gray-500 hover:text-apple-black dark:hover:text-white"
-              aria-label="Toggle theme"
-            >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </button>
-          )}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-xl text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-100 dark:hover:bg-[#2C2C2E]"
+            className="p-2 rounded-xl text-apple-gray-600 hover:bg-apple-gray-100"
             aria-label="Toggle mobile menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -140,25 +120,25 @@ export const Header: React.FC = () => {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-apple-black px-4 py-5 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden border-b border-apple-gray-200 bg-white px-4 py-5 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-200">
           <a
             href="/#services"
             onClick={(e) => handleSectionClick(e, 'services')}
-            className="block py-2 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white"
+            className="block py-2 text-[14px] font-medium text-apple-gray-600 hover:text-apple-black"
           >
             Services
           </a>
           <a
             href="/#projects"
             onClick={(e) => handleSectionClick(e, 'projects')}
-            className="block py-2 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white"
+            className="block py-2 text-[14px] font-medium text-apple-gray-600 hover:text-apple-black"
           >
             Projects
           </a>
           <Link
             to="/resume"
             onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center justify-between py-2 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white"
+            className="flex items-center justify-between py-2 text-[14px] font-medium text-apple-gray-600 hover:text-apple-black"
           >
             <span>Resume Builder</span>
             <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md bg-apple-blue/10 text-apple-blue">
@@ -168,7 +148,7 @@ export const Header: React.FC = () => {
           <Link
             to="/client-login"
             onClick={() => setMobileMenuOpen(false)}
-            className="block py-2 text-[14px] font-medium text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white"
+            className="block py-2 text-[14px] font-medium text-apple-gray-600 hover:text-apple-black"
           >
             Client Portal
           </Link>

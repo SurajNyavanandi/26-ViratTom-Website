@@ -18,6 +18,14 @@ const resumeDraftSchema = new mongoose.Schema(
       type: Object,
       required: true,
     },
+    downloadCount: {
+      type: Number,
+      default: 0,
+    },
+    downloadTimestamps: [{
+      type: Date,
+      default: Date.now,
+    }],
     lastSavedAt: {
       type: Date,
       default: Date.now,

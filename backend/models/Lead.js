@@ -44,6 +44,14 @@ const leadSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    downloadCount: {
+      type: Number,
+      default: 0,
+    },
+    downloadTimestamps: [{
+      type: Date,
+      default: Date.now,
+    }],
     ipAddress: {
       type: String,
       default: '',

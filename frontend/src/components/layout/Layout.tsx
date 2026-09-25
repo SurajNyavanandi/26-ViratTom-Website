@@ -29,19 +29,19 @@ export const Layout = () => {
   return (
     <div className="min-h-screen flex flex-col relative">
       <Header />
-      <main className="flex-1 bg-white dark:bg-apple-black">
+      <main className="flex-1 bg-white">
         <Outlet />
       </main>
-      <footer className="border-t border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-100 dark:bg-[#1C1C1E] py-12">
+      <footer className="border-t border-apple-gray-200 bg-apple-gray-100 py-12">
         <div className="mx-auto max-w-[1440px] px-4 sm:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="font-semibold text-[14px] mb-4"><span className="uppercase tracking-widest text-apple-gray-500 dark:text-apple-gray-400 text-[14px]">VI<span className="font-bold text-apple-blue">R</span><span className="font-bold text-apple-blue">A</span>T TO<span className="font-bold text-apple-blue">M</span></span></h3>
-              <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400">Premium Website & Mobile Development.</p>
+              <h3 className="font-semibold text-[14px] mb-4"><span className="uppercase tracking-widest text-apple-gray-600 text-[14px]">VI<span className="font-bold text-apple-blue">R</span><span className="font-bold text-apple-blue">A</span>T TO<span className="font-bold text-apple-blue">M</span></span></h3>
+              <p className="text-[14px] text-apple-gray-600">Premium Website & Mobile Development.</p>
             </div>
             <div>
               <h3 className="font-semibold text-[14px] mb-4">Services</h3>
-              <ul className="space-y-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
+              <ul className="space-y-2 text-[14px] text-apple-gray-600">
                 <li>Web Development</li>
                 <li>App Development</li>
                 <li>UI/UX Design</li>
@@ -49,9 +49,9 @@ export const Layout = () => {
             </div>
             <div>
               <h3 className="font-semibold text-[14px] mb-4">Resources</h3>
-              <ul className="space-y-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
+              <ul className="space-y-2 text-[14px] text-apple-gray-600">
                 <li>
-                  <Link to="/resume" className="hover:text-apple-black dark:hover:text-white transition-colors">
+                  <Link to="/resume" className="hover:text-apple-black transition-colors">
                     Resume Builder
                   </Link>
                 </li>
@@ -61,13 +61,13 @@ export const Layout = () => {
             </div>
             <div>
               <h3 className="font-semibold text-[14px] mb-4">Legal</h3>
-              <ul className="space-y-2 text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
+              <ul className="space-y-2 text-[14px] text-apple-gray-600">
                 <li>Privacy Policy</li>
                 <li>Terms of Service</li>
               </ul>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t border-apple-gray-300 dark:border-[#38383A] text-center text-[14px] text-apple-gray-500 flex items-center justify-center gap-1.5">
+          <div className="mt-12 pt-8 border-t border-apple-gray-300 text-center text-[14px] text-apple-gray-600 flex items-center justify-center gap-1.5">
             <button
               onClick={handleAdminLockClick}
               type="button"
@@ -76,7 +76,7 @@ export const Layout = () => {
             >
               <Lock className="h-3 w-3 text-apple-gray-500" />
             </button>
-            <div>&copy; {new Date().getFullYear()} <span className="uppercase tracking-widest text-apple-gray-500 dark:text-apple-gray-400 text-[14px]">VI<span className="font-bold text-apple-blue">R</span><span className="font-bold text-apple-blue">A</span>T TO<span className="font-bold text-apple-blue">M</span></span>. All rights reserved.</div>
+            <div>&copy; {new Date().getFullYear()} <span className="uppercase tracking-widest text-apple-gray-600 text-[14px]">VI<span className="font-bold text-apple-blue">R</span><span className="font-bold text-apple-blue">A</span>T TO<span className="font-bold text-apple-blue">M</span></span>. All rights reserved.</div>
           </div>
         </div>
       </footer>

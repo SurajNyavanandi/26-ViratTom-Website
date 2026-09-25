@@ -711,7 +711,7 @@ const addClientFeedback = async (req, res) => {
 // -------------------------------------------------------------
 // Admin Portal Authentication & Projects
 // -------------------------------------------------------------
-const ADMIN_EMAIL = 'kanusuraj15@gmail.com';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'kanusuraj15@gmail.com').trim().toLowerCase();
 let inMemoryAdminPasswordHash = null;
 const adminResetOtpStore = new Map();
 
@@ -1114,7 +1114,7 @@ const generateResume = (req, res) => {
     }
 
     if (experience.length > 0) {
-      addSection('Experience');
+      addSection(data.experienceTitle || 'Experience');
       experience.forEach((exp) => {
         doc.fontSize(10.5).font('Times-Bold').text(exp.role || 'Role', { continued: true });
         if (exp.duration) {
@@ -1179,37 +1179,62 @@ const getResumeStats = async (req, res) => {
   try {
     const stat = await SiteStat.findOne({ key: 'resume_downloads' });
     if (stat && typeof stat.value === 'number') {
-      if (stat.value > 1000) {
-        stat.value = 26;
-        await stat.save();
-      }
       inMemoryResumeDownloads = stat.value;
       return res.json({ success: true, downloads: stat.value });
     }
     // Seed initial stat in MongoDB if empty
     try {
-      await SiteStat.create({ key: 'resume_downloads', value: inMemoryResumeDownloads });
+      const created = await SiteStat.create({ key: 'resume_downloads', value: inMemoryResumeDownloads, lastUpdated: new Date() });
+      if (created) inMemoryResumeDownloads = created.value;
     } catch (_e) {
-      // Ignored if key exists
+      // Ignored if key already exists
     }
     return res.json({ success: true, downloads: inMemoryResumeDownloads });
-  } catch {
+  } catch (err) {
+    console.warn('[SiteStat MongoDB read warning]', err?.message);
     return res.json({ success: true, downloads: inMemoryResumeDownloads });
   }
 };
 
 const trackResumeDownload = async (req, res) => {
-  inMemoryResumeDownloads += 1;
+  const { email } = req.body || {};
+  const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+
   try {
     const stat = await SiteStat.findOneAndUpdate(
       { key: 'resume_downloads' },
       { $inc: { value: 1 }, $set: { lastUpdated: new Date() } },
-      { upsert: true, new: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     if (stat && typeof stat.value === 'number') {
       inMemoryResumeDownloads = stat.value;
+    } else {
+      inMemoryResumeDownloads += 1;
+    }
+
+    // Privately record and increment download stats for the specific user
+    if (cleanEmail) {
+      const now = new Date();
+      try {
+        await Lead.updateMany(
+          { email: cleanEmail },
+          { $inc: { downloadCount: 1 }, $push: { downloadTimestamps: now } }
+        );
+      } catch (leadErr) {
+        console.warn('[trackResumeDownload] Lead update notice:', leadErr?.message);
+      }
+
+      try {
+        await ResumeDraft.updateOne(
+          { email: cleanEmail },
+          { $inc: { downloadCount: 1 }, $push: { downloadTimestamps: now } }
+        );
+      } catch (draftErr) {
+        console.warn('[trackResumeDownload] ResumeDraft update notice:', draftErr?.message);
+      }
     }
   } catch (err) {
+    inMemoryResumeDownloads += 1;
     console.warn('[SiteStat MongoDB sync warning]', err?.message);
   }
 

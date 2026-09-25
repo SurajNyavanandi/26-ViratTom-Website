@@ -8,20 +8,17 @@ const connectDB = async () => {
   mongoose.set('bufferCommands', false);
   const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
   if (!mongoUri) {
-    console.log('[AI Studio] Local in-memory storage ready');
-    return false;
+    return { connected: false, reason: 'No MONGO_URI configured' };
   }
 
   try {
     await mongoose.connect(mongoUri, {
       serverSelectionTimeoutMS: 2500,
     });
-    console.log('[AI Studio] Connected to MongoDB');
-    return true;
+    return { connected: true };
   } catch (err) {
-    // Atlas cluster may restrict external container IPs unless 0.0.0.0/0 is configured in Atlas IP access list
-    console.log('[AI Studio] Storage active with resilient memory repository (Atlas cloud sync available when IP whitelist is configured)');
-    return false;
+    console.error(`[DB Error] ${err?.message || 'Connection failed'}`);
+    return { connected: false, reason: err?.message || 'Connection failed' };
   }
 };
 

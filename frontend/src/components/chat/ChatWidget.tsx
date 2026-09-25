@@ -125,17 +125,17 @@ export const ChatWidget: React.FC = () => {
     <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
       {isOpen ? (
         <div 
-          className="flex flex-col w-[calc(100vw-2rem)] sm:w-[380px] h-[520px] max-h-[calc(100vh-5rem)] bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-2xl border border-apple-gray-200 dark:border-[#38383A] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+          className="flex flex-col w-[calc(100vw-2rem)] sm:w-[380px] h-[520px] max-h-[calc(100vh-5rem)] bg-white rounded-2xl shadow-2xl border border-apple-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
           role="dialog"
           aria-label="VIRATTOM Assistant Chat"
         >
           {/* Minimal Clean Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-apple-gray-100/90 dark:bg-[#2C2C2E]/90 border-b border-apple-gray-200 dark:border-[#38383A] backdrop-blur-sm">
+          <div className="flex items-center justify-between px-4 py-3 bg-apple-gray-100/90 border-b border-apple-gray-200 backdrop-blur-sm">
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 rounded-xl bg-apple-blue flex items-center justify-center text-white shadow-xs">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <h3 className="font-semibold text-[14px] text-apple-black dark:text-white">
+              <h3 className="font-semibold text-[14px] text-apple-black">
                 <span className="uppercase tracking-wider">VI<span className="text-apple-blue">R</span><span className="text-apple-blue">A</span>T TO<span className="text-apple-blue">M</span></span> Assistant
               </h3>
             </div>
@@ -144,14 +144,14 @@ export const ChatWidget: React.FC = () => {
               <button 
                 onClick={handleReset} 
                 title="Restart conversation"
-                className="p-1.5 rounded-lg text-apple-gray-400 hover:text-apple-black dark:hover:text-white hover:bg-apple-gray-200/60 dark:hover:bg-[#38383A] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-apple-gray-400 hover:text-apple-black hover:bg-apple-gray-200/60 transition-colors cursor-pointer"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
               <button 
                 onClick={() => setIsOpen(false)} 
                 title="Close chat"
-                className="p-1.5 rounded-lg text-apple-gray-400 hover:text-apple-black dark:hover:text-white hover:bg-apple-gray-200/60 dark:hover:bg-[#38383A] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-apple-gray-400 hover:text-apple-black hover:bg-apple-gray-200/60 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -159,7 +159,7 @@ export const ChatWidget: React.FC = () => {
           </div>
 
           {/* Messages Feed */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-apple-gray-50/50 dark:bg-apple-black/40 text-[14px]">
+          <div className="flex-1 p-4 overflow-y-auto space-y-3.5 bg-apple-gray-50/50 text-[14px]">
             {messages.map((m) => (
               <div 
                 key={m.id}
@@ -174,7 +174,7 @@ export const ChatWidget: React.FC = () => {
                 <div className={`max-w-[85%] rounded-2xl p-3 space-y-1 ${
                   m.role === 'user' 
                     ? 'bg-apple-blue text-white rounded-tr-xs shadow-xs' 
-                    : 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-gray-100 border border-apple-gray-200/70 dark:border-[#38383A] rounded-tl-xs shadow-2xs'
+                    : 'bg-white text-apple-black border border-apple-gray-200/70 rounded-tl-xs shadow-2xs'
                 }`}>
                   <div className={`markdown-body text-[13.5px] leading-relaxed break-words ${
                     m.role === 'user' ? 'text-white' : ''
@@ -189,7 +189,7 @@ export const ChatWidget: React.FC = () => {
                 </div>
 
                 {m.role === 'user' && (
-                  <div className="h-7 w-7 rounded-lg bg-apple-gray-200 dark:bg-[#2C2C2E] text-apple-gray-600 dark:text-apple-gray-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="h-7 w-7 rounded-lg bg-apple-gray-200 text-apple-gray-600 flex items-center justify-center shrink-0 mt-0.5">
                     <User className="h-4 w-4" />
                   </div>
                 )}
@@ -202,7 +202,7 @@ export const ChatWidget: React.FC = () => {
                 <div className="h-7 w-7 rounded-lg bg-apple-blue/10 text-apple-blue flex items-center justify-center shrink-0">
                   <Bot className="h-4 w-4" />
                 </div>
-                <div className="bg-white dark:bg-[#2C2C2E] border border-apple-gray-200/70 dark:border-[#38383A] rounded-2xl rounded-tl-xs px-3.5 py-2.5 shadow-2xs">
+                <div className="bg-white border border-apple-gray-200/70 rounded-2xl rounded-tl-xs px-3.5 py-2.5 shadow-2xs">
                   <div className="flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-apple-blue animate-bounce" style={{ animationDelay: '0ms' }} />
                     <span className="h-2 w-2 rounded-full bg-apple-blue animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -216,7 +216,7 @@ export const ChatWidget: React.FC = () => {
           </div>
 
           {/* Input Area */}
-          <div className="p-3 border-t border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E]">
+          <div className="p-3 border-t border-apple-gray-200 bg-white">
             <form 
               onSubmit={(e) => {
                 e.preventDefault();
@@ -232,7 +232,7 @@ export const ChatWidget: React.FC = () => {
                 onKeyDown={handleKeyDown}
                 placeholder="Type your message..." 
                 disabled={isLoading}
-                className="flex-1 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-100/80 dark:bg-[#2C2C2E] px-3.5 py-2.5 text-[13.5px] text-apple-black dark:text-white focus:outline-none focus:ring-2 focus:ring-apple-blue transition-all disabled:opacity-50 placeholder:text-apple-gray-400" 
+                className="flex-1 rounded-xl border border-apple-gray-300 bg-apple-gray-100/80 px-3.5 py-2.5 text-[13.5px] text-apple-black focus:outline-none focus:ring-2 focus:ring-apple-blue transition-all disabled:opacity-50 placeholder:text-apple-gray-400" 
               />
               <Button 
                 type="submit"
@@ -258,7 +258,7 @@ export const ChatWidget: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center gap-2 bg-white/90 dark:bg-[#1C1C1E]/90 backdrop-blur-md p-1.5 rounded-full border border-apple-gray-200/80 dark:border-[#38383A] shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.16)] transition-all">
+        <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md p-1.5 rounded-full border border-apple-gray-200/80 shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.16)] transition-all">
           <a
             href={getWhatsAppUrl()}
             target="_blank"

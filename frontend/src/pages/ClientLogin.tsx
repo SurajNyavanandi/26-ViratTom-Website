@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { ArrowLeft, ShieldCheck, AlertCircle } from 'lucide-react';
-import { sanitizePhone } from '@/lib/utils';
+import { sanitizePhone, apiUrl } from '@/lib/utils';
 
 export const ClientLogin = () => {
   const [phone, setPhone] = useState('');
@@ -24,7 +24,7 @@ export const ClientLogin = () => {
 
     try {
       console.log(`[Client Portal] Attempting direct project access for +91${cleanPhone}...`);
-      const res = await fetch('/api/client/login', {
+      const res = await fetch(apiUrl('/api/client/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: cleanPhone })

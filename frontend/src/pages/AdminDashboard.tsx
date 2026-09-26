@@ -31,7 +31,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { RecruiterOutreachSection } from '@/components/admin/RecruiterOutreachSection';
 import type { Lead, ClientProject } from '@/types';
-import { formatCurrency, sanitizePhone, safeFetchJson } from '@/lib/utils';
+import { formatCurrency, sanitizePhone, safeFetchJson, apiUrl } from '@/lib/utils';
 
 export const AdminDashboard: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<'leads' | 'projects' | 'outreach'>('leads');
@@ -108,7 +108,7 @@ export const AdminDashboard: React.FC = () => {
     const updatedApproved = !project.clientPortalApproved;
     const token = localStorage.getItem('admin_token');
     try {
-      const res = await fetch(`/api/admin/projects/${project.id}`, {
+      const res = await fetch(apiUrl(`/api/admin/projects/${project.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ export const AdminDashboard: React.FC = () => {
     const updatedAdvancePaid = !project.advancePaid;
     const token = localStorage.getItem('admin_token');
     try {
-      const res = await fetch(`/api/admin/projects/${project.id}`, {
+      const res = await fetch(apiUrl(`/api/admin/projects/${project.id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ export const AdminDashboard: React.FC = () => {
     if (!confirm('Are you sure you want to delete this project?')) return;
     const token = localStorage.getItem('admin_token');
     try {
-      const res = await fetch(`/api/admin/projects/${id}`, {
+      const res = await fetch(apiUrl(`/api/admin/projects/${id}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -167,7 +167,7 @@ export const AdminDashboard: React.FC = () => {
     const advAmount = Math.round(budgetNum * 0.2);
 
     try {
-      const res = await fetch('/api/admin/projects', {
+      const res = await fetch(apiUrl('/api/admin/projects'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -697,7 +697,7 @@ export const AdminDashboard: React.FC = () => {
                     required
                     type="tel"
                     maxLength={10}
-                    placeholder="e.g. 9666635009"
+                    placeholder={`e.g. ${(import.meta.env.VITE_ADMIN_PHONE || '9666635009')}`}
                     value={projectForm.clientPhone}
                     onChange={e => setProjectForm({ ...projectForm, clientPhone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                     className="rounded-xl"

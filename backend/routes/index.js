@@ -44,6 +44,22 @@ router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
 
 router.get('/projects', getProjects);
+router.get('/config', (req, res) => {
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'kanusuraj15@gmail.com';
+  const adminPhone = process.env.ADMIN_PHONE || '9666635009';
+  const rawDigits = adminPhone.replace(/\D/g, '');
+  const whatsappNumber = rawDigits.length === 10 ? `91${rawDigits}` : rawDigits || '919666635009';
+  const razorpayKeyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_51xxxxxxxxxxxx';
+
+  return res.json({
+    success: true,
+    adminEmail,
+    adminPhone,
+    whatsappNumber,
+    razorpayKeyId,
+    siteUrl: 'https://virattom.com',
+  });
+});
 router.post('/lead', submitLead);
 router.post('/lead/request-email-otp', requestEmailOtpHandler);
 router.post('/lead/verify-email-otp', verifyEmailOtpHandler);

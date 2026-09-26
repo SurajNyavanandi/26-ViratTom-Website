@@ -49,19 +49,21 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// CORS Configuration
-const allowedOrigins = [
-  'https://virattom.com',
-  'https://www.virattom.com',
-  'http://virattom.com',
-  'http://www.virattom.com',
-  'https://virattom.vercel.app',
+// CORS Configuration from process.env.CORS_ORIGIN
+const envOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const localDevOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
   'http://localhost:4173',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5173',
 ];
+
+const allowedOrigins = Array.from(new Set([...envOrigins, ...localDevOrigins]));
 
 const corsOptions = {
   origin: (origin, callback) => {

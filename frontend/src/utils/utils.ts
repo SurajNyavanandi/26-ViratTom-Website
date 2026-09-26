@@ -15,9 +15,10 @@ export function formatCurrency(amount: number | string): string {
 }
 
 export function getWhatsAppUrl(customText = 'Hello ViratTom Team, I would like to discuss a project.'): string {
-  const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/\D/g, '');
+  const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '919666635009').replace(/\D/g, '');
+  const targetNumber = rawWaNumber.length === 10 ? `91${rawWaNumber}` : rawWaNumber;
   const encoded = encodeURIComponent(customText);
-  return rawWaNumber ? `https://wa.me/${rawWaNumber}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+  return targetNumber ? `https://wa.me/${targetNumber}?text=${encoded}` : `https://wa.me/919666635009?text=${encoded}`;
 }
 
 export const PROJECT_MIN_PRICES: Record<string, number> = {

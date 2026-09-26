@@ -22,6 +22,7 @@ import { Validation } from '@/utils/validation';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
 import { DeliveryAddressFormModal } from '@/components/modals/DeliveryAddressFormModal';
 import type { AddressFormData } from '@/hooks/useAddressForm';
+import { apiUrl } from '@/utils/utils';
 
 export const ClientDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -56,7 +57,7 @@ export const ClientDashboard: React.FC = () => {
     let isMounted = true;
     const token = localStorage.getItem('client_token');
 
-    fetch('/api/client/project', {
+    fetch(apiUrl('/api/client/project'), {
       headers: {
         Authorization: `Bearer ${token || ''}`,
       },
@@ -108,7 +109,7 @@ export const ClientDashboard: React.FC = () => {
     e.preventDefault();
     const token = localStorage.getItem('client_token');
     try {
-      const res = await fetch('/api/client/feedback', {
+      const res = await fetch(apiUrl('/api/client/feedback'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

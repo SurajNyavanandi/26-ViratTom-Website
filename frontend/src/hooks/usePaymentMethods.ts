@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Validation } from '@/utils/validation';
 import type { ClientProject } from '@/types';
+import { apiUrl } from '@/utils/utils';
 
 export interface SavedPaymentMethod {
   id: string;
@@ -62,7 +63,7 @@ export function usePaymentMethods() {
         console.log(`[usePaymentMethods] Initiating Razorpay advance payment for ₹${advanceAmount}...`);
 
         // 1. Create order on server
-        const orderRes = await fetch('/api/client/create-razorpay-order', {
+        const orderRes = await fetch(apiUrl('/api/client/create-razorpay-order'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export function usePaymentMethods() {
           );
 
           if (proceedSimulated) {
-            const directRes = await fetch('/api/client/confirm-advance', {
+            const directRes = await fetch(apiUrl('/api/client/confirm-advance'), {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -124,7 +125,7 @@ export function usePaymentMethods() {
           handler: async (response: any) => {
             setStatus('verifying');
             try {
-              const verifyRes = await fetch('/api/client/verify-razorpay-payment', {
+              const verifyRes = await fetch(apiUrl('/api/client/verify-razorpay-payment'), {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

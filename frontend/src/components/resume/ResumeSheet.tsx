@@ -76,7 +76,7 @@ export const ResumeSheet: React.FC<ResumeSheetProps> = ({
             }}
           >
             <a
-              href="https://virattom.com"
+              href={import.meta.env.VITE_SITE_URL || 'https://virattom.com'}
               target="_blank"
               rel="noreferrer"
               className="text-[#9ca3af] hover:text-[#4b5563] transition-colors cursor-pointer"
@@ -85,13 +85,13 @@ export const ResumeSheet: React.FC<ResumeSheetProps> = ({
               Created with ViratTom
             </a>
             <a
-              href="https://virattom.com"
+              href={import.meta.env.VITE_SITE_URL || 'https://virattom.com'}
               target="_blank"
               rel="noreferrer"
               className="text-[#9ca3af] hover:text-[#4b5563] transition-colors cursor-pointer"
-              title="Visit virattom.com"
+              title="Visit ViratTom"
             >
-              virattom.com
+              {(import.meta.env.VITE_SITE_URL || 'https://virattom.com').replace(/^https?:\/\//, '').replace(/\/+$/, '')}
             </a>
           </div>
         </div>

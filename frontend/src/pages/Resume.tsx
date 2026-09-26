@@ -124,13 +124,11 @@ export const Resume = () => {
           title="Free Professional Resume Builder & ATS-Ready Template | ViratTom"
           description="Build and export free ATS-friendly resumes online. Live dual-pane editor, customizable technical skills, work experience, projects, and instant PDF download."
           keywords="Free ATS Resume Builder, Free Resume Maker Online, Developer CV Template, Software Engineer Resume PDF, ATS Friendly Resume Generator, ViratTom Resume Builder"
-          canonical="https://virattom.com/resume"
-          ogImage="https://virattom.com/projects/inisio.png"
           jsonLd={{
             "@context": "https://schema.org",
             "@type": "WebApplication",
             "name": "Free Professional Resume Builder & ATS-Ready Template | ViratTom",
-            "url": "https://virattom.com/resume",
+            "url": `${(import.meta.env.VITE_SITE_URL || 'https://virattom.com').replace(/\/+$/, '')}/resume`,
             "applicationCategory": "BusinessApplication",
             "operatingSystem": "All",
             "browserRequirements": "Requires JavaScript. Requires HTML5.",

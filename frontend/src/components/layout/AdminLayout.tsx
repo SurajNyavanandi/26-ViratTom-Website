@@ -6,6 +6,7 @@ export const AdminLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'kanusuraj15@gmail.com').trim().toLowerCase();
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');
@@ -46,7 +47,7 @@ export const AdminLayout: React.FC = () => {
           </div>
           <div className="overflow-hidden">
             <h2 className="font-semibold text-[14px]">ViratTom Console</h2>
-            <p className="text-[11px] text-apple-gray-400 truncate" title="kanusuraj15@gmail.com">kanusuraj15@gmail.com</p>
+            <p className="text-[11px] text-apple-gray-400 truncate" title={adminEmail}>{adminEmail}</p>
           </div>
         </div>
 

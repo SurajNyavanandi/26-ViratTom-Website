@@ -19,7 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import type { ClientProject, Milestone } from '@/types';
-import { sanitizePhone } from '@/lib/utils';
+import { sanitizePhone, apiUrl } from '@/lib/utils';
 
 export const AdminProjects: React.FC = () => {
   const [projects, setProjects] = useState<ClientProject[]>([]);
@@ -37,7 +37,7 @@ export const AdminProjects: React.FC = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('admin_token') || '';
-    fetch('/api/admin/projects', {
+    fetch(apiUrl('/api/admin/projects'), {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -62,7 +62,7 @@ export const AdminProjects: React.FC = () => {
     const updatedApproved = currentProject.clientPortalApproved === false ? true : false;
     const token = localStorage.getItem('admin_token') || '';
     try {
-      await fetch(`/api/admin/projects/${selectedProjectId}`, {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ export const AdminProjects: React.FC = () => {
     const cleanPhone = clientPhone.replace(/\D/g, '').slice(-10);
     const token = localStorage.getItem('admin_token') || '';
     try {
-      await fetch(`/api/admin/projects/${selectedProjectId}`, {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +102,7 @@ export const AdminProjects: React.FC = () => {
     setMilestones(updated);
     const token = localStorage.getItem('admin_token') || '';
     try {
-      await fetch(`/api/admin/projects/${selectedProjectId}`, {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -126,7 +126,7 @@ export const AdminProjects: React.FC = () => {
     setNewMilestoneText('');
     const token = localStorage.getItem('admin_token') || '';
     try {
-      await fetch(`/api/admin/projects/${selectedProjectId}`, {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -144,7 +144,7 @@ export const AdminProjects: React.FC = () => {
     if (!newProjectTitle.trim() || !newProjectPhone.trim()) return;
     const token = localStorage.getItem('admin_token') || '';
     try {
-      const res = await fetch('/api/admin/projects', {
+      const res = await fetch(apiUrl('/api/admin/projects'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

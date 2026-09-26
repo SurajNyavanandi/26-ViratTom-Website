@@ -59,8 +59,8 @@ const clientProjects = [
   {
     id: 'proj_1',
     title: 'Full-Stack Portfolio & Client Billing Platform',
-    clientPhone: '9666635009',
-    clientEmail: 'kanusuraj15@gmail.com',
+    clientPhone: process.env.ADMIN_PHONE || '9666635009',
+    clientEmail: process.env.ADMIN_EMAIL || 'kanusuraj15@gmail.com',
     clientName: 'Suraj Nyavanandi',
     type: 'Web Application',
     status: 'Active',
@@ -78,7 +78,7 @@ const clientProjects = [
       { id: 4, task: 'Cloud Run Production Deployment & CDN Setup', done: true, date: '2026-09-20' },
     ],
     deliverables: [
-      { name: 'Live Application Preview & Code Repository', url: 'https://virattom.com', locked: false },
+      { name: 'Live Application Preview & Code Repository', url: process.env.PORTFOLIO_URL || 'https://virattom.com', locked: false },
       { name: 'Complete Swagger API Documentation', url: '#', locked: false },
       { name: 'Production Cloud Deployment Container', url: '#', locked: false },
       { name: 'Admin Dashboard Control Center', url: '/admin', locked: false },
@@ -415,7 +415,8 @@ const loginClient = async (req, res) => {
   }
 
   // Allow standard verification code or demo fallback
-  if (!project && cleanPhone !== '9666635009') {
+  const adminPhone = (process.env.ADMIN_PHONE || '9666635009').replace(/\D/g, '').slice(-10);
+  if (!project && cleanPhone !== adminPhone) {
     return res.status(404).json({ error: 'No active project found for this phone number.' });
   }
 

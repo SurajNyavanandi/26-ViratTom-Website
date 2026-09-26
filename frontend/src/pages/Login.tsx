@@ -14,8 +14,9 @@ import {
   ArrowRight,
   RotateCcw
 } from 'lucide-react';
+import { apiUrl } from '@/utils/utils';
 
-const ADMIN_EMAIL = 'kanusuraj15@gmail.com';
+const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'kanusuraj15@gmail.com').trim().toLowerCase();
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ export const Login: React.FC = () => {
     }
 
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch(apiUrl('/api/admin/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: cleanEmail, password })
@@ -99,7 +100,7 @@ export const Login: React.FC = () => {
     }
 
     try {
-      const res = await fetch('/api/admin/forgot-password', {
+      const res = await fetch(apiUrl('/api/admin/forgot-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail })
@@ -191,7 +192,7 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/reset-password', {
+      const res = await fetch(apiUrl('/api/admin/reset-password'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

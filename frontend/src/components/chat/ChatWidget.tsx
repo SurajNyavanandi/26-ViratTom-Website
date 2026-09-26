@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, MessageSquare, X, Send, Sparkles, RotateCcw, ArrowRight, Bot, User } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { Button } from '@/components/ui/Button';
-import { getWhatsAppUrl } from '@/lib/utils';
+import { getWhatsAppUrl, apiUrl } from '@/lib/utils';
 import type { ChatMessage } from '@/types';
 
 export const ChatWidget: React.FC = () => {
@@ -59,7 +59,7 @@ export const ChatWidget: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

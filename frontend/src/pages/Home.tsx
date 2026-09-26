@@ -111,18 +111,19 @@ export const Home = () => {
       return;
     }
     
-    const budget = parseInt(formState.budget);
-    if (isNaN(budget) || budget <= 0) {
+    const rawBudget = parseInt(formState.budget, 10);
+    if (isNaN(rawBudget) || rawBudget <= 0) {
       setError('Please enter your estimated budget.');
       return;
     }
+    const budget = Math.min(300000, rawBudget);
 
     setFormStatus('submitting');
     const sent = await requestOtp({
       email: cleanEmail,
       name: formState.name.trim(),
       phone: cleanPhone,
-      budget: formState.budget,
+      budget: String(budget),
       scope: formState.scope,
       projectType: formState.projectType,
     });
@@ -138,12 +139,14 @@ export const Home = () => {
     setError('');
     const cleanEmail = formState.email.trim().toLowerCase();
     const cleanPhone = Validation.sanitizePhone(formState.phone);
+    const rawBudget = parseInt(formState.budget, 10);
+    const budget = !isNaN(rawBudget) && rawBudget > 0 ? Math.min(300000, rawBudget) : 0;
 
     await verifyOtp({
       name: formState.name.trim(),
       email: cleanEmail,
       phone: cleanPhone,
-      budget: formState.budget,
+      budget: String(budget),
       projectType: formState.projectType,
       scope: formState.scope,
     });
@@ -790,10 +793,21 @@ export const Home = () => {
                     type="number" 
                     required 
                     min="1"
+                    max="300000"
                     placeholder="Enter budget"
                     value={formState.budget} 
                     onChange={e => {
-                      setFormState({...formState, budget: e.target.value});
+                      const val = e.target.value;
+                      if (val === '') {
+                        setFormState({...formState, budget: ''});
+                      } else {
+                        const num = Number(val);
+                        if (!isNaN(num) && num > 300000) {
+                          setFormState({...formState, budget: '300000'});
+                        } else {
+                          setFormState({...formState, budget: val});
+                        }
+                      }
                       if (error) setError('');
                     }} 
                     className="rounded-xl"

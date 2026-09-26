@@ -23,16 +23,18 @@ import {
   Trash2,
   UserCheck,
   ExternalLink,
-  Plus
+  Plus,
+  Send
 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { RecruiterOutreachSection } from '@/components/admin/RecruiterOutreachSection';
 import type { Lead, ClientProject } from '@/types';
 import { formatCurrency, sanitizePhone, safeFetchJson } from '@/lib/utils';
 
 export const AdminDashboard: React.FC = () => {
-  const [currentSection, setCurrentSection] = useState<'leads' | 'projects'>('leads');
+  const [currentSection, setCurrentSection] = useState<'leads' | 'projects' | 'outreach'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [projects, setProjects] = useState<ClientProject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,28 +282,39 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Primary Section Switcher */}
-      <div className="flex rounded-2xl bg-apple-gray-100 dark:bg-[#1C1C1E] p-1.5 border border-apple-gray-200 dark:border-[#38383A] max-w-md">
+      <div className="flex rounded-2xl bg-apple-gray-100 dark:bg-[#1C1C1E] p-1.5 border border-apple-gray-200 dark:border-[#38383A] max-w-xl">
         <button
           onClick={() => setCurrentSection('leads')}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
             currentSection === 'leads'
               ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
               : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
           }`}
         >
           <Inbox className="h-4 w-4 text-apple-blue" />
-          <span>Inquiry Leads ({leads.length})</span>
+          <span>Inquiries ({leads.length})</span>
         </button>
         <button
           onClick={() => setCurrentSection('projects')}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
             currentSection === 'projects'
               ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
               : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
           }`}
         >
           <FolderPlus className="h-4 w-4 text-apple-green" />
-          <span>Client Projects ({projects.length})</span>
+          <span>Projects ({projects.length})</span>
+        </button>
+        <button
+          onClick={() => setCurrentSection('outreach')}
+          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            currentSection === 'outreach'
+              ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
+              : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
+          }`}
+        >
+          <Send className="h-4 w-4 text-purple-500" />
+          <span>Outreach</span>
         </button>
       </div>
 
@@ -628,6 +641,13 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 3: RECRUITER OUTREACH & DISPATCH SERVICES                         */}
+      {/* ========================================================================= */}
+      {currentSection === 'outreach' && (
+        <RecruiterOutreachSection />
       )}
 
       {/* ========================================================================= */}

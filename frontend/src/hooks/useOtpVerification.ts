@@ -109,9 +109,12 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
       setIsRequesting(true);
       setError(null);
       setRecipient(cleanEmail);
+      const startTime = performance.now();
 
       try {
-        const res = await safeFetchJson<{ success?: boolean; message?: string; error?: string; devOtp?: string }>(
+        const numericBudget = budget ? Math.min(300000, Math.max(0, Number(budget) || 0)) : 0;
+
+        const res = await safeFetchJson<{ success?: boolean; message?: string; error?: string; devOtp?: string; durationMs?: number }>(
           '/api/lead/request-email-otp',
           {
             method: 'POST',
@@ -120,27 +123,33 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
               email: cleanEmail,
               name: name || 'Client',
               phone: phone || '',
-              budget: budget || 0,
+              budget: numericBudget,
               projectType: projectType || 'Website',
               scope: scope || '',
             }),
           }
         );
 
+        const totalElapsed = Math.round(performance.now() - startTime);
+
         if (!res.ok || !res.data?.success) {
           const errMsg = res.error || res.data?.error || 'Failed to send verification code.';
+          console.warn(`[OTP Client] Request failed in ${totalElapsed}ms:`, errMsg);
           setError(errMsg);
           if (onError) onError(errMsg);
           setIsRequesting(false);
           return false;
         }
 
+        console.log(`[OTP Client] Code dispatched in ${totalElapsed}ms to ${cleanEmail}`);
         setCountdown(cooldownSeconds);
         resetOtp();
         setIsRequesting(false);
         return true;
       } catch (err: any) {
+        const totalElapsed = Math.round(performance.now() - startTime);
         const errMsg = err?.message || 'Network error while requesting OTP.';
+        console.warn(`[OTP Client] Request error in ${totalElapsed}ms:`, errMsg);
         setError(errMsg);
         if (onError) onError(errMsg);
         setIsRequesting(false);
@@ -160,8 +169,14 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
 
       setIsVerifying(true);
       setError(null);
+      const startTime = performance.now();
 
       try {
+        const cleanLeadData = { ...leadData };
+        if (cleanLeadData.budget !== undefined && cleanLeadData.budget !== null) {
+          cleanLeadData.budget = Math.min(300000, Math.max(0, Number(cleanLeadData.budget) || 0));
+        }
+
         const res = await safeFetchJson<{
           success?: boolean;
           token?: string;
@@ -174,17 +189,22 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
           body: JSON.stringify({
             email: recipient,
             otp: fullOtp,
-            leadData,
+            leadData: cleanLeadData,
           }),
         });
 
+        const totalElapsed = Math.round(performance.now() - startTime);
+
         if (!res.ok || !res.data?.success) {
           const errMsg = res.error || res.data?.error || 'Invalid or expired OTP code.';
+          console.warn(`[OTP Client] Verification failed in ${totalElapsed}ms:`, errMsg);
           setError(errMsg);
           if (onError) onError(errMsg);
           setIsVerifying(false);
           return false;
         }
+
+        console.log(`[OTP Client] OTP verified successfully in ${totalElapsed}ms`);
 
         if (res.data.token) {
           localStorage.setItem('client_token', res.data.token);

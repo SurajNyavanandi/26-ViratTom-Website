@@ -33,12 +33,37 @@ export function getMinPrice(type: string): number {
   return PROJECT_MIN_PRICES[type] || 4999;
 }
 
+export function getApiBaseUrl(): string {
+  const customUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || '').trim();
+  return customUrl.replace(/\/+$/, '');
+}
+
+export function apiUrl(endpoint: string): string {
+  const base = getApiBaseUrl();
+  const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return base ? `${base}${cleanPath}` : cleanPath;
+}
+
 export async function safeFetchJson<T = any>(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit & { timeoutMs?: number }
 ): Promise<{ ok: boolean; status: number; data: T | null; error?: string }> {
+  const timeoutMs = init?.timeoutMs ?? 15000; // Default 15s client timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const res = await fetch(input, init);
+    let resolvedInput = input;
+    if (typeof input === 'string') {
+      resolvedInput = apiUrl(input);
+    }
+
+    const res = await fetch(resolvedInput, {
+      ...init,
+      signal: init?.signal || controller.signal,
+    });
+    clearTimeout(timeoutId);
+
     const contentType = res.headers.get('content-type') || '';
 
     if (!res.ok) {
@@ -66,11 +91,13 @@ export async function safeFetchJson<T = any>(
       error: 'Unexpected non-JSON response from server',
     };
   } catch (err: any) {
+    clearTimeout(timeoutId);
+    const isTimeout = err?.name === 'AbortError';
     return {
       ok: false,
       status: 0,
       data: null,
-      error: err?.message || 'Network request failed',
+      error: isTimeout ? 'Request timed out. Please try again.' : (err?.message || 'Network request failed'),
     };
   }
 }

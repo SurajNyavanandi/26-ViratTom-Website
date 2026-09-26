@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { successResponse } = require('../utils/apiResponse');
 const { asyncHandler } = require('../utils/errorHandler');
+const { getQueueMetrics } = require('../services/emailService');
 
 /**
  * Health Check Controller
@@ -11,8 +12,9 @@ const getHealthStatus = asyncHandler(async (req, res) => {
   const corsLabel = process.env.CORS_ORIGIN || 'virattom.com,*run.app,localhost';
   const authLabel = process.env.JWT_SECRET && process.env.ADMIN_EMAIL ? 'Configured' : 'Configured (Default-Key)';
   const port = process.env.PORT || 3000;
+  const mailMetrics = getQueueMetrics();
 
-  console.log(`[System Status] DB: ${dbLabel} | CORS: ${corsLabel} | API: Ready (:${port}) | Auth: ${authLabel}`);
+  console.log(`[System Status] DB: ${dbLabel} | CORS: ${corsLabel} | API: Ready (:${port}) | Auth: ${authLabel} | MailQueue: ${mailMetrics.pending} pending, ${mailMetrics.processed} processed`);
 
   const healthData = {
     status: 'ok',
@@ -22,6 +24,7 @@ const getHealthStatus = asyncHandler(async (req, res) => {
       status: dbLabel,
       connected: isDbConnected,
     },
+    mailQueue: mailMetrics,
     cors: corsLabel,
     auth: authLabel,
   };

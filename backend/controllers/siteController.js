@@ -18,7 +18,15 @@ const User = require('../models/User');
 const SiteStat = require('../models/SiteStat');
 
 // Services
-const { sendOtpEmail, sendLeadConfirmationEmail, sendPaymentReceiptEmail } = require('../services/emailService');
+const {
+  sendOtpEmail,
+  queueOtpEmail,
+  sendLeadConfirmationEmail,
+  queueLeadConfirmationEmail,
+  sendPaymentReceiptEmail,
+  queuePaymentReceiptEmail,
+  getQueueMetrics,
+} = require('../services/emailService');
 const { dispatchAlert } = require('../services/alertService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'virat-tom-secure-jwt-secret-key-2026';
@@ -129,12 +137,15 @@ const requestEmailOtpHandler = async (req, res) => {
 
   try {
     const isResumeRequest = projectType === 'Resume User' || String(scope || '').toLowerCase().includes('resume');
+    const rawBudget = Number.parseInt(budget) || 0;
+    const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
+
     const leadData = {
       name: name || (isResumeRequest ? 'Resume User' : 'Inquiry User'),
       email: cleanEmail,
       phone: cleanPhone || 'N/A',
       company,
-      budget: Number.parseInt(budget) || 0,
+      budget: cappedBudget,
       scope,
       projectType: projectType || (isResumeRequest ? 'Resume User' : 'Static Website'),
     };
@@ -142,38 +153,32 @@ const requestEmailOtpHandler = async (req, res) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Persist to MongoDB if connected
-    if (isDbReady()) {
-      try {
-        await EmailOtp.deleteMany({ email: cleanEmail });
-        await EmailOtp.create({
-          email: cleanEmail,
-          code,
-          expiresAt,
-          leadData,
-        });
-      } catch {
-        // MongoDB non-blocking fallback
-      }
-    }
-
-    // Memory store fallback
+    // Persist to Memory store instantly
     emailOtpStore.set(cleanEmail, { code, expiresAt: expiresAt.getTime(), email: cleanEmail, leadData });
 
-    // Send Real SMTP Email (or fallback to log)
-    await sendOtpEmail(
+    // Persist to MongoDB asynchronously without blocking client response if slow
+    if (isDbReady()) {
+      EmailOtp.deleteMany({ email: cleanEmail })
+        .then(() => EmailOtp.create({ email: cleanEmail, code, expiresAt, leadData }))
+        .catch(() => {});
+    }
+
+    // Dispatch Nodemailer email delivery via asynchronous non-blocking queue (< 1ms)
+    const jobId = queueOtpEmail(
       cleanEmail,
       code,
       name || 'Client',
       isResumeRequest ? 'Resume Builder' : 'Project Inquiry'
     );
 
+    // Return instant success response (< 10ms)
     return res.json({
       success: true,
       message: `Verification code sent to ${cleanEmail}`,
+      jobId,
     });
   } catch (error) {
-    console.error('[Email OTP Handler Error]', error);
+    console.error('[OTP Error]', error?.message || error);
     return res.status(500).json({ error: 'Could not send verification email. Please try again.' });
   }
 };
@@ -186,37 +191,41 @@ const verifyEmailOtpHandler = async (req, res) => {
   let isValid = false;
   let finalLeadData = leadData;
 
-  // 1. Check MongoDB
-  if (isDbReady()) {
+  // 1. Check Memory Store first for ultra-fast verification (< 1ms)
+  const memSession = emailOtpStore.get(cleanEmail);
+  if (memSession && memSession.code === inputOtp && Date.now() < memSession.expiresAt) {
+    isValid = true;
+    finalLeadData = memSession.leadData || leadData;
+    emailOtpStore.delete(cleanEmail);
+  }
+
+  // 2. Check MongoDB if not matched in memory
+  if (!isValid && isDbReady()) {
     try {
-      const dbOtp = await EmailOtp.findOne({ email: cleanEmail });
+      const dbOtp = await EmailOtp.findOne({ email: cleanEmail }).maxTimeMS(1200);
       if (dbOtp && dbOtp.code === inputOtp && new Date() < dbOtp.expiresAt) {
         isValid = true;
         finalLeadData = dbOtp.leadData || leadData;
-        await EmailOtp.deleteOne({ _id: dbOtp._id });
+        EmailOtp.deleteOne({ _id: dbOtp._id }).catch(() => {});
       }
     } catch {
-      // Fall back to memory
-    }
-  }
-
-  // 2. Check Memory Store if not found in DB
-  if (!isValid) {
-    const memSession = emailOtpStore.get(cleanEmail);
-    if (memSession && memSession.code === inputOtp && Date.now() < memSession.expiresAt) {
-      isValid = true;
-      finalLeadData = memSession.leadData || leadData;
-      emailOtpStore.delete(cleanEmail);
+      // Fall back to validation result
     }
   }
 
   if (!isValid) {
+    console.warn(`[OTP Verify Failed] For: ${cleanEmail} | Attempted Code: ${inputOtp}`);
     return res.status(400).json({ error: 'Invalid or expired verification code. Please check your email or request a new code.' });
   }
+
+  console.log(`[OTP Verified] Success for: ${cleanEmail}`);
 
   try {
     let savedLead = null;
     const isResume = finalLeadData.projectType === 'Resume User';
+    const rawBudget = Number(finalLeadData.budget) || 0;
+    const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
+    finalLeadData.budget = cappedBudget;
 
     // Persist Lead in MongoDB if connected
     if (isDbReady()) {
@@ -226,7 +235,7 @@ const verifyEmailOtpHandler = async (req, res) => {
           email: cleanEmail,
           phone: finalLeadData.phone || 'N/A',
           company: finalLeadData.company || '',
-          budget: finalLeadData.budget || 0,
+          budget: cappedBudget,
           scope: finalLeadData.scope || '',
           projectType: finalLeadData.projectType || 'Static Website',
           verified: true,
@@ -248,9 +257,9 @@ const verifyEmailOtpHandler = async (req, res) => {
       fallbackLeads.unshift(savedLead);
     }
 
-    // Send confirmation email to lead
+    // Send confirmation email to lead via non-blocking queue
     if (!isResume && cleanEmail.includes('@')) {
-      sendLeadConfirmationEmail(cleanEmail, finalLeadData).catch(() => {});
+      queueLeadConfirmationEmail(cleanEmail, finalLeadData);
     }
 
     // Trigger Instant Webhook Alerts (Telegram, Discord, Slack)
@@ -304,12 +313,15 @@ const submitLead = async (req, res) => {
     return res.status(400).json({ error: 'Email and phone number are required.' });
   }
 
+  const rawBudget = Number(budget) || 0;
+  const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
+
   const code = String(Math.floor(100000 + Math.random() * 900000));
   emailOtpStore.set(cleanEmail, {
     code,
     expiresAt: Date.now() + 10 * 60 * 1000,
     email: cleanEmail,
-    leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget, message, company }
+    leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
   });
 
   // Also send via SMTP email
@@ -570,16 +582,16 @@ const verifyRazorpayPayment = async (req, res) => {
       }
     }
 
-    // Send Payment Receipt Email via SMTP
+    // Send Payment Receipt Email via non-blocking background queue
     if (project.clientEmail) {
-      sendPaymentReceiptEmail(project.clientEmail, {
+      queuePaymentReceiptEmail(project.clientEmail, {
         amount: paidAmount,
         projectTitle: project.title,
         type: '20% Advance Milestone Payment',
         transactionId: txnId,
         orderId: razorpay_order_id,
         date: new Date().toLocaleDateString('en-IN'),
-      }).catch(() => {});
+      });
     }
 
     // Dispatch Instant Admin Alerts

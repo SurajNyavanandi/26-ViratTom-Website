@@ -2,6 +2,13 @@ const express = require('express');
 const router = express.Router();
 const healthRoutes = require('./healthRoutes');
 const authRoutes = require('./authRoutes');
+const outreachRoutes = require('./outreachRoutes');
+const {
+  handleSendFresherEmail,
+  handleSendExperiencedEmail,
+  handleFresherWhatsApp,
+  handleExperiencedWhatsApp,
+} = require('../controllers/outreachController');
 const {
   getProjects,
   submitLead,
@@ -45,6 +52,13 @@ router.post('/resume', generateResume);
 router.get('/resume/stats', getResumeStats);
 router.post('/resume/track-download', trackResumeDownload);
 router.post('/chat', handleAssistantChat);
+
+// Recruiter Outreach & Direct Dispatch Services
+router.use('/outreach', outreachRoutes);
+router.post('/send-fresher-email', handleSendFresherEmail);
+router.post('/send-experienced-email', handleSendExperiencedEmail);
+router.post('/send-fresher-whatsapp', handleFresherWhatsApp);
+router.post('/send-experienced-whatsapp', handleExperiencedWhatsApp);
 
 // Razorpay Webhooks (Automated asynchronous reconciliation)
 router.post('/payment/razorpay-webhook', handleRazorpayWebhook);

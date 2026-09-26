@@ -1,8 +1,12 @@
+const mongoose = require('mongoose');
 const PDFDocument = require('pdfkit');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
 const bcrypt = require('bcryptjs');
+
+// Helper to safely check active MongoDB connection before issuing Mongoose operations
+const isDbReady = () => Boolean(mongoose.connection && mongoose.connection.readyState === 1);
 
 // Mongoose Models
 const Lead = require('../models/Lead');
@@ -139,16 +143,18 @@ const requestEmailOtpHandler = async (req, res) => {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     // Persist to MongoDB if connected
-    try {
-      await EmailOtp.deleteMany({ email: cleanEmail });
-      await EmailOtp.create({
-        email: cleanEmail,
-        code,
-        expiresAt,
-        leadData,
-      });
-    } catch {
-      // MongoDB non-blocking fallback
+    if (isDbReady()) {
+      try {
+        await EmailOtp.deleteMany({ email: cleanEmail });
+        await EmailOtp.create({
+          email: cleanEmail,
+          code,
+          expiresAt,
+          leadData,
+        });
+      } catch {
+        // MongoDB non-blocking fallback
+      }
     }
 
     // Memory store fallback
@@ -181,15 +187,17 @@ const verifyEmailOtpHandler = async (req, res) => {
   let finalLeadData = leadData;
 
   // 1. Check MongoDB
-  try {
-    const dbOtp = await EmailOtp.findOne({ email: cleanEmail });
-    if (dbOtp && dbOtp.code === inputOtp && new Date() < dbOtp.expiresAt) {
-      isValid = true;
-      finalLeadData = dbOtp.leadData || leadData;
-      await EmailOtp.deleteOne({ _id: dbOtp._id });
+  if (isDbReady()) {
+    try {
+      const dbOtp = await EmailOtp.findOne({ email: cleanEmail });
+      if (dbOtp && dbOtp.code === inputOtp && new Date() < dbOtp.expiresAt) {
+        isValid = true;
+        finalLeadData = dbOtp.leadData || leadData;
+        await EmailOtp.deleteOne({ _id: dbOtp._id });
+      }
+    } catch {
+      // Fall back to memory
     }
-  } catch {
-    // Fall back to memory
   }
 
   // 2. Check Memory Store if not found in DB
@@ -210,21 +218,26 @@ const verifyEmailOtpHandler = async (req, res) => {
     let savedLead = null;
     const isResume = finalLeadData.projectType === 'Resume User';
 
-    // Persist Lead in MongoDB
-    try {
-      savedLead = await Lead.create({
-        name: finalLeadData.name || (isResume ? 'Resume User' : 'Verified Lead'),
-        email: cleanEmail,
-        phone: finalLeadData.phone || 'N/A',
-        company: finalLeadData.company || '',
-        budget: finalLeadData.budget || 0,
-        scope: finalLeadData.scope || '',
-        projectType: finalLeadData.projectType || 'Static Website',
-        verified: true,
-        ipAddress: req.ip || '',
-      });
-    } catch {
-      // Memory fallback
+    // Persist Lead in MongoDB if connected
+    if (isDbReady()) {
+      try {
+        savedLead = await Lead.create({
+          name: finalLeadData.name || (isResume ? 'Resume User' : 'Verified Lead'),
+          email: cleanEmail,
+          phone: finalLeadData.phone || 'N/A',
+          company: finalLeadData.company || '',
+          budget: finalLeadData.budget || 0,
+          scope: finalLeadData.scope || '',
+          projectType: finalLeadData.projectType || 'Static Website',
+          verified: true,
+          ipAddress: req.ip || '',
+        });
+      } catch {
+        // Fallback below
+      }
+    }
+
+    if (!savedLead) {
       savedLead = {
         _id: String(fallbackIdCounter++),
         ...finalLeadData,
@@ -314,14 +327,16 @@ const verifyOtp = async (req, res) => {
   const inputOtp = String(otp || '').trim();
 
   let isValid = false;
-  try {
-    const dbOtp = await EmailOtp.findOne({ email: cleanEmail });
-    if (dbOtp && dbOtp.code === inputOtp && new Date() < dbOtp.expiresAt) {
-      isValid = true;
-      await EmailOtp.deleteOne({ _id: dbOtp._id });
+  if (isDbReady()) {
+    try {
+      const dbOtp = await EmailOtp.findOne({ email: cleanEmail });
+      if (dbOtp && dbOtp.code === inputOtp && new Date() < dbOtp.expiresAt) {
+        isValid = true;
+        await EmailOtp.deleteOne({ _id: dbOtp._id });
+      }
+    } catch {
+      // fallback
     }
-  } catch {
-    // fallback
   }
 
   if (!isValid) {
@@ -351,10 +366,12 @@ const checkClientPhone = async (req, res) => {
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
 
   let project = null;
-  try {
-    project = await ClientProject.findOne({ clientPhone: cleanPhone });
-  } catch {
-    // Memory fallback
+  if (isDbReady()) {
+    try {
+      project = await ClientProject.findOne({ clientPhone: cleanPhone });
+    } catch {
+      // Memory fallback
+    }
   }
 
   if (!project) {
@@ -373,10 +390,12 @@ const loginClient = async (req, res) => {
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
 
   let project = null;
-  try {
-    project = await ClientProject.findOne({ clientPhone: cleanPhone });
-  } catch {
-    // Memory fallback
+  if (isDbReady()) {
+    try {
+      project = await ClientProject.findOne({ clientPhone: cleanPhone });
+    } catch {
+      // Memory fallback
+    }
   }
 
   if (!project) {
@@ -410,11 +429,13 @@ const getClientProject = async (req, res) => {
   const projectId = req.user?.projectId || '';
 
   let project = null;
-  try {
-    if (projectId) project = await ClientProject.findOne({ id: projectId });
-    if (!project && userPhone) project = await ClientProject.findOne({ clientPhone: userPhone });
-  } catch {
-    // Memory fallback
+  if (isDbReady()) {
+    try {
+      if (projectId) project = await ClientProject.findOne({ id: projectId });
+      if (!project && userPhone) project = await ClientProject.findOne({ clientPhone: userPhone });
+    } catch {
+      // Memory fallback
+    }
   }
 
   if (!project) {
@@ -503,10 +524,12 @@ const verifyRazorpayPayment = async (req, res) => {
 
     // Find and update project
     let project = null;
-    try {
-      project = await ClientProject.findOne({ $or: [{ id: projectId }, { clientPhone: req.user?.phone }] });
-    } catch {
-      // Memory fallback
+    if (isDbReady()) {
+      try {
+        project = await ClientProject.findOne({ $or: [{ id: projectId }, { clientPhone: req.user?.phone }] });
+      } catch {
+        // Memory fallback
+      }
     }
 
     if (!project) {
@@ -527,22 +550,24 @@ const verifyRazorpayPayment = async (req, res) => {
     });
 
     // Save to MongoDB
-    try {
-      if (project.save) await project.save();
-      await Payment.create({
-        orderId: razorpay_order_id || 'order_rec',
-        paymentId: txnId,
-        signature: razorpay_signature || '',
-        projectId: project.id || 'proj_1',
-        clientPhone: project.clientPhone || req.user?.phone,
-        clientEmail: project.clientEmail || '',
-        amount: paidAmount,
-        currency: 'INR',
-        paymentMethod: 'Razorpay',
-        status: 'Captured',
-      });
-    } catch (dbErr) {
-      console.warn('[DB Payment Sync]', dbErr.message);
+    if (isDbReady()) {
+      try {
+        if (project.save) await project.save();
+        await Payment.create({
+          orderId: razorpay_order_id || 'order_rec',
+          paymentId: txnId,
+          signature: razorpay_signature || '',
+          projectId: project.id || 'proj_1',
+          clientPhone: project.clientPhone || req.user?.phone,
+          clientEmail: project.clientEmail || '',
+          amount: paidAmount,
+          currency: 'INR',
+          paymentMethod: 'Razorpay',
+          status: 'Captured',
+        });
+      } catch (dbErr) {
+        console.warn('[DB Payment Sync]', dbErr.message);
+      }
     }
 
     // Send Payment Receipt Email via SMTP
@@ -789,14 +814,16 @@ const requestAdminForgotPassword = async (req, res) => {
 
   adminResetOtpStore.set(ADMIN_EMAIL, { code, expiresAt });
 
-  try {
-    await EmailOtp.findOneAndUpdate(
-      { email: ADMIN_EMAIL, type: 'admin_password_reset' },
-      { code, expiresAt: new Date(expiresAt), verified: false },
-      { upsert: true, new: true }
-    );
-  } catch {
-    // Memory fallback
+  if (isDbReady()) {
+    try {
+      await EmailOtp.findOneAndUpdate(
+        { email: ADMIN_EMAIL, type: 'admin_password_reset' },
+        { code, expiresAt: new Date(expiresAt), verified: false },
+        { upsert: true, returnDocument: 'after' }
+      );
+    } catch {
+      // Memory fallback
+    }
   }
 
   let emailSent = false;
@@ -839,7 +866,7 @@ const resetAdminPassword = async (req, res) => {
     adminResetOtpStore.delete(ADMIN_EMAIL);
   }
 
-  if (!isValidOtp) {
+  if (!isValidOtp && isDbReady()) {
     try {
       const dbOtp = await EmailOtp.findOne({
         email: ADMIN_EMAIL,
@@ -867,19 +894,21 @@ const resetAdminPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     inMemoryAdminPasswordHash = hashedPassword;
 
-    try {
-      await User.findOneAndUpdate(
-        { email: ADMIN_EMAIL },
-        {
-          name: 'Suraj Kanu',
-          email: ADMIN_EMAIL,
-          password: hashedPassword,
-          role: 'admin',
-        },
-        { upsert: true, new: true }
-      );
-    } catch (e) {
-      console.warn('[Admin Reset] MongoDB update warning:', e);
+    if (isDbReady()) {
+      try {
+        await User.findOneAndUpdate(
+          { email: ADMIN_EMAIL },
+          {
+            name: 'Suraj Kanu',
+            email: ADMIN_EMAIL,
+            password: hashedPassword,
+            role: 'admin',
+          },
+          { upsert: true, returnDocument: 'after' }
+        );
+      } catch (e) {
+        console.warn('[Admin Reset] MongoDB update warning:', e);
+      }
     }
 
     const token = jwt.sign(
@@ -909,10 +938,12 @@ const changeAdminPassword = async (req, res) => {
   try {
     let passwordMatches = false;
     let dbAdmin = null;
-    try {
-      dbAdmin = await User.findOne({ email: ADMIN_EMAIL, role: 'admin' }).select('+password');
-    } catch {
-      // Memory fallback
+    if (isDbReady()) {
+      try {
+        dbAdmin = await User.findOne({ email: ADMIN_EMAIL, role: 'admin' }).select('+password');
+      } catch {
+        // Memory fallback
+      }
     }
 
     if (dbAdmin && dbAdmin.password) {
@@ -929,7 +960,7 @@ const changeAdminPassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     inMemoryAdminPasswordHash = hashedPassword;
-    if (dbAdmin) {
+    if (dbAdmin && isDbReady()) {
       dbAdmin.password = hashedPassword;
       await dbAdmin.save();
     }
@@ -941,21 +972,25 @@ const changeAdminPassword = async (req, res) => {
 };
 
 const getLeads = async (req, res) => {
-  try {
-    const dbLeads = await Lead.find().sort({ createdAt: -1 }).limit(100);
-    if (dbLeads && dbLeads.length > 0) return res.json(dbLeads);
-  } catch {
-    // Fallback
+  if (isDbReady()) {
+    try {
+      const dbLeads = await Lead.find().sort({ createdAt: -1 }).limit(100);
+      if (dbLeads && dbLeads.length > 0) return res.json(dbLeads);
+    } catch {
+      // Fallback
+    }
   }
   return res.json(fallbackLeads);
 };
 
 const getAdminProjects = async (req, res) => {
-  try {
-    const dbProjects = await ClientProject.find().sort({ createdAt: -1 });
-    if (dbProjects && dbProjects.length > 0) return res.json(dbProjects);
-  } catch {
-    // Fallback
+  if (isDbReady()) {
+    try {
+      const dbProjects = await ClientProject.find().sort({ createdAt: -1 });
+      if (dbProjects && dbProjects.length > 0) return res.json(dbProjects);
+    } catch {
+      // Fallback
+    }
   }
   return res.json(clientProjects);
 };
@@ -1010,10 +1045,12 @@ const createAdminProject = async (req, res) => {
     }] : [],
   };
 
-  try {
-    await ClientProject.create(newProject);
-  } catch {
-    // Memory fallback
+  if (isDbReady()) {
+    try {
+      await ClientProject.create(newProject);
+    } catch {
+      // Memory fallback
+    }
   }
 
   clientProjects.unshift(newProject);
@@ -1028,11 +1065,13 @@ const updateAdminProject = async (req, res) => {
     Object.assign(project, req.body);
   }
 
-  try {
-    const updated = await ClientProject.findOneAndUpdate({ id }, req.body, { new: true });
-    if (updated) project = updated;
-  } catch {
-    // Fallback
+  if (isDbReady()) {
+    try {
+      const updated = await ClientProject.findOneAndUpdate({ id }, req.body, { returnDocument: 'after' });
+      if (updated) project = updated;
+    } catch {
+      // Fallback
+    }
   }
 
   if (!project) {
@@ -1049,10 +1088,12 @@ const deleteAdminProject = async (req, res) => {
     clientProjects.splice(index, 1);
   }
 
-  try {
-    await ClientProject.deleteOne({ id });
-  } catch {
-    // Fallback
+  if (isDbReady()) {
+    try {
+      await ClientProject.deleteOne({ id });
+    } catch {
+      // Fallback
+    }
   }
 
   return res.json({ success: true, message: 'Project deleted successfully' });
@@ -1176,66 +1217,71 @@ const generateResume = (req, res) => {
 };
 
 const getResumeStats = async (req, res) => {
-  try {
-    const stat = await SiteStat.findOne({ key: 'resume_downloads' });
-    if (stat && typeof stat.value === 'number') {
-      inMemoryResumeDownloads = stat.value;
-      return res.json({ success: true, downloads: stat.value });
-    }
-    // Seed initial stat in MongoDB if empty
+  if (isDbReady()) {
     try {
-      const created = await SiteStat.create({ key: 'resume_downloads', value: inMemoryResumeDownloads, lastUpdated: new Date() });
-      if (created) inMemoryResumeDownloads = created.value;
-    } catch (_e) {
-      // Ignored if key already exists
+      const stat = await SiteStat.findOne({ key: 'resume_downloads' });
+      if (stat && typeof stat.value === 'number') {
+        inMemoryResumeDownloads = stat.value;
+        return res.json({ success: true, downloads: stat.value });
+      }
+      // Seed initial stat in MongoDB if empty
+      try {
+        const created = await SiteStat.create({ key: 'resume_downloads', value: inMemoryResumeDownloads, lastUpdated: new Date() });
+        if (created) inMemoryResumeDownloads = created.value;
+      } catch (_e) {
+        // Ignored if key already exists
+      }
+      return res.json({ success: true, downloads: inMemoryResumeDownloads });
+    } catch {
+      // Ignored
     }
-    return res.json({ success: true, downloads: inMemoryResumeDownloads });
-  } catch (err) {
-    console.warn('[SiteStat MongoDB read warning]', err?.message);
-    return res.json({ success: true, downloads: inMemoryResumeDownloads });
   }
+  return res.json({ success: true, downloads: inMemoryResumeDownloads });
 };
 
 const trackResumeDownload = async (req, res) => {
   const { email } = req.body || {};
   const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
 
-  try {
-    const stat = await SiteStat.findOneAndUpdate(
-      { key: 'resume_downloads' },
-      { $inc: { value: 1 }, $set: { lastUpdated: new Date() } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    if (stat && typeof stat.value === 'number') {
-      inMemoryResumeDownloads = stat.value;
-    } else {
+  if (isDbReady()) {
+    try {
+      const stat = await SiteStat.findOneAndUpdate(
+        { key: 'resume_downloads' },
+        { $inc: { value: 1 }, $set: { lastUpdated: new Date() } },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+      );
+      if (stat && typeof stat.value === 'number') {
+        inMemoryResumeDownloads = stat.value;
+      } else {
+        inMemoryResumeDownloads += 1;
+      }
+
+      // Privately record and increment download stats for the specific user
+      if (cleanEmail) {
+        const now = new Date();
+        try {
+          await Lead.updateMany(
+            { email: cleanEmail },
+            { $inc: { downloadCount: 1 }, $push: { downloadTimestamps: now } }
+          );
+        } catch {
+          // Ignored
+        }
+
+        try {
+          await ResumeDraft.updateOne(
+            { email: cleanEmail },
+            { $inc: { downloadCount: 1 }, $push: { downloadTimestamps: now } }
+          );
+        } catch {
+          // Ignored
+        }
+      }
+    } catch {
       inMemoryResumeDownloads += 1;
     }
-
-    // Privately record and increment download stats for the specific user
-    if (cleanEmail) {
-      const now = new Date();
-      try {
-        await Lead.updateMany(
-          { email: cleanEmail },
-          { $inc: { downloadCount: 1 }, $push: { downloadTimestamps: now } }
-        );
-      } catch (leadErr) {
-        console.warn('[trackResumeDownload] Lead update notice:', leadErr?.message);
-      }
-
-      try {
-        await ResumeDraft.updateOne(
-          { email: cleanEmail },
-          { $inc: { downloadCount: 1 }, $push: { downloadTimestamps: now } }
-        );
-      } catch (draftErr) {
-        console.warn('[trackResumeDownload] ResumeDraft update notice:', draftErr?.message);
-      }
-    }
-  } catch (err) {
+  } else {
     inMemoryResumeDownloads += 1;
-    console.warn('[SiteStat MongoDB sync warning]', err?.message);
   }
 
   return res.json({ success: true, downloads: inMemoryResumeDownloads });

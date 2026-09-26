@@ -9,6 +9,7 @@ import { getMinPrice, getWhatsAppUrl, safeFetchJson } from '@/lib/utils';
 import { Validation } from '@/lib/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
+import { SEO } from '@/components/seo/SEO';
 import { DEFAULT_PORTFOLIO_PROJECTS, type PortfolioProject } from '@/types';
 
 export const Home = () => {
@@ -150,6 +151,13 @@ export const Home = () => {
 
   return (
     <div className="flex flex-col items-center">
+      <SEO
+        title="ViratTom | Full-Stack Web Developer & UI/UX Specialist | Custom Software & Web Apps"
+        description="Suraj Kanu (ViratTom) – Expert Full-Stack Developer & UI/UX Specialist. Building high-performance web applications, scalable SaaS systems, and free ATS-optimized developer tools."
+        keywords="Full Stack Web Developer, Hire Web Developer India, Custom Web Application Development, React Developer, Node.js Developer, Next.js Expert, UI/UX Designer, Free ATS Resume Builder, Modern Developer Resume Template PDF, Suraj Kanu, ViratTom"
+        canonical="https://virattom.com/"
+        ogImage="https://virattom.com/projects/inisio.png"
+      />
       {/* Hero Section */}
       <section className="w-full max-w-360 px-4 sm:px-8 py-16 sm:py-24 text-center md:py-32">
         <motion.div

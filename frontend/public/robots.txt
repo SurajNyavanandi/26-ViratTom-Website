@@ -1,0 +1,15 @@
+# Robots.txt for ViratTom (https://virattom.com)
+User-agent: *
+Allow: /
+Allow: /resume
+Disallow: /admin
+Disallow: /admin/
+Disallow: /client
+Disallow: /client/
+Disallow: /client-dashboard
+Disallow: /dashboard
+Disallow: /api/
+
+# Host & Sitemap
+Host: https://virattom.com
+Sitemap: https://virattom.com/sitemap.xml

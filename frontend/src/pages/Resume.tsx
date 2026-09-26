@@ -7,6 +7,7 @@ import { ResumeHeaderBar } from '@/components/resume/ResumeHeaderBar';
 import { ResumeEditorPanel, type EditorTab } from '@/components/editor/ResumeEditorPanel';
 import { ResumePreview } from '@/components/resume/ResumePreview';
 import { ResumeVerificationModal } from '@/components/resume/ResumeVerificationModal';
+import { SEO } from '@/components/seo/SEO';
 
 export const Resume = () => {
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('preview');
@@ -119,6 +120,36 @@ export const Resume = () => {
       `}</style>
 
       <div className="flex flex-col min-h-screen w-full bg-apple-white font-sans text-apple-black antialiased">
+        <SEO
+          title="Free Professional Resume Builder & ATS-Ready Template | ViratTom"
+          description="Build and export free ATS-friendly resumes online. Live dual-pane editor, customizable technical skills, work experience, projects, and instant PDF download."
+          keywords="Free ATS Resume Builder, Free Resume Maker Online, Developer CV Template, Software Engineer Resume PDF, ATS Friendly Resume Generator, ViratTom Resume Builder"
+          canonical="https://virattom.com/resume"
+          ogImage="https://virattom.com/projects/inisio.png"
+          jsonLd={{
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "Free Professional Resume Builder & ATS-Ready Template | ViratTom",
+            "url": "https://virattom.com/resume",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "All",
+            "browserRequirements": "Requires JavaScript. Requires HTML5.",
+            "description": "Free interactive live ATS-friendly resume builder and modern developer CV template generator with instant PDF download.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "ATS-Compliant Structure",
+              "Live Dual-Pane Visual Editor",
+              "One-Click PDF Export",
+              "Multi-Section Customization",
+              "Mobile-Responsive Auto-Scale Preview"
+            ]
+          }}
+        />
+
         {/* Top Header Bar */}
         <ResumeHeaderBar
           mobileView={mobileView}

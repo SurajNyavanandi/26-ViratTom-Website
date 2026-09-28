@@ -124,5 +124,13 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     url: 'https://urbanico.vercel.app/',
     imageUrl: '/projects/urbanico.png',
     description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
+  },
+  {
+    _id: '3',
+    title: 'RVM Carry Bags',
+    type: 'Static Website',
+    url: 'https://rvmcarrybags.com/',
+    imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
+    description: 'High-speed business website showcasing custom eco-friendly packaging and non-woven carry bags with fast WhatsApp inquiry.'
   }
 ];

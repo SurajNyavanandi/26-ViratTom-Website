@@ -143,7 +143,11 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
 
         console.log(`[OTP Client] Code dispatched in ${totalElapsed}ms to ${cleanEmail}`);
         setCountdown(cooldownSeconds);
-        resetOtp();
+        if (res.data?.devOtp && res.data.devOtp.length === 6) {
+          setOtp(res.data.devOtp.split(''));
+        } else {
+          resetOtp();
+        }
         setIsRequesting(false);
         return true;
       } catch (err: any) {

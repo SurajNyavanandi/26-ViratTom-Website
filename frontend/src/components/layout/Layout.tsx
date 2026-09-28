@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { Header } from './Header';
 import { Outlet, useNavigate, Link } from 'react-router-dom';
 import { Lock } from 'lucide-react';
-import { ChatWidget } from '../chat/ChatWidget';
+import { WhatsAppWidget } from '../whatsapp/WhatsAppWidget';
 
 export const Layout = () => {
   const navigate = useNavigate();
@@ -81,8 +81,8 @@ export const Layout = () => {
         </div>
       </footer>
 
-      {/* Floating Dynamic AI Assistant */}
-      <ChatWidget />
+      {/* Floating Verified WhatsApp Action Button */}
+      <WhatsAppWidget />
     </div>
   );
 };

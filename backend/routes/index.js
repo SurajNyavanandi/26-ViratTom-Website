@@ -35,8 +35,10 @@ const {
   updateAdminProject,
   createAdminProject,
   deleteAdminProject,
+  getProjectPrices,
+  updateProjectPrices,
+  getWhatsAppStatus,
 } = require('../controllers/siteController');
-const { handleAssistantChat } = require('../controllers/assistantController');
 const { protectAdmin, protectClient } = require('../middleware/authMiddleware');
 const { dispatchAlert } = require('../services/alertService');
 
@@ -44,18 +46,14 @@ router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
 
 router.get('/projects', getProjects);
+router.get('/project-prices', getProjectPrices);
 router.get('/config', (req, res) => {
   const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'kanusuraj15@gmail.com';
-  const adminPhone = process.env.ADMIN_PHONE || '9666635009';
-  const rawDigits = adminPhone.replace(/\D/g, '');
-  const whatsappNumber = rawDigits.length === 10 ? `91${rawDigits}` : rawDigits || '919666635009';
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_51xxxxxxxxxxxx';
 
   return res.json({
     success: true,
     adminEmail,
-    adminPhone,
-    whatsappNumber,
     razorpayKeyId,
     siteUrl: 'https://virattom.com',
   });
@@ -67,7 +65,6 @@ router.post('/verify-otp', verifyOtp);
 router.post('/resume', generateResume);
 router.get('/resume/stats', getResumeStats);
 router.post('/resume/track-download', trackResumeDownload);
-router.post('/chat', handleAssistantChat);
 
 // Recruiter Outreach & Direct Dispatch Services
 router.use('/outreach', outreachRoutes);
@@ -101,6 +98,10 @@ router.get('/admin/projects', protectAdmin, getAdminProjects);
 router.put('/admin/projects/:id', protectAdmin, updateAdminProject);
 router.post('/admin/projects', protectAdmin, createAdminProject);
 router.delete('/admin/projects/:id', protectAdmin, deleteAdminProject);
+router.get('/admin/project-prices', protectAdmin, getProjectPrices);
+router.put('/admin/project-prices', protectAdmin, updateProjectPrices);
+router.post('/admin/project-prices', protectAdmin, updateProjectPrices);
+router.get('/admin/whatsapp-status', protectAdmin, getWhatsAppStatus);
 
 // Admin trigger test alert
 router.post('/admin/test-alert', protectAdmin, async (req, res) => {

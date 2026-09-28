@@ -3,9 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle } from 'lucide-react';
+import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getMinPrice, getWhatsAppUrl, safeFetchJson } from '@/lib/utils';
+import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES } from '@/lib/utils';
 import { Validation } from '@/lib/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
@@ -16,6 +16,7 @@ export const Home = () => {
   const location = useLocation();
   const [projects, setProjects] = useState<PortfolioProject[]>(DEFAULT_PORTFOLIO_PROJECTS);
   const [loading, setLoading] = useState(false);
+  const [projectPrices, setProjectPrices] = useState<Record<string, number>>(PROJECT_MIN_PRICES);
   const [formState, setFormState] = useState({ 
     name: '', 
     email: '', 
@@ -24,6 +25,15 @@ export const Home = () => {
     scope: '', 
     projectType: 'Static Website' 
   });
+  const [submittedLead, setSubmittedLead] = useState<{
+    name: string;
+    email: string;
+    phone: string;
+    budget: string;
+    scope: string;
+    projectType: string;
+  } | null>(null);
+  const [routingNotice, setRoutingNotice] = useState<string | null>(null);
   const [formStatus, setFormStatus] = useState<'idle' | 'submitting' | 'otp' | 'success'>('idle');
   const [error, setError] = useState('');
 
@@ -46,12 +56,31 @@ export const Home = () => {
     cooldownSeconds: 60,
     onSuccess: (data) => {
       console.log('[Home Inquiry] Lead submitted and verified successfully! Lead ID:', data?.lead?._id);
+      setSubmittedLead({ ...formState });
+      localStorage.setItem('virattom_lead_verified', 'true');
+      sessionStorage.setItem('virattom_lead_verified', 'true');
+      localStorage.setItem('virattom_verified_lead_data', JSON.stringify({ ...formState }));
+      sessionStorage.setItem('virattom_verified_lead_data', JSON.stringify({ ...formState }));
       setFormStatus('success');
+      setRoutingNotice(null);
     },
     onError: (err) => {
       setError(err);
     }
   });
+
+  useEffect(() => {
+    const handleGate = (e: any) => {
+      const msg = e?.detail?.message || 'Please submit your project details first for instant WhatsApp routing.';
+      setRoutingNotice(msg);
+      const contactEl = document.getElementById('contact');
+      if (contactEl) {
+        contactEl.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('whatsapp-gate-triggered', handleGate);
+    return () => window.removeEventListener('whatsapp-gate-triggered', handleGate);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -72,10 +101,28 @@ export const Home = () => {
 
     loadProjects();
 
+    safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/project-prices').then(res => {
+      if (!isMounted) return;
+      if (res.ok && res.data?.prices) {
+        setProjectPrices(prev => ({ ...prev, ...res.data?.prices }));
+      }
+    }).catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, []);
+
+  const getProjectThreshold = useCallback((type: string) => {
+    return projectPrices[type] || PROJECT_MIN_PRICES[type] || 4999;
+  }, [projectPrices]);
+
+  const isPhoneValid = Boolean(
+    formState.phone.length === 10 &&
+    ['6', '7', '8', '9'].includes(formState.phone[0]) &&
+    !/^(\d)\1{9}$/.test(formState.phone) &&
+    !['0123456789', '1234567890', '0987654321', '9876543210'].includes(formState.phone)
+  );
 
   // Handle URL hash scrolling (e.g. #services, #pricing, #projects, #contact)
   useEffect(() => {
@@ -112,10 +159,17 @@ export const Home = () => {
     }
     
     const rawBudget = parseInt(formState.budget, 10);
+    const minThreshold = getProjectThreshold(formState.projectType);
     if (isNaN(rawBudget) || rawBudget <= 0) {
       setError('Please enter your estimated budget.');
       return;
     }
+
+    if (rawBudget < minThreshold) {
+      setError(`Minimum budget is ₹${minThreshold.toLocaleString('en-IN')}`);
+      return;
+    }
+
     const budget = Math.min(300000, rawBudget);
 
     setFormStatus('submitting');
@@ -648,22 +702,100 @@ export const Home = () => {
           </div>
 
           <Card className="p-5 sm:p-8 rounded-2xl border border-apple-gray-200">
+            {routingNotice && formStatus !== 'success' && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-5 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 text-[13px] flex items-center justify-between gap-3 shadow-2xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="h-6 w-6 rounded-full bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <MessageCircle className="h-3.5 w-3.5 fill-current" />
+                  </div>
+                  <span className="font-medium">{routingNotice}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRoutingNotice(null)}
+                  className="text-emerald-700 hover:text-emerald-900 text-[18px] leading-none px-1.5 cursor-pointer"
+                  title="Dismiss"
+                  aria-label="Dismiss notice"
+                >
+                  ×
+                </button>
+              </motion.div>
+            )}
+
             {formStatus === 'success' ? (
-              <div className="text-center py-8">
-                <CheckCircle className="mx-auto h-12 w-12 text-apple-green mb-4" />
-                <h3 className="text-[20px] font-semibold mb-2">Application Received</h3>
-                <p className="text-[16px] text-apple-gray-500 max-w-md mx-auto">
-                  Thank you, <span className="font-semibold text-apple-black">{formState.name}</span>! Your verified project details have been received. We will review your requirements and get in touch with you via email or phone shortly.
+              <div className="py-6 sm:py-8 text-center animate-in fade-in zoom-in-95 duration-300">
+                <div className="mx-auto h-14 w-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center mb-4 shadow-xs">
+                  <CheckCircle className="h-8 w-8 text-emerald-500" />
+                </div>
+
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 text-[12px] font-semibold tracking-wide uppercase mb-3">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Application Verified & Received
+                </span>
+
+                <h3 className="text-[22px] sm:text-[26px] font-semibold text-apple-black mb-2 tracking-tight">
+                  Thank you, {submittedLead?.name || formState.name}!
+                </h3>
+                <p className="text-[14px] sm:text-[15px] text-apple-gray-500 max-w-lg mx-auto mb-6 leading-relaxed">
+                  Your project requirements have been verified and saved to our engineering queue. For fastest response, connect directly with our team on WhatsApp below.
                 </p>
-                <div className="mt-6 flex justify-center">
+
+                {/* Submitted Lead Summary Box */}
+                <div className="max-w-md mx-auto mb-6 p-4 rounded-xl bg-apple-gray-100/70 border border-apple-gray-200/80 text-left text-[13px] space-y-2">
+                  <div className="flex items-center justify-between text-apple-gray-500">
+                    <span>Project Type:</span>
+                    <strong className="text-apple-black font-semibold">{submittedLead?.projectType || formState.projectType}</strong>
+                  </div>
+                  <div className="flex items-center justify-between text-apple-gray-500">
+                    <span>Estimated Budget:</span>
+                    <strong className="text-apple-black font-semibold">
+                      ₹{Number(submittedLead?.budget || formState.budget || 0).toLocaleString('en-IN')}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between text-apple-gray-500">
+                    <span>Verified Contact:</span>
+                    <span className="text-apple-black font-medium">{submittedLead?.phone || formState.phone} • {submittedLead?.email || formState.email}</span>
+                  </div>
+                  {Boolean(submittedLead?.scope || formState.scope) && (
+                    <div className="pt-1.5 border-t border-apple-gray-200 text-apple-gray-600">
+                      <span className="text-[12px] text-apple-gray-400 block mb-0.5">Project Scope:</span>
+                      <p className="line-clamp-2 text-[12.5px] italic text-apple-gray-700">
+                        "{submittedLead?.scope || formState.scope}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Prominent Fast Response WhatsApp Button with Pre-filled Lead Details */}
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto mb-3">
+                  <a
+                    href={getVerifiedWhatsAppUrl(submittedLead || formState)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-[14.5px] shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <MessageCircle className="h-5 w-5 fill-current" />
+                    <span>Fast Response: Continue on WhatsApp</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </a>
+                </div>
+                <p className="text-[11.5px] text-apple-gray-400 mb-6">
+                  Pre-fills your verified project inquiry directly into WhatsApp for priority routing.
+                </p>
+
+                <div className="flex justify-center pt-3 border-t border-apple-gray-200/60">
                   <Button 
                     variant="outline" 
                     onClick={() => {
                       setFormStatus('idle');
                       setFormState({ name: '', email: '', phone: '', budget: '', scope: '', projectType: 'Static Website' });
-                      setOtp('');
+                      setSubmittedLead(null);
                     }}
-                    className="rounded-xl text-[13px]"
+                    className="rounded-xl text-[13px] h-9"
                   >
                     Submit Another Inquiry
                   </Button>
@@ -764,9 +896,17 @@ export const Home = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[14px] font-medium mb-1.5">Mobile Number</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[14px] font-medium">Mobile Number</label>
+                    {isPhoneValid && (
+                      <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Valid Mobile Number
+                      </span>
+                    )}
+                  </div>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] text-apple-gray-400 font-medium">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] text-apple-gray-400 font-medium z-10 pointer-events-none">
                       +91
                     </span>
                     <Input 
@@ -774,7 +914,11 @@ export const Home = () => {
                       required 
                       maxLength={10}
                       placeholder="10-digit mobile number"
-                      className="pl-12 rounded-xl"
+                      className={`pl-12 pr-10 rounded-xl transition-all ${
+                        isPhoneValid
+                          ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/20 bg-emerald-50/15 dark:bg-emerald-950/10'
+                          : ''
+                      }`}
                       value={formState.phone} 
                       onChange={e => {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
@@ -782,6 +926,11 @@ export const Home = () => {
                         if (error) setError('');
                       }} 
                     />
+                    {isPhoneValid && (
+                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-500 animate-in zoom-in-75">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -792,7 +941,7 @@ export const Home = () => {
                     required 
                     min="1"
                     max="300000"
-                    placeholder="Enter budget"
+                    placeholder="Enter estimated budget"
                     value={formState.budget} 
                     onChange={e => {
                       const val = e.target.value;
@@ -831,21 +980,6 @@ export const Home = () => {
                 <Button type="submit" className="w-full h-11 rounded-xl text-[14px]" isLoading={formStatus === 'submitting'}>
                   Continue
                 </Button>
-
-                <div className="pt-2 flex items-center justify-center">
-                  <a
-                    href={getWhatsAppUrl()}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-[13px] font-medium text-apple-gray-600 hover:text-[#25D366] transition-colors py-1.5 px-3.5 rounded-full hover:bg-[#25D366]/10"
-                    title="Chat on WhatsApp"
-                  >
-                    <div className="h-6 w-6 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-xs">
-                      <MessageCircle className="h-3.5 w-3.5" />
-                    </div>
-                    <span>Chat on WhatsApp</span>
-                  </a>
-                </div>
               </form>
             )}
           </Card>

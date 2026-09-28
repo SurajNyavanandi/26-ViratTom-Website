@@ -24,7 +24,8 @@ import {
   UserCheck,
   ExternalLink,
   Plus,
-  Send
+  Send,
+  Save
 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -34,13 +35,25 @@ import type { Lead, ClientProject } from '@/types';
 import { formatCurrency, sanitizePhone, safeFetchJson, apiUrl } from '@/lib/utils';
 
 export const AdminDashboard: React.FC = () => {
-  const [currentSection, setCurrentSection] = useState<'leads' | 'projects' | 'outreach'>('leads');
+  const [currentSection, setCurrentSection] = useState<'leads' | 'projects' | 'outreach' | 'pricing'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [projects, setProjects] = useState<ClientProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'pending'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Base Prices Configuration State
+  const [projectPrices, setProjectPrices] = useState<Record<string, number>>({
+    'Static Website': 4999,
+    'Dynamic Website': 9999,
+    'Online Store': 14999,
+    'Mobile App': 25999,
+    'Website + Mobile App': 32999,
+  });
+  const [savingPrices, setSavingPrices] = useState(false);
+  const [priceSaveSuccess, setPriceSaveSuccess] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   // New Project Modal State
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -62,12 +75,16 @@ export const AdminDashboard: React.FC = () => {
     const headers = { 'Authorization': `Bearer ${token || ''}` };
     
     try {
-      const [leadsRes, projectsRes] = await Promise.all([
+      const [leadsRes, projectsRes, pricesRes] = await Promise.all([
         safeFetchJson<Lead[]>('/api/admin/leads', { headers }),
-        safeFetchJson<ClientProject[]>('/api/admin/projects', { headers })
+        safeFetchJson<ClientProject[]>('/api/admin/projects', { headers }),
+        safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/admin/project-prices', { headers })
       ]);
       setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
       setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+      if (pricesRes.data?.prices) {
+        setProjectPrices(prev => ({ ...prev, ...pricesRes.data.prices }));
+      }
     } catch (err) {
       console.error("Admin data fetch error:", err);
     } finally {
@@ -82,11 +99,15 @@ export const AdminDashboard: React.FC = () => {
 
     Promise.all([
       safeFetchJson<Lead[]>('/api/admin/leads', { headers }),
-      safeFetchJson<ClientProject[]>('/api/admin/projects', { headers })
-    ]).then(([leadsRes, projectsRes]) => {
+      safeFetchJson<ClientProject[]>('/api/admin/projects', { headers }),
+      safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/admin/project-prices', { headers })
+    ]).then(([leadsRes, projectsRes, pricesRes]) => {
       if (!isMounted) return;
       setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
       setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
+      if (pricesRes.data?.prices) {
+        setProjectPrices(prev => ({ ...prev, ...pricesRes.data.prices }));
+      }
       setLoading(false);
     }).catch((err) => {
       console.error("Admin data fetch error:", err);
@@ -97,6 +118,37 @@ export const AdminDashboard: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  const handleSavePrices = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingPrices(true);
+    setPriceError(null);
+    setPriceSaveSuccess(false);
+    const token = localStorage.getItem('admin_token');
+
+    try {
+      const res = await fetch(apiUrl('/api/admin/project-prices'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prices: projectPrices })
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setPriceSaveSuccess(true);
+        if (data.prices) setProjectPrices(data.prices);
+        setTimeout(() => setPriceSaveSuccess(false), 3000);
+      } else {
+        setPriceError(data?.error || 'Failed to update base prices');
+      }
+    } catch (err: any) {
+      setPriceError(err.message || 'Network error while saving base prices');
+    } finally {
+      setSavingPrices(false);
+    }
+  };
 
   const handleCopyPhone = (phone: string, id: string) => {
     navigator.clipboard.writeText(phone);
@@ -315,6 +367,17 @@ export const AdminDashboard: React.FC = () => {
         >
           <Send className="h-4 w-4 text-purple-500" />
           <span>Outreach</span>
+        </button>
+        <button
+          onClick={() => setCurrentSection('pricing')}
+          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            currentSection === 'pricing'
+              ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
+              : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
+          }`}
+        >
+          <DollarSign className="h-4 w-4 text-emerald-500" />
+          <span>Base Prices</span>
         </button>
       </div>
 
@@ -651,6 +714,114 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* SECTION 4: BASE PRICING & MINIMUM BUDGET THRESHOLDS                        */}
+      {/* ========================================================================= */}
+      {currentSection === 'pricing' && (
+        <Card className="p-6 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-apple-gray-200 dark:border-[#38383A]">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                <h2 className="text-[20px] sm:text-[22px] font-bold text-apple-black dark:text-white">
+                  Base Project Prices & Thresholds
+                </h2>
+              </div>
+              <p className="text-[13px] sm:text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mt-1">
+                Configure starting budget thresholds for client inquiry validation. If a client enters a budget lower than these amounts, the form will guide them to meet the minimum threshold.
+              </p>
+            </div>
+            {priceSaveSuccess && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[13px] font-medium animate-in fade-in">
+                <Check className="h-4 w-4" />
+                <span>Base prices saved!</span>
+              </div>
+            )}
+          </div>
+
+          {priceError && (
+            <div className="p-3 rounded-xl bg-apple-red/10 border border-apple-red/20 text-apple-red text-[13px]">
+              {priceError}
+            </div>
+          )}
+
+          <form onSubmit={handleSavePrices} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[
+                { key: 'Static Website', default: 4999, desc: '1 to 5 page simple website with fast WhatsApp inquiry' },
+                { key: 'Dynamic Website', default: 9999, desc: 'Interactive web app with database & auth' },
+                { key: 'Online Store', default: 14999, desc: 'E-commerce catalog with cart & checkout' },
+                { key: 'Mobile App', default: 25999, desc: 'Smartphone app for Android & iOS' },
+                { key: 'Website + Mobile App', default: 32999, desc: 'Complete synchronized web & app suite' },
+              ].map(({ key, desc }) => (
+                <div 
+                  key={key}
+                  className="p-4 sm:p-5 rounded-2xl border border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-50/50 dark:bg-[#2C2C2E]/30 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[14px] font-semibold text-apple-black dark:text-white">
+                      {key}
+                    </span>
+                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-apple-blue/10 text-apple-blue">
+                      Min Threshold
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-apple-gray-500 line-clamp-2">{desc}</p>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-apple-gray-400 font-semibold text-[14px]">
+                      ₹
+                    </span>
+                    <Input
+                      type="number"
+                      min="1"
+                      required
+                      value={projectPrices[key] ?? ''}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setProjectPrices({ ...projectPrices, [key]: val });
+                      }}
+                      className="pl-8 rounded-xl font-semibold text-[15px]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-apple-gray-200 dark:border-[#38383A]">
+              <span className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
+                Changes take effect immediately on virattom.com inquiry verification.
+              </span>
+              <Button
+                type="submit"
+                disabled={savingPrices}
+                className="w-full sm:w-auto rounded-xl px-6 min-h-[42px] font-semibold gap-2"
+              >
+                {savingPrices ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span>{savingPrices ? 'Saving...' : 'Save Base Prices'}</span>
+              </Button>
+            </div>
+          </form>
+
+          {/* Silent WhatsApp Verification Engine Status */}
+          <div className="p-4 sm:p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-[14px] font-semibold text-apple-black dark:text-white">
+                  Silent WhatsApp Verification Engine
+                </h3>
+              </div>
+              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
+                Active & Silent
+              </span>
+            </div>
+            <p className="text-[12.5px] text-apple-gray-600 dark:text-apple-gray-300 leading-relaxed">
+              Every incoming lead’s mobile number is validated silently in the background before processing. Uses Indian telecom TRAI allocation + Meta WhatsApp Cloud API contacts check. <strong>Users receive no notifications or prompts</strong> and dummy numbers (e.g. 0000000000, 1234567890, non-mobile series) are automatically filtered out.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL: CREATE NEW CLIENT PROJECT                                          */}
       {/* ========================================================================= */}
       {showNewProjectModal && (
@@ -697,7 +868,7 @@ export const AdminDashboard: React.FC = () => {
                     required
                     type="tel"
                     maxLength={10}
-                    placeholder={`e.g. ${(import.meta.env.VITE_ADMIN_PHONE || '9666635009')}`}
+                    placeholder="e.g. 9876543210"
                     value={projectForm.clientPhone}
                     onChange={e => setProjectForm({ ...projectForm, clientPhone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                     className="rounded-xl"

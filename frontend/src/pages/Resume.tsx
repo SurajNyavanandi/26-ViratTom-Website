@@ -40,7 +40,7 @@ export const Resume = () => {
   } = useResumeData();
 
   // 2. Responsive Auto-Fit Zoom Hook
-  const { scale, zoomIn, zoomOut, resetZoom } = useAutoFitScale(containerRef, mobileView);
+  const { scale } = useAutoFitScale(containerRef, mobileView);
 
   // 3. User Verification & OTP Hook
   const verification = useResumeVerification({
@@ -193,9 +193,6 @@ export const Resume = () => {
             downloadCount={verification.downloadCount}
             isDummyPreview={isDummyPreview}
             mobileView={mobileView}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onResetZoom={resetZoom}
             onLoadSampleData={loadSampleData}
           />
         </div>

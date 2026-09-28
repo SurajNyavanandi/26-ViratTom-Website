@@ -44,6 +44,14 @@ const leadSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    whatsappVerified: {
+      type: Boolean,
+      default: false,
+    },
+    waId: {
+      type: String,
+      default: '',
+    },
     downloadCount: {
       type: Number,
       default: 0,

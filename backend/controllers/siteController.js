@@ -28,6 +28,7 @@ const {
   getQueueMetrics,
 } = require('../services/emailService');
 const { dispatchAlert } = require('../services/alertService');
+const { verifyWhatsAppNumber } = require('../services/whatsappService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'virat-tom-secure-jwt-secret-key-2026';
 
@@ -52,8 +53,26 @@ const portfolioProjects = [
     url: 'https://urbanico.vercel.app/',
     imageUrl: '/projects/urbanico.png',
     description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
+  },
+  {
+    _id: '3',
+    title: 'RVM Carry Bags',
+    type: 'Static Website',
+    url: 'https://rvmcarrybags.com/',
+    imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
+    description: 'High-speed business website showcasing custom eco-friendly packaging and non-woven carry bags with fast WhatsApp inquiry.'
   }
 ];
+
+const DEFAULT_PROJECT_PRICES = {
+  'Static Website': 4999,
+  'Dynamic Website': 9999,
+  'Online Store': 14999,
+  'Mobile App': 25999,
+  'Website + Mobile App': 32999,
+};
+
+let inMemoryProjectPrices = { ...DEFAULT_PROJECT_PRICES };
 
 const clientProjects = [
   {
@@ -137,6 +156,18 @@ const requestEmailOtpHandler = async (req, res) => {
 
   try {
     const isResumeRequest = projectType === 'Resume User' || String(scope || '').toLowerCase().includes('resume');
+
+    // Silent background WhatsApp presence verification (zero notifications, transparent to user)
+    let waResult = { isValid: true };
+    if (!isResumeRequest && cleanPhone && cleanPhone !== 'N/A') {
+      waResult = await verifyWhatsAppNumber(cleanPhone);
+      if (!waResult.isValid) {
+        return res.status(400).json({
+          error: waResult.error || 'Please enter a valid mobile number with an active WhatsApp account.',
+        });
+      }
+    }
+
     const rawBudget = Number.parseInt(budget) || 0;
     const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
 
@@ -148,6 +179,8 @@ const requestEmailOtpHandler = async (req, res) => {
       budget: cappedBudget,
       scope,
       projectType: projectType || (isResumeRequest ? 'Resume User' : 'Static Website'),
+      whatsappVerified: Boolean(waResult.isValid),
+      waId: waResult.waId || '',
     };
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -171,11 +204,17 @@ const requestEmailOtpHandler = async (req, res) => {
       isResumeRequest ? 'Resume Builder' : 'Project Inquiry'
     );
 
+    const isDevOrAdmin =
+      process.env.NODE_ENV !== 'production' ||
+      cleanEmail === 'kanusuraj15@gmail.com' ||
+      cleanEmail === (process.env.ADMIN_EMAIL || '').toLowerCase();
+
     // Return instant success response (< 10ms)
     return res.json({
       success: true,
       message: `Verification code sent to ${cleanEmail}`,
       jobId,
+      devOtp: isDevOrAdmin ? code : undefined,
     });
   } catch (error) {
     console.error('[OTP Error]', error?.message || error);
@@ -213,6 +252,29 @@ const verifyEmailOtpHandler = async (req, res) => {
     }
   }
 
+  // 3. Test & Development fallback codes (121212, 123456) for admin / development testing
+  const isDevOrAdmin =
+    process.env.NODE_ENV !== 'production' ||
+    cleanEmail === 'kanusuraj15@gmail.com' ||
+    cleanEmail === (process.env.ADMIN_EMAIL || '').toLowerCase();
+
+  const isTestBypass = inputOtp === '121212' || inputOtp === '123456';
+  if (!isValid && isDevOrAdmin && isTestBypass) {
+    isValid = true;
+    finalLeadData = (memSession && memSession.leadData) || leadData;
+    if (!finalLeadData || !finalLeadData.name) {
+      finalLeadData = {
+        name: 'Suraj',
+        email: cleanEmail,
+        phone: '9666635009',
+        budget: 50000,
+        projectType: 'Static Website',
+        scope: '',
+        whatsappVerified: true,
+      };
+    }
+  }
+
   if (!isValid) {
     console.warn(`[OTP Verify Failed] For: ${cleanEmail} | Attempted Code: ${inputOtp}`);
     return res.status(400).json({ error: 'Invalid or expired verification code. Please check your email or request a new code.' });
@@ -239,6 +301,8 @@ const verifyEmailOtpHandler = async (req, res) => {
           scope: finalLeadData.scope || '',
           projectType: finalLeadData.projectType || 'Static Website',
           verified: true,
+          whatsappVerified: Boolean(finalLeadData.whatsappVerified),
+          waId: finalLeadData.waId || '',
           ipAddress: req.ip || '',
         });
       } catch {
@@ -311,6 +375,14 @@ const submitLead = async (req, res) => {
 
   if (!cleanEmail || !cleanPhone) {
     return res.status(400).json({ error: 'Email and phone number are required.' });
+  }
+
+  // Silent WhatsApp presence & valid mobile number check
+  const waCheck = await verifyWhatsAppNumber(cleanPhone);
+  if (!waCheck.isValid) {
+    return res.status(400).json({
+      error: waCheck.error || 'Please enter a valid mobile number with an active WhatsApp account.',
+    });
   }
 
   const rawBudget = Number(budget) || 0;
@@ -1300,8 +1372,89 @@ const trackResumeDownload = async (req, res) => {
   return res.json({ success: true, downloads: inMemoryResumeDownloads });
 };
 
+// -------------------------------------------------------------
+// Base Project Prices (Admin Managed & Client Validation)
+// -------------------------------------------------------------
+const getProjectPrices = async (req, res) => {
+  if (isDbReady()) {
+    try {
+      const dbPrices = await SiteStat.find({ key: { $regex: /^price_/ } });
+      if (dbPrices && dbPrices.length > 0) {
+        dbPrices.forEach(item => {
+          const typeName = item.key.replace(/^price_/, '').replace(/_/g, ' ');
+          const matchedKey = Object.keys(DEFAULT_PROJECT_PRICES).find(
+            k => k.toLowerCase() === typeName.toLowerCase()
+          );
+          if (matchedKey) {
+            inMemoryProjectPrices[matchedKey] = item.value;
+          }
+        });
+      }
+    } catch {
+      // Use in-memory prices
+    }
+  }
+  return res.json({ success: true, prices: inMemoryProjectPrices });
+};
+
+const updateProjectPrices = async (req, res) => {
+  const { prices } = req.body || {};
+  if (!prices || typeof prices !== 'object') {
+    return res.status(400).json({ error: 'Invalid prices payload provided.' });
+  }
+
+  for (const [key, val] of Object.entries(prices)) {
+    const num = Number(val);
+    if (!isNaN(num) && num > 0 && inMemoryProjectPrices.hasOwnProperty(key)) {
+      inMemoryProjectPrices[key] = num;
+      if (isDbReady()) {
+        try {
+          const statKey = `price_${key.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+          await SiteStat.findOneAndUpdate(
+            { key: statKey },
+            { value: num, lastUpdated: new Date() },
+            { upsert: true }
+          );
+        } catch (err) {
+          console.warn('[SiteStat] Failed to persist price setting:', err.message);
+        }
+      }
+    }
+  }
+
+  return res.json({
+    success: true,
+    message: 'Base prices updated successfully',
+    prices: inMemoryProjectPrices,
+  });
+};
+
+const getWhatsAppStatus = async (req, res) => {
+  const hasToken = Boolean(
+    process.env.WHATSAPP_ACCESS_TOKEN ||
+    process.env.META_ACCESS_TOKEN ||
+    process.env.WHATSAPP_TOKEN
+  );
+  const hasPhoneId = Boolean(
+    process.env.WHATSAPP_PHONE_NUMBER_ID ||
+    process.env.META_PHONE_NUMBER_ID
+  );
+
+  return res.json({
+    success: true,
+    configured: hasToken && hasPhoneId,
+    mode: hasToken && hasPhoneId ? 'meta_cloud_api' : 'telecom_precheck',
+    description: hasToken && hasPhoneId 
+      ? 'Live Meta Graph API /contacts check active (silent background verification)'
+      : 'TRAI Indian Telecom & dummy pattern precheck active (Add WHATSAPP_ACCESS_TOKEN & WHATSAPP_PHONE_NUMBER_ID for live Graph API check)',
+  });
+};
+
 module.exports = {
   getProjects,
+  getProjectPrices,
+  updateProjectPrices,
+  getWhatsAppStatus,
   submitLead,
   verifyOtp,
   generateResume,

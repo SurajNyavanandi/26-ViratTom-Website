@@ -21,13 +21,53 @@ export function getWhatsAppUrl(customText = 'Hello ViratTom Team, I would like t
   return targetNumber ? `https://wa.me/${targetNumber}?text=${encoded}` : `https://wa.me/919666635009?text=${encoded}`;
 }
 
+export function getVerifiedWhatsAppUrl(lead: {
+  name: string;
+  email: string;
+  phone: string;
+  projectType: string;
+  budget: string | number;
+  scope?: string;
+}): string {
+  const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '919666635009').replace(/\D/g, '');
+  const targetNumber = rawWaNumber.length === 10 ? `91${rawWaNumber}` : rawWaNumber;
+
+  const numBudget = typeof lead.budget === 'number' ? lead.budget : Number(lead.budget) || 0;
+  const formattedBudget = numBudget > 0 ? `₹${numBudget.toLocaleString('en-IN')}` : 'To be discussed';
+
+  const lines = [
+    `Hello ViratTom Team,`,
+    `I have just submitted my project details on virattom.com:`,
+    `• Name: ${lead.name}`,
+    `• Email: ${lead.email}`,
+    `• Phone: ${lead.phone}`,
+    `• Project Type: ${lead.projectType}`,
+    `• Budget: ${formattedBudget}`,
+  ];
+  if (lead.scope && lead.scope.trim()) {
+    lines.push(`• Scope: ${lead.scope.trim()}`);
+  }
+  lines.push(`Looking forward to fast-tracking this project discussion!`);
+
+  const encoded = encodeURIComponent(lines.join('\n'));
+  return targetNumber ? `https://wa.me/${targetNumber}?text=${encoded}` : `https://wa.me/919666635009?text=${encoded}`;
+}
+
+export function triggerWhatsAppGate(noticeMessage = 'Please submit your project details first for instant WhatsApp routing.') {
+  const contactEl = document.getElementById('contact');
+  if (contactEl) {
+    contactEl.scrollIntoView({ behavior: 'smooth' });
+    window.dispatchEvent(new CustomEvent('whatsapp-gate-triggered', { detail: { message: noticeMessage } }));
+  }
+}
+
 export const PROJECT_MIN_PRICES: Record<string, number> = {
   'Static Website': 4999,
-  'Dynamic Website': 14999,
-  'Online Store': 25999,
-  'Online Store (E-Commerce)': 25999,
-  'Mobile App': 39000,
-  'Website + Mobile App': 49000,
+  'Dynamic Website': 9999,
+  'Online Store': 14999,
+  'Online Store (E-Commerce)': 14999,
+  'Mobile App': 25999,
+  'Website + Mobile App': 32999,
 };
 
 export function getMinPrice(type: string): number {

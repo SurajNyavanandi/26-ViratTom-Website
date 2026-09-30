@@ -14,11 +14,11 @@ export function formatCurrency(amount: number | string): string {
   return `₹${num.toLocaleString('en-IN')}`;
 }
 
+const DEFAULT_WHATSAPP_NUMBER = '919666635009';
+
 export function getWhatsAppUrl(customText = 'Hello ViratTom Team, I would like to discuss a project.'): string {
-  const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '919666635009').replace(/\D/g, '');
-  const targetNumber = rawWaNumber.length === 10 ? `91${rawWaNumber}` : rawWaNumber;
   const encoded = encodeURIComponent(customText);
-  return targetNumber ? `https://wa.me/${targetNumber}?text=${encoded}` : `https://wa.me/919666635009?text=${encoded}`;
+  return `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}?text=${encoded}`;
 }
 
 export function getVerifiedWhatsAppUrl(lead: {
@@ -29,9 +29,6 @@ export function getVerifiedWhatsAppUrl(lead: {
   budget: string | number;
   scope?: string;
 }): string {
-  const rawWaNumber = (import.meta.env.VITE_WHATSAPP_NUMBER || '919666635009').replace(/\D/g, '');
-  const targetNumber = rawWaNumber.length === 10 ? `91${rawWaNumber}` : rawWaNumber;
-
   const numBudget = typeof lead.budget === 'number' ? lead.budget : Number(lead.budget) || 0;
   const formattedBudget = numBudget > 0 ? `₹${numBudget.toLocaleString('en-IN')}` : 'To be discussed';
 
@@ -50,7 +47,7 @@ export function getVerifiedWhatsAppUrl(lead: {
   lines.push(`Looking forward to fast-tracking this project discussion!`);
 
   const encoded = encodeURIComponent(lines.join('\n'));
-  return targetNumber ? `https://wa.me/${targetNumber}?text=${encoded}` : `https://wa.me/919666635009?text=${encoded}`;
+  return `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}?text=${encoded}`;
 }
 
 export function triggerWhatsAppGate(noticeMessage = 'Please submit your project details first for instant WhatsApp routing.') {
@@ -75,11 +72,15 @@ export function getMinPrice(type: string): number {
 }
 
 export function getApiBaseUrl(): string {
-  const customUrl = (import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || '').trim();
+  const env = import.meta.env as Record<string, any>;
+  const customUrl = (env.BACKEND_API_URL || env.VITE_API_URL || '').trim();
   return customUrl.replace(/\/+$/, '');
 }
 
 export function apiUrl(endpoint: string): string {
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
   const base = getApiBaseUrl();
   const cleanPath = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   return base ? `${base}${cleanPath}` : cleanPath;

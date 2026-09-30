@@ -15,11 +15,12 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { apiUrl } from '@/utils/utils';
-
-const ADMIN_EMAIL = (import.meta.env.VITE_ADMIN_EMAIL || 'kanusuraj15@gmail.com').trim().toLowerCase();
+import { useAppConfig } from '@/hooks/useAppConfig';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const config = useAppConfig();
+  const ADMIN_EMAIL = (config.adminEmail || 'kanusuraj15@gmail.com').trim().toLowerCase();
 
   // Mode: 'login' | 'forgot_email' | 'forgot_otp'
   const [mode, setMode] = useState<'login' | 'forgot_email' | 'forgot_otp'>('login');

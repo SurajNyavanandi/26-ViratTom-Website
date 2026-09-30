@@ -128,7 +128,7 @@ export const Resume = () => {
             "@context": "https://schema.org",
             "@type": "WebApplication",
             "name": "Free Professional Resume Builder & ATS-Ready Template | ViratTom",
-            "url": `${(import.meta.env.VITE_SITE_URL || 'https://virattom.com').replace(/\/+$/, '')}/resume`,
+            "url": `${(typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://virattom.com').replace(/\/+$/, '')}/resume`,
             "applicationCategory": "BusinessApplication",
             "operatingSystem": "All",
             "browserRequirements": "Requires JavaScript. Requires HTML5.",

@@ -49,13 +49,18 @@ router.get('/projects', getProjects);
 router.get('/project-prices', getProjectPrices);
 router.get('/config', (req, res) => {
   const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'kanusuraj15@gmail.com';
+  const adminPhone = '9666635009';
+  const whatsappNumber = '919666635009';
   const razorpayKeyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_51xxxxxxxxxxxx';
+  const siteUrl = 'https://virattom.com';
 
   return res.json({
     success: true,
     adminEmail,
+    adminPhone,
+    whatsappNumber,
     razorpayKeyId,
-    siteUrl: 'https://virattom.com',
+    siteUrl,
   });
 });
 router.post('/lead', submitLead);

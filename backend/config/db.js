@@ -24,8 +24,8 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 2000,
       connectTimeoutMS: 2000,
     });
-    console.log('[MongoDB Status] Successfully connected to MongoDB Atlas cluster');
-    return { connected: true };
+    console.log('[MongoDB Status] mongodb connected successfully to MongoDB Atlas cluster');
+    return { connected: true, message: 'mongodb connected' };
   } catch (err) {
     const msg = err?.message || 'Connection failed';
     if (msg.includes('whitelist') || msg.includes('Could not connect to any servers')) {

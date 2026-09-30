@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FolderKanban, LogOut, Globe, Menu, X, Shield } from 'lucide-react';
+import { useAppConfig } from '@/hooks/useAppConfig';
 
 export const AdminLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'kanusuraj15@gmail.com').trim().toLowerCase();
+  const config = useAppConfig();
+  const adminEmail = (config.adminEmail || 'kanusuraj15@gmail.com').trim().toLowerCase();
 
   const handleLogout = () => {
     localStorage.removeItem('admin_token');

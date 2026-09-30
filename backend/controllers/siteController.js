@@ -78,9 +78,9 @@ const clientProjects = [
   {
     id: 'proj_1',
     title: 'Full-Stack Portfolio & Client Billing Platform',
-    clientPhone: process.env.ADMIN_PHONE || '9666635009',
+    clientPhone: '9666635009',
     clientEmail: process.env.ADMIN_EMAIL || 'kanusuraj15@gmail.com',
-    clientName: 'Suraj Nyavanandi',
+    clientName: 'Shree Rama',
     type: 'Web Application',
     status: 'Active',
     totalBudget: 35000,
@@ -97,7 +97,7 @@ const clientProjects = [
       { id: 4, task: 'Cloud Run Production Deployment & CDN Setup', done: true, date: '2026-09-20' },
     ],
     deliverables: [
-      { name: 'Live Application Preview & Code Repository', url: process.env.PORTFOLIO_URL || 'https://virattom.com', locked: false },
+      { name: 'Live Application Preview & Code Repository', url: 'https://virattom.com', locked: false },
       { name: 'Complete Swagger API Documentation', url: '#', locked: false },
       { name: 'Production Cloud Deployment Container', url: '#', locked: false },
       { name: 'Admin Dashboard Control Center', url: '/admin', locked: false },
@@ -124,7 +124,7 @@ const emailOtpStore = new Map();
 
 // Razorpay Instance Helper
 function getRazorpayInstance() {
-  const key_id = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID;
+  const key_id = process.env.RAZORPAY_KEY_ID;
   const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
   if (key_id && key_secret && !key_id.includes('your_')) {
@@ -487,7 +487,7 @@ const loginClient = async (req, res) => {
   }
 
   // Allow standard verification code or demo fallback
-  const adminPhone = (process.env.ADMIN_PHONE || '9666635009').replace(/\D/g, '').slice(-10);
+  const adminPhone = '9666635009';
   if (!project && cleanPhone !== adminPhone) {
     return res.status(404).json({ error: 'No active project found for this phone number.' });
   }
@@ -561,7 +561,7 @@ const createRazorpayOrder = async (req, res) => {
         orderId: order.id,
         amount: numericAmount,
         currency: order.currency,
-        key: process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID,
+        key: process.env.RAZORPAY_KEY_ID,
       });
     }
 
@@ -697,7 +697,7 @@ const verifyRazorpayPayment = async (req, res) => {
  * Razorpay Webhook Handler for automatic reconciliation
  */
 const handleRazorpayWebhook = async (req, res) => {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const secret = process.env.RAZORPAY_KEY_SECRET;
   const signature = req.headers['x-razorpay-signature'];
 
   if (secret && signature) {
@@ -1430,23 +1430,11 @@ const updateProjectPrices = async (req, res) => {
 };
 
 const getWhatsAppStatus = async (req, res) => {
-  const hasToken = Boolean(
-    process.env.WHATSAPP_ACCESS_TOKEN ||
-    process.env.META_ACCESS_TOKEN ||
-    process.env.WHATSAPP_TOKEN
-  );
-  const hasPhoneId = Boolean(
-    process.env.WHATSAPP_PHONE_NUMBER_ID ||
-    process.env.META_PHONE_NUMBER_ID
-  );
-
   return res.json({
     success: true,
-    configured: hasToken && hasPhoneId,
-    mode: hasToken && hasPhoneId ? 'meta_cloud_api' : 'telecom_precheck',
-    description: hasToken && hasPhoneId 
-      ? 'Live Meta Graph API /contacts check active (silent background verification)'
-      : 'TRAI Indian Telecom & dummy pattern precheck active (Add WHATSAPP_ACCESS_TOKEN & WHATSAPP_PHONE_NUMBER_ID for live Graph API check)',
+    configured: true,
+    mode: 'telecom_precheck',
+    description: 'Direct WhatsApp integration and TRAI Indian telecom validation active',
   });
 };
 

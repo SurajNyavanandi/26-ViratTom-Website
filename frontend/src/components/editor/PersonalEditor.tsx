@@ -26,7 +26,7 @@ export const PersonalEditor: React.FC<PersonalEditorProps> = ({ header, onChange
           <Input
             value={header.name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('name', e.target.value)}
-            placeholder="John Appleseed"
+            placeholder="Shree Rama"
             className="rounded-xl border-apple-gray-300 bg-white"
           />
         </div>
@@ -46,7 +46,7 @@ export const PersonalEditor: React.FC<PersonalEditorProps> = ({ header, onChange
           <Input
             value={header.location}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange('location', e.target.value)}
-            placeholder="City, State"
+            placeholder="Bangalore, India"
             className="rounded-xl border-apple-gray-300 bg-white"
           />
         </div>

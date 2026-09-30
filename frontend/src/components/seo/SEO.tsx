@@ -14,7 +14,7 @@ export interface SEOProps {
 const DEFAULT_TITLE = 'ViratTom | Full-Stack Web Developer & UI/UX Specialist | Custom Software & Web Apps';
 const DEFAULT_DESCRIPTION = 'Suraj Kanu (ViratTom) – Expert Full-Stack Developer & UI/UX Specialist. Building high-performance web applications, SaaS platforms, and free ATS-optimized developer tools.';
 const DEFAULT_KEYWORDS = 'Full Stack Web Developer, Hire Web Developer India, Custom Web Application Development, React Developer, Node.js Developer, Next.js Expert, UI/UX Designer, Free ATS Resume Builder, Modern Developer Resume Template PDF, Suraj Kanu, ViratTom';
-const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://virattom.com').replace(/\/+$/, '');
+const SITE_URL = (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://virattom.com').replace(/\/+$/, '');
 const DEFAULT_OG_IMAGE = `${SITE_URL}/projects/inisio.png`;
 
 export const SEO: React.FC<SEOProps> = ({

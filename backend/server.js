@@ -13,15 +13,16 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
+const { runStartupDiagnostics } = require('./utils/diagnostics');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Trust reverse proxy (Google Cloud Run / Nginx)
 app.set('trust proxy', 1);
 
 // Initialize Database Connection
-connectDB();
+const dbPromise = connectDB();
 
 // Security Headers
 app.use(
@@ -205,8 +206,14 @@ async function setupServer() {
 
   // Start server
   if (process.env.NODE_ENV !== 'test') {
-    httpServer.listen(PORT, '0.0.0.0', () => {
+    httpServer.listen(PORT, '0.0.0.0', async () => {
       console.log(`Server listening on port ${PORT} (0.0.0.0)`);
+      try {
+        const dbResult = await dbPromise;
+        await runStartupDiagnostics({ dbResult, corsOrigins: allowedOrigins, port: PORT });
+      } catch (err) {
+        console.warn('Diagnostics notice:', err.message);
+      }
     });
   }
 }

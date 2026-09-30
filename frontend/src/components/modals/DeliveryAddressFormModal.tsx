@@ -110,7 +110,7 @@ export const DeliveryAddressFormModal = React.memo<DeliveryAddressFormModalProps
               </label>
               <Input
                 type="text"
-                placeholder="e.g. John Doe / Tech Corp"
+                placeholder="e.g. Shree Rama / Tech Corp"
                 value={address.fullName}
                 onChange={(e) => updateField('fullName', e.target.value)}
                 className={`rounded-xl h-11 text-[14px] ${
@@ -153,7 +153,7 @@ export const DeliveryAddressFormModal = React.memo<DeliveryAddressFormModalProps
             </label>
             <Input
               type="text"
-              placeholder="e.g. 402 Silicon Heights, MG Road"
+              placeholder="e.g. 402 Silicon Heights, MG Road, Bangalore"
               value={address.street}
               onChange={(e) => updateField('street', e.target.value)}
               className={`rounded-xl h-11 text-[14px] ${

@@ -9,19 +9,30 @@ const nodemailer = require('nodemailer');
  */
 
 function createTransporter() {
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASS || '').trim().replace(/\s+/g, '');
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
+  const rawPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS || '').trim();
+  // Strip quotes and all spaces from 16-character Google App Password (e.g. "abcd efgh ijkl mnop" -> "abcdefghijklmnop")
+  const pass = rawPass.replace(/['"\s]/g, '');
 
   if (!user || !pass || pass.includes('your_') || pass.includes('placeholder')) {
     return null;
   }
 
+  // Hardcode optimal Render/Cloud settings (Direct SSL Port 465) so user only needs SMTP_USER and SMTP_PASS in .env
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // true for port 465 SSL, bypasses Render STARTTLS/port 25 blocks
     auth: {
       user,
       pass,
     },
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
@@ -32,11 +43,11 @@ function createTransporter() {
 const transporter = createTransporter();
 
 /**
- * Default sender formatted as "Suraj Nyavanandi <SMTP_USER>"
+ * Default sender formatted as "ViratTom Team <SMTP_USER>"
  */
 function getDefaultFrom() {
-  const user = (process.env.SMTP_USER || 'kanusuraj15@gmail.com').trim();
-  return `Suraj Nyavanandi <${user}>`;
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || 'kanusuraj15@gmail.com').trim();
+  return `ViratTom Team <${user}>`;
 }
 
 /**
@@ -62,11 +73,39 @@ async function sendMail({ to, subject, html, text, attachments = [], from }) {
 
   try {
     const info = await mailTransporter.sendMail(mailOptions);
-    console.log(`[Mailer:Sent] "${subject}" delivered to ${to} (MessageId: ${info.messageId})`);
+    console.log(`[Email Status] email sent sucessfully to ${to} (Subject: "${subject}", MessageId: ${info.messageId})`);
     return { success: true, messageId: info.messageId, simulated: false };
   } catch (err) {
-    console.error(`[Mailer:Error] Delivery failed to ${to}:`, err.message);
+    console.error(`[Email Status] failed to send email to ${to}: ${err.message}`);
     throw err;
+  }
+}
+
+/**
+ * Diagnostic helper to verify SMTP credentials and connectivity
+ */
+async function checkSmtpStatus() {
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
+  const rawPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS || '').trim();
+  const pass = rawPass.replace(/['"\s]/g, '');
+
+  if (!user && !pass) {
+    return { ok: true, status: 'simulated', message: 'SMTP credentials not configured (simulation mode active - no crash)' };
+  }
+  if (!user || !pass) {
+    return { ok: false, status: 'incomplete', message: 'smptp issue: Both SMTP_USER and SMTP_PASS must be provided together' };
+  }
+
+  const mailTransporter = transporter || createTransporter();
+  if (!mailTransporter) {
+    return { ok: false, status: 'error', message: 'smptp issue: Unable to initialize nodemailer transporter' };
+  }
+
+  try {
+    await mailTransporter.verify();
+    return { ok: true, status: 'connected', message: `SMTP connected successfully (${user})` };
+  } catch (err) {
+    return { ok: false, status: 'failed', message: `smptp issue: ${err.message}` };
   }
 }
 
@@ -184,6 +223,7 @@ async function sendOutreachEmail(toEmail) {
 module.exports = {
   transporter,
   sendMail,
+  checkSmtpStatus,
   sendOtpEmail,
   sendLeadConfirmationEmail,
   sendPaymentReceiptEmail,

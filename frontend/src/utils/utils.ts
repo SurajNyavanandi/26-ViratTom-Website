@@ -23,28 +23,37 @@ export function getWhatsAppUrl(customText = 'Hello ViratTom Team, I would like t
 
 export function getVerifiedWhatsAppUrl(lead: {
   name: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   projectType: string;
-  budget: string | number;
+  budget?: string | number;
   scope?: string;
 }): string {
-  const numBudget = typeof lead.budget === 'number' ? lead.budget : Number(lead.budget) || 0;
-  const formattedBudget = numBudget > 0 ? `₹${numBudget.toLocaleString('en-IN')}` : 'To be discussed';
+  let formattedBudget = 'To be discussed';
+  if (typeof lead.budget === 'number') {
+    formattedBudget = lead.budget > 0 ? `₹${lead.budget.toLocaleString('en-IN')}` : 'To be discussed';
+  } else if (typeof lead.budget === 'string' && lead.budget.trim()) {
+    formattedBudget = lead.budget.trim();
+  }
 
   const lines = [
-    `Hello ViratTom Team,`,
-    `I have just submitted my project details on virattom.com:`,
-    `• Name: ${lead.name}`,
-    `• Email: ${lead.email}`,
-    `• Phone: ${lead.phone}`,
-    `• Project Type: ${lead.projectType}`,
-    `• Budget: ${formattedBudget}`,
+    `Hello ViratTom Team! 👋`,
+    `I would like to discuss a project with you:`,
+    `• Name: ${lead.name || 'Client'}`,
   ];
-  if (lead.scope && lead.scope.trim()) {
-    lines.push(`• Scope: ${lead.scope.trim()}`);
+  if (lead.phone && lead.phone.trim()) {
+    lines.push(`• Phone: ${lead.phone.trim()}`);
   }
-  lines.push(`Looking forward to fast-tracking this project discussion!`);
+  if (lead.email && lead.email.trim()) {
+    lines.push(`• Email: ${lead.email.trim()}`);
+  }
+  lines.push(`• Project Type: ${lead.projectType}`);
+  lines.push(`• Estimated Budget: ${formattedBudget}`);
+  if (lead.scope && lead.scope.trim()) {
+    lines.push(`• Details: ${lead.scope.trim()}`);
+  }
+  lines.push(``);
+  lines.push(`Can we discuss the timeline and pricing?`);
 
   const encoded = encodeURIComponent(lines.join('\n'));
   return `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}?text=${encoded}`;

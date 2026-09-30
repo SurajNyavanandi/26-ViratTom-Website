@@ -76,12 +76,8 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
   }
 
   // 6. Admin Email Check
-  const adminEmail = (process.env.ADMIN_EMAIL || '').trim();
-  if (!adminEmail) {
-    console.warn('[Admin] ADMIN_EMAIL not set, defaulting to kanusuraj15@gmail.com');
-  } else {
-    console.log(`[Admin] Admin email: ${adminEmail}`);
-  }
+  const adminEmail = (process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'kanusuraj15@gmail.com').trim();
+  console.log(`[Admin] Admin email: ${adminEmail}`);
 
   // 7. Payment Gateway Check
   const rzpId = (process.env.RAZORPAY_KEY_ID || '').trim();

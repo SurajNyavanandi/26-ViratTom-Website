@@ -1,3 +1,9 @@
+// Force IPv4-first DNS resolution to prevent ENETUNREACH errors on cloud container platforms (Render, Docker)
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

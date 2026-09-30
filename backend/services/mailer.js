@@ -8,7 +8,7 @@ const nodemailer = require('nodemailer');
  * Uses Gmail SMTP authenticated via SMTP_USER and SMTP_PASS.
  */
 
-function createTransporter() {
+function createTransporter(configOverride = {}) {
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
   const rawPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS || '').trim();
   // Strip quotes and all spaces from 16-character Google App Password (e.g. "abcd efgh ijkl mnop" -> "abcdefghijklmnop")
@@ -18,11 +18,15 @@ function createTransporter() {
     return null;
   }
 
-  // Hardcode optimal Render/Cloud settings (Direct SSL Port 465) so user only needs SMTP_USER and SMTP_PASS in .env
+  const port = configOverride.port || Number(process.env.SMTP_PORT) || 465;
+  const isSecure = port === 465;
+
+  // Enforce IPv4 ('family: 4') to prevent ENETUNREACH errors on cloud container platforms (Render, Docker)
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // true for port 465 SSL, bypasses Render STARTTLS/port 25 blocks
+    port,
+    secure: isSecure,
+    family: 4, // CRITICAL: Force IPv4 DNS resolution for Gmail SMTP
     auth: {
       user,
       pass,
@@ -30,9 +34,9 @@ function createTransporter() {
     pool: true,
     maxConnections: 3,
     maxMessages: 50,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 12000,
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
@@ -51,7 +55,7 @@ function getDefaultFrom() {
 }
 
 /**
- * Base generic email sender
+ * Base generic email sender with automatic IPv4 retry & port fallback (465 -> 587)
  */
 async function sendMail({ to, subject, html, text, attachments = [], from }) {
   const sender = from || getDefaultFrom();
@@ -76,13 +80,28 @@ async function sendMail({ to, subject, html, text, attachments = [], from }) {
     console.log(`[Email Status] email sent sucessfully to ${to} (Subject: "${subject}", MessageId: ${info.messageId})`);
     return { success: true, messageId: info.messageId, simulated: false };
   } catch (err) {
+    // If connection timed out or network error on primary port, try fallback port 587 with IPv4
+    if (err.code === 'ENETUNREACH' || err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT') {
+      try {
+        console.warn(`[Mailer:Retry] Retrying email delivery via alternate port (587 IPv4)...`);
+        const fallbackTransporter = createTransporter({ port: 587 });
+        if (fallbackTransporter) {
+          const info = await fallbackTransporter.sendMail(mailOptions);
+          console.log(`[Email Status] email sent sucessfully to ${to} (Port 587 IPv4 fallback)`);
+          return { success: true, messageId: info.messageId, simulated: false };
+        }
+      } catch (retryErr) {
+        console.error(`[Email Status] failed to send email to ${to}: ${retryErr.message}`);
+        throw retryErr;
+      }
+    }
     console.error(`[Email Status] failed to send email to ${to}: ${err.message}`);
     throw err;
   }
 }
 
 /**
- * Diagnostic helper to verify SMTP credentials and connectivity
+ * Diagnostic helper to verify SMTP credentials and connectivity with IPv4 enforcement
  */
 async function checkSmtpStatus() {
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
@@ -96,17 +115,29 @@ async function checkSmtpStatus() {
     return { ok: false, status: 'incomplete', message: 'smptp issue: Both SMTP_USER and SMTP_PASS must be provided together' };
   }
 
-  const mailTransporter = transporter || createTransporter();
-  if (!mailTransporter) {
-    return { ok: false, status: 'error', message: 'smptp issue: Unable to initialize nodemailer transporter' };
+  // First try primary transporter (Port 465 SSL, IPv4)
+  const primaryTransporter = transporter || createTransporter({ port: 465 });
+  if (primaryTransporter) {
+    try {
+      await primaryTransporter.verify();
+      return { ok: true, status: 'connected', message: `SMTP connected successfully (${user})` };
+    } catch (err) {
+      console.warn(`[SMTP Diagnostic] Port 465 IPv4 check: ${err.message}. Trying port 587 fallback...`);
+    }
   }
 
+  // Try fallback transporter (Port 587 TLS, IPv4)
   try {
-    await mailTransporter.verify();
-    return { ok: true, status: 'connected', message: `SMTP connected successfully (${user})` };
-  } catch (err) {
-    return { ok: false, status: 'failed', message: `smptp issue: ${err.message}` };
+    const fallbackTransporter = createTransporter({ port: 587 });
+    if (fallbackTransporter) {
+      await fallbackTransporter.verify();
+      return { ok: true, status: 'connected', message: `SMTP connected successfully (${user} via Port 587 IPv4)` };
+    }
+  } catch (fallbackErr) {
+    return { ok: false, status: 'failed', message: `smptp issue: ${fallbackErr.message}` };
   }
+
+  return { ok: false, status: 'error', message: 'smptp issue: Unable to initialize nodemailer transporter' };
 }
 
 /**

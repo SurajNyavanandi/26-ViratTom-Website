@@ -7,9 +7,11 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   mongoose.set('bufferCommands', false);
 
-  // Suppress uncaught background connection errors
+  // Only notify of runtime errors if connection was successfully established
   mongoose.connection.on('error', (err) => {
-    console.warn(`[MongoDB Notice] Runtime connection event: ${err?.message || err}`);
+    if (mongoose.connection.readyState === 1) {
+      console.warn(`[MongoDB Notice] Runtime connection event: ${err?.message || err}`);
+    }
   });
 
   const rawUri = (process.env.MONGO_URI || process.env.MONGODB_URI || '').trim();
@@ -21,14 +23,20 @@ const connectDB = async () => {
 
   try {
     await mongoose.connect(rawUri, {
-      serverSelectionTimeoutMS: 2000,
-      connectTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 3000,
+      connectTimeoutMS: 3000,
+      family: 4, // Force IPv4 for cluster DNS resolution
     });
     console.log('[MongoDB Status] mongodb connected successfully to MongoDB Atlas cluster');
     return { connected: true, message: 'mongodb connected' };
   } catch (err) {
     const msg = err?.message || 'Connection failed';
-    if (msg.includes('whitelist') || msg.includes('Could not connect to any servers')) {
+    // Cleanly disconnect to prevent Mongoose background retry storm & OpenSSL alert noise
+    try {
+      await mongoose.disconnect();
+    } catch (_) {}
+
+    if (msg.includes('whitelist') || msg.includes('Could not connect to any servers') || msg.includes('SSL routines') || msg.includes('alert')) {
       console.warn(`[MongoDB Status] MongoDB Atlas IP restriction: Current IP is not on the Atlas IP Access List. Seamlessly operating on zero-downtime in-memory store.`);
     } else {
       console.warn(`[MongoDB Status] Remote DB unavailable (${msg}). Seamlessly operating on zero-downtime in-memory store.`);

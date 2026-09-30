@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
 
 /**
  * ============================================================================
@@ -7,6 +8,17 @@ const nodemailer = require('nodemailer');
  * Reusable utility for handling all OTPs and transactional notifications.
  * Uses Gmail SMTP authenticated via SMTP_USER and SMTP_PASS.
  */
+
+// Custom lookup resolver that guarantees pure IPv4 A-records and completely bypasses unrouted IPv6
+function ipv4DnsLookup(hostname, options, callback) {
+  dns.resolve4(hostname, (err, addresses) => {
+    if (!err && Array.isArray(addresses) && addresses.length > 0) {
+      return callback(null, addresses[0], 4);
+    }
+    // Fallback if direct resolve4 fails
+    dns.lookup(hostname, { family: 4 }, callback);
+  });
+}
 
 function createTransporter(configOverride = {}) {
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
@@ -21,12 +33,13 @@ function createTransporter(configOverride = {}) {
   const port = configOverride.port || Number(process.env.SMTP_PORT) || 465;
   const isSecure = port === 465;
 
-  // Enforce IPv4 ('family: 4') to prevent ENETUNREACH errors on cloud container platforms (Render, Docker)
+  // Enforce pure IPv4 resolution to prevent ENETUNREACH errors on cloud container platforms (Render, Docker)
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port,
     secure: isSecure,
-    family: 4, // CRITICAL: Force IPv4 DNS resolution for Gmail SMTP
+    family: 4, // Force IPv4 socket
+    lookup: ipv4DnsLookup, // Direct A-record lookup completely preventing IPv6 (2607:...) selection
     auth: {
       user,
       pass,
@@ -34,12 +47,13 @@ function createTransporter(configOverride = {}) {
     pool: true,
     maxConnections: 3,
     maxMessages: 50,
-    connectionTimeout: 8000,
-    greetingTimeout: 8000,
-    socketTimeout: 12000,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
     tls: {
       rejectUnauthorized: false,
       minVersion: 'TLSv1.2',
+      servername: 'smtp.gmail.com', // Necessary for SNI when custom lookup resolves IP
     },
   });
 }

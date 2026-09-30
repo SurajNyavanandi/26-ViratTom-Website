@@ -4,6 +4,20 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 
+// Global safeguard: intercept dns.lookup so any module defaulting without family receives family 4
+const originalDnsLookup = dns.lookup;
+dns.lookup = function (hostname, options, callback) {
+  let cb = callback;
+  let opts = options;
+  if (typeof options === 'function') {
+    cb = options;
+    opts = {};
+  }
+  const family = typeof opts === 'object' && opts && opts.family ? opts.family : (typeof opts === 'number' ? opts : 4);
+  const normalizedOpts = typeof opts === 'object' && opts !== null ? { ...opts, family: family || 4 } : { family: 4 };
+  return originalDnsLookup.call(dns, hostname, normalizedOpts, cb);
+};
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

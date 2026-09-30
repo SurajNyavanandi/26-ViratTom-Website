@@ -196,24 +196,50 @@ const requestEmailOtpHandler = async (req, res) => {
         .catch(() => {});
     }
 
-    // Dispatch Nodemailer email delivery via asynchronous non-blocking queue (< 1ms)
-    const jobId = queueOtpEmail(
-      cleanEmail,
-      code,
-      name || 'Client',
-      isResumeRequest ? 'Resume Builder' : 'Project Inquiry'
-    );
+    // Await actual email dispatch so we never report success if email sending failed
+    let emailSent = false;
+    let mailErrorMsg = null;
+    let isSimulated = false;
+
+    try {
+      const mailRes = await sendOtpEmail(
+        cleanEmail,
+        code,
+        isResumeRequest ? 'Resume Builder' : 'Project Inquiry'
+      );
+      if (mailRes && mailRes.success) {
+        emailSent = true;
+        isSimulated = Boolean(mailRes.simulated);
+      }
+    } catch (mailErr) {
+      mailErrorMsg = mailErr?.message || 'SMTP error';
+      console.error(`[OTP Dispatch Error to ${cleanEmail}]:`, mailErrorMsg);
+    }
 
     const isDevOrAdmin =
       process.env.NODE_ENV !== 'production' ||
       cleanEmail === 'kanusuraj15@gmail.com' ||
       cleanEmail === (process.env.ADMIN_EMAIL || '').toLowerCase();
 
-    // Return instant success response (< 10ms)
+    if (!emailSent) {
+      if (isDevOrAdmin) {
+        return res.json({
+          success: true,
+          message: `Verification code: ${code} (SMTP offline, code provided for admin testing)`,
+          devOtp: code,
+        });
+      }
+      return res.status(500).json({
+        success: false,
+        error: `Could not deliver verification email to ${cleanEmail} (${mailErrorMsg || 'SMTP server unreachable'}). Please try chatting directly on WhatsApp.`,
+      });
+    }
+
     return res.json({
       success: true,
-      message: `Verification code sent to ${cleanEmail}`,
-      jobId,
+      message: isSimulated 
+        ? `Verification code: ${code} (Simulation mode active - SMTP credentials not set)` 
+        : `Verification code sent to ${cleanEmail}`,
       devOtp: isDevOrAdmin ? code : undefined,
     });
   } catch (error) {
@@ -396,12 +422,27 @@ const submitLead = async (req, res) => {
     leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
   });
 
-  // Also send via SMTP email
-  sendOtpEmail(cleanEmail, code, name || 'Client', 'Project Inquiry Verification').catch(() => {});
+  // Dispatch via SMTP email and verify delivery
+  let emailDeliverySuccess = false;
+  let emailDeliveryError = null;
+  try {
+    const sendResult = await sendOtpEmail(cleanEmail, code, name || 'Client', 'Project Inquiry Verification');
+    emailDeliverySuccess = Boolean(sendResult && sendResult.success);
+  } catch (err) {
+    emailDeliveryError = err.message;
+    console.error(`[submitLead Email Error]:`, err.message);
+  }
+
+  if (!emailDeliverySuccess) {
+    return res.status(500).json({
+      success: false,
+      error: `Could not deliver verification email to ${cleanEmail} (${emailDeliveryError || 'SMTP connection failed'}). Please connect on WhatsApp directly.`,
+    });
+  }
 
   return res.json({
     success: true,
-    message: 'OTP generated. Please verify to confirm your inquiry.',
+    message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
   });
 };
 

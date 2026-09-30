@@ -23,8 +23,8 @@ const connectDB = async () => {
 
   try {
     await mongoose.connect(rawUri, {
-      serverSelectionTimeoutMS: 3000,
-      connectTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
       family: 4, // Force IPv4 for cluster DNS resolution
     });
     console.log('[MongoDB Status] mongodb connected successfully to MongoDB Atlas cluster');
@@ -36,10 +36,25 @@ const connectDB = async () => {
       await mongoose.disconnect();
     } catch (_) {}
 
-    if (msg.includes('whitelist') || msg.includes('Could not connect to any servers') || msg.includes('SSL routines') || msg.includes('alert')) {
-      console.warn(`[MongoDB Status] MongoDB Atlas IP restriction: Current IP is not on the Atlas IP Access List. Seamlessly operating on zero-downtime in-memory store.`);
+    // Extract underlying topology reason if available
+    let detailedCause = msg;
+    if (err?.reason?.servers) {
+      try {
+        const serverErrors = Array.from(err.reason.servers.values())
+          .map((s) => s.error?.message)
+          .filter(Boolean);
+        if (serverErrors.length > 0) {
+          detailedCause = serverErrors[0];
+        }
+      } catch (_) {}
+    }
+
+    if (msg.includes('bad auth') || msg.includes('Authentication failed') || detailedCause.includes('Authentication failed')) {
+      console.warn(`[MongoDB Status] Authentication failed: Check your MongoDB Atlas Database Access username and password in MONGO_URI. (Seamlessly operating on in-memory store)`);
+    } else if (msg.includes('whitelist') || detailedCause.includes('whitelist')) {
+      console.warn(`[MongoDB Status] MongoDB Atlas IP restriction: Current IP is not on the Atlas IP Access List. (Seamlessly operating on in-memory store)`);
     } else {
-      console.warn(`[MongoDB Status] Remote DB unavailable (${msg}). Seamlessly operating on zero-downtime in-memory store.`);
+      console.warn(`[MongoDB Status] Remote DB unavailable (${detailedCause}). (Seamlessly operating on in-memory store)`);
     }
     return { connected: false, reason: msg };
   }

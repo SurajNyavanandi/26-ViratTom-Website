@@ -60,6 +60,9 @@ export const OtpVerificationView = React.memo<OtpVerificationViewProps>(({
             </>
           )}
         </p>
+        <p className="text-[11.5px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-1.5 mt-2 max-w-sm mx-auto">
+          Tip: If not in your primary inbox, please check your <strong>Spam</strong> or <strong>Junk</strong> folder.
+        </p>
       </div>
 
       <div className="flex justify-center items-center gap-2 sm:gap-3 py-2">

@@ -100,9 +100,9 @@ export const ResumeVerificationModal: React.FC<ResumeVerificationModalProps> = (
                 />
               </div>
 
-              {verificationError && (
+              {(verificationError || hookError) && (
                 <div className="text-[13px] text-apple-red bg-apple-red/10 p-3 rounded-xl border border-apple-red/20 text-center">
-                  {verificationError}
+                  {verificationError || hookError}
                 </div>
               )}
 

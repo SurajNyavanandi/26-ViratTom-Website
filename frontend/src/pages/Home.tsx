@@ -971,9 +971,9 @@ export const Home = () => {
                   />
                 </div>
 
-                {error && (
+                {(error || otpHookError) && (
                   <p className="text-[13px] text-apple-red text-center bg-apple-red/10 p-3 rounded-xl border border-apple-red/20">
-                    {error}
+                    {error || otpHookError}
                   </p>
                 )}
 

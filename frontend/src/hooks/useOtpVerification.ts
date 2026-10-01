@@ -114,7 +114,7 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
       try {
         const numericBudget = budget ? Math.min(300000, Math.max(0, Number(budget) || 0)) : 0;
 
-        const res = await safeFetchJson<{ success?: boolean; message?: string; error?: string; devOtp?: string; durationMs?: number }>(
+        const res = await safeFetchJson<{ success?: boolean; message?: string; error?: string; durationMs?: number }>(
           '/api/lead/request-email-otp',
           {
             method: 'POST',
@@ -133,27 +133,24 @@ export function useOtpVerification(options: UseOtpOptions = {}) {
         const totalElapsed = Math.round(performance.now() - startTime);
 
         if (!res.ok || !res.data?.success) {
-          const errMsg = res.error || res.data?.error || 'Failed to send verification code.';
-          console.warn(`[OTP Client] Request failed in ${totalElapsed}ms:`, errMsg);
+          const errMsg = res.data?.error || res.error || 'Failed to send verification code to your email. Please try again or check your email address.';
+          console.error(`[OTP Client] Failed sending OTP to ${cleanEmail}:`, errMsg);
           setError(errMsg);
           if (onError) onError(errMsg);
           setIsRequesting(false);
           return false;
         }
 
-        console.log(`[OTP Client] Code dispatched in ${totalElapsed}ms to ${cleanEmail}`);
+        // Only log success when delivery is confirmed by the mail server
+        console.log(`[OTP Client] Email successfully sent to ${cleanEmail} (Response in ${totalElapsed}ms)`);
         setCountdown(cooldownSeconds);
-        if (res.data?.devOtp && res.data.devOtp.length === 6) {
-          setOtp(res.data.devOtp.split(''));
-        } else {
-          resetOtp();
-        }
+        resetOtp();
         setIsRequesting(false);
         return true;
       } catch (err: any) {
         const totalElapsed = Math.round(performance.now() - startTime);
-        const errMsg = err?.message || 'Network error while requesting OTP.';
-        console.warn(`[OTP Client] Request error in ${totalElapsed}ms:`, errMsg);
+        const errMsg = 'Failed to send verification code to your email. Please try again or check your email address.';
+        console.error(`[OTP Client] Failed sending OTP to ${cleanEmail} in ${totalElapsed}ms:`, err?.message || err);
         setError(errMsg);
         if (onError) onError(errMsg);
         setIsRequesting(false);

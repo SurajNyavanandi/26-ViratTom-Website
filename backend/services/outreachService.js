@@ -27,7 +27,7 @@ function getOutreachConfig() {
     ecommerceUrl: 'https://shop.virattom.com',
     githubUrl: 'https://github.com/SurajNyavanandi',
     linkedinUrl: 'https://www.linkedin.com/in/suraj-nyavanandi-305962286',
-    fromEmail: process.env.SMTP_USER ? `Suraj Nyavanandi <${process.env.SMTP_USER}>` : 'kanusuraj15@gmail.com',
+    fromEmail: process.env.BREVO_SENDER_EMAIL ? `Suraj Nyavanandi <${process.env.BREVO_SENDER_EMAIL}>` : 'kanusuraj15@gmail.com',
   };
 }
 

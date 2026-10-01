@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { successResponse } = require('../utils/apiResponse');
 const { asyncHandler } = require('../utils/errorHandler');
-const { getQueueMetrics } = require('../services/emailService');
+const { getQueueMetrics } = require('../lib/email');
 
 /**
  * Health Check Controller

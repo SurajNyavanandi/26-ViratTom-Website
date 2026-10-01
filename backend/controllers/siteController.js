@@ -26,7 +26,7 @@ const {
   sendPaymentReceiptEmail,
   queuePaymentReceiptEmail,
   getQueueMetrics,
-} = require('../services/emailService');
+} = require('../lib/email');
 const { dispatchAlert } = require('../services/alertService');
 const { verifyWhatsAppNumber } = require('../services/whatsappService');
 
@@ -186,72 +186,45 @@ const requestEmailOtpHandler = async (req, res) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Persist to Memory store instantly
-    emailOtpStore.set(cleanEmail, { code, expiresAt: expiresAt.getTime(), email: cleanEmail, leadData });
-
-    // Persist to MongoDB asynchronously without blocking client response if slow
-    if (isDbReady()) {
-      EmailOtp.deleteMany({ email: cleanEmail })
-        .then(() => EmailOtp.create({ email: cleanEmail, code, expiresAt, leadData }))
-        .catch(() => {});
-    }
-
-    // Await actual email dispatch so we never report success if email sending failed
-    let emailSent = false;
-    let mailErrorMsg = null;
-    let isSimulated = false;
-
+    // Dispatch via Brevo Transactional Email API - await confirmation before saving OTP
     try {
       const mailRes = await sendOtpEmail(
         cleanEmail,
         code,
         isResumeRequest ? 'Resume Builder' : 'Project Inquiry'
       );
-      if (mailRes && mailRes.success) {
-        emailSent = true;
-        isSimulated = Boolean(mailRes.simulated);
+
+      // Persist OTP only after Brevo confirms acceptance
+      emailOtpStore.set(cleanEmail, { code, expiresAt: expiresAt.getTime(), email: cleanEmail, leadData });
+      if (isDbReady()) {
+        EmailOtp.deleteMany({ email: cleanEmail })
+          .then(() => EmailOtp.create({ email: cleanEmail, code, expiresAt, leadData }))
+          .catch(() => {});
       }
+
+      console.log(`[OTP Client] Verification code successfully dispatched via Brevo to ${cleanEmail} (MessageId: ${mailRes.messageId})`);
+
+      return res.json({
+        success: true,
+        message: `Verification code sent to ${cleanEmail}`,
+      });
     } catch (mailErr) {
-      mailErrorMsg = mailErr?.message || 'SMTP error';
-      console.error(`[OTP Dispatch Error to ${cleanEmail}]:`, mailErrorMsg);
-    }
-
-    const isDevOrAdmin =
-      process.env.NODE_ENV !== 'production' ||
-      cleanEmail === 'kanusuraj15@gmail.com' ||
-      cleanEmail === (process.env.ADMIN_EMAIL || '').toLowerCase();
-
-    if (!emailSent) {
-      if (isDevOrAdmin) {
-        return res.json({
-          success: true,
-          message: `Verification code: ${code} (SMTP offline, code provided for admin testing)`,
-          devOtp: code,
-        });
-      }
+      console.error(`[OTP Dispatch Error to ${cleanEmail}]:`, mailErr.message);
       return res.status(500).json({
         success: false,
-        error: `Could not deliver verification email to ${cleanEmail} (${mailErrorMsg || 'SMTP server unreachable'}). Please try chatting directly on WhatsApp.`,
+        error: `Could not send verification email: ${mailErr.message}. Please check your email or try again.`,
       });
     }
-
-    return res.json({
-      success: true,
-      message: isSimulated 
-        ? `Verification code: ${code} (Simulation mode active - SMTP credentials not set)` 
-        : `Verification code sent to ${cleanEmail}`,
-      devOtp: isDevOrAdmin ? code : undefined,
-    });
   } catch (error) {
     console.error('[OTP Error]', error?.message || error);
-    return res.status(500).json({ error: 'Could not send verification email. Please try again.' });
+    return res.status(500).json({ success: false, error: 'Could not send verification email. Please try again.' });
   }
 };
 
 const verifyEmailOtpHandler = async (req, res) => {
   const { email = '', otp = '', leadData = {} } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase();
-  const inputOtp = String(otp || '').trim();
+  const inputOtp = String(otp || '').replace(/\D/g, '').trim();
 
   let isValid = false;
   let finalLeadData = leadData;
@@ -278,35 +251,12 @@ const verifyEmailOtpHandler = async (req, res) => {
     }
   }
 
-  // 3. Test & Development fallback codes (121212, 123456) for admin / development testing
-  const isDevOrAdmin =
-    process.env.NODE_ENV !== 'production' ||
-    cleanEmail === 'kanusuraj15@gmail.com' ||
-    cleanEmail === (process.env.ADMIN_EMAIL || '').toLowerCase();
-
-  const isTestBypass = inputOtp === '121212' || inputOtp === '123456';
-  if (!isValid && isDevOrAdmin && isTestBypass) {
-    isValid = true;
-    finalLeadData = (memSession && memSession.leadData) || leadData;
-    if (!finalLeadData || !finalLeadData.name) {
-      finalLeadData = {
-        name: 'Suraj',
-        email: cleanEmail,
-        phone: '9666635009',
-        budget: 50000,
-        projectType: 'Static Website',
-        scope: '',
-        whatsappVerified: true,
-      };
-    }
-  }
-
   if (!isValid) {
     console.warn(`[OTP Verify Failed] For: ${cleanEmail} | Attempted Code: ${inputOtp}`);
     return res.status(400).json({ error: 'Invalid or expired verification code. Please check your email or request a new code.' });
   }
 
-  console.log(`[OTP Verified] Success for: ${cleanEmail}`);
+  console.log(`✅ [OTP Verified] Success for: ${cleanEmail}`);
 
   try {
     let savedLead = null;
@@ -422,34 +372,48 @@ const submitLead = async (req, res) => {
     leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
   });
 
-  // Dispatch via SMTP email and verify delivery
-  let emailDeliverySuccess = false;
-  let emailDeliveryError = null;
+  // Dispatch via Brevo Transactional Email API - await delivery before confirming
   try {
-    const sendResult = await sendOtpEmail(cleanEmail, code, name || 'Client', 'Project Inquiry Verification');
-    emailDeliverySuccess = Boolean(sendResult && sendResult.success);
-  } catch (err) {
-    emailDeliveryError = err.message;
-    console.error(`[submitLead Email Error]:`, err.message);
-  }
+    const sendResult = await sendOtpEmail(cleanEmail, code, 'Project Inquiry');
 
-  if (!emailDeliverySuccess) {
+    // Store in memory & DB only when Brevo accepted the email
+    emailOtpStore.set(cleanEmail, {
+      code,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      email: cleanEmail,
+      leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
+    });
+
+    if (isDbReady()) {
+      EmailOtp.deleteMany({ email: cleanEmail })
+        .then(() => EmailOtp.create({
+          email: cleanEmail,
+          code,
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
+        }))
+        .catch(() => {});
+    }
+
+    console.log(`[OTP Client] Inquiry OTP dispatched via Brevo to ${cleanEmail} (MessageId: ${sendResult.messageId})`);
+
+    return res.json({
+      success: true,
+      message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
+    });
+  } catch (err) {
+    console.error(`[submitLead Email Error]:`, err.message);
     return res.status(500).json({
       success: false,
-      error: `Could not deliver verification email to ${cleanEmail} (${emailDeliveryError || 'SMTP connection failed'}). Please connect on WhatsApp directly.`,
+      error: `Could not send verification email: ${err.message}. Please check your email address or try again.`,
     });
   }
-
-  return res.json({
-    success: true,
-    message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
-  });
 };
 
 const verifyOtp = async (req, res) => {
   const { phone, email, otp, leadData } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase();
-  const inputOtp = String(otp || '').trim();
+  const inputOtp = String(otp || '').replace(/\D/g, '').trim();
 
   let isValid = false;
   if (isDbReady()) {
@@ -952,18 +916,19 @@ const requestAdminForgotPassword = async (req, res) => {
     }
   }
 
-  let emailSent = false;
   try {
-    emailSent = await sendOtpEmail(ADMIN_EMAIL, code, 'Suraj Kanu (Admin)', 'Admin Control Center Password Reset');
+    await sendOtpEmail(ADMIN_EMAIL, code, 'Admin Control Center Password Reset');
+    return res.json({
+      success: true,
+      message: 'Verification code sent to your email.',
+    });
   } catch (err) {
-    console.warn('[Admin Forgot Password] Email sending error:', err);
+    console.error('[Admin Forgot Password] Email sending error:', err.message);
+    return res.status(500).json({
+      success: false,
+      error: `Could not send reset code: ${err.message}. Please check your Brevo configuration.`,
+    });
   }
-
-  return res.json({
-    success: true,
-    message: 'Verification code sent to your email.',
-    emailSent
-  });
 };
 
 const resetAdminPassword = async (req, res) => {

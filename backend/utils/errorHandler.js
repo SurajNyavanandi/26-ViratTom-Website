@@ -1,4 +1,5 @@
 const { errorResponse } = require('./apiResponse');
+const { logApiError } = require('./diagnosticLogger');
 
 /**
  * Async handler wrapper to forward errors to next()
@@ -9,10 +10,16 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 /**
  * Global Express Error Handling Middleware
+ * Intercepts all Express route failures and prints zero-guesswork diagnostic log
  */
 const errorHandler = (err, req, res, _next) => {
   const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   const message = err.message || 'Internal Server Error';
+
+  // Print full diagnostic banner if 5xx or unexpected error
+  if (statusCode >= 500 || process.env.NODE_ENV !== 'production') {
+    logApiError(req, err);
+  }
 
   return errorResponse(
     res,
@@ -36,3 +43,4 @@ module.exports = {
   errorHandler,
   notFoundHandler,
 };
+

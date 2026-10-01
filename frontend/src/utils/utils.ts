@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { trackApiFailure } from './errorTracker';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -97,11 +98,14 @@ export function apiUrl(endpoint: string): string {
 
 export async function safeFetchJson<T = any>(
   input: RequestInfo | URL,
-  init?: RequestInit & { timeoutMs?: number }
+  init?: RequestInit & { timeoutMs?: number; context?: string }
 ): Promise<{ ok: boolean; status: number; data: T | null; error?: string }> {
   const timeoutMs = init?.timeoutMs ?? 15000; // Default 15s client timeout
+  const context = init?.context;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const startTime = performance.now();
+  const inputStr = typeof input === 'string' ? input : (input instanceof Request ? input.url : input.toString());
 
   try {
     let resolvedInput = input;
@@ -114,19 +118,32 @@ export async function safeFetchJson<T = any>(
       signal: init?.signal || controller.signal,
     });
     clearTimeout(timeoutId);
+    const durationMs = Math.round(performance.now() - startTime);
 
     const contentType = res.headers.get('content-type') || '';
 
     if (!res.ok) {
       let errMessage = `Request failed with status ${res.status}`;
+      let errData: any = null;
       if (contentType.includes('application/json')) {
         try {
-          const errData = await res.json();
+          errData = await res.json();
           errMessage = errData.error || errData.message || errMessage;
         } catch {
           // ignore parsing error
         }
       }
+
+      // Track failed API call in browser console
+      trackApiFailure({
+        endpoint: inputStr,
+        status: res.status,
+        response: errData,
+        error: errMessage,
+        context: context || `${init?.method || 'GET'} ${inputStr}`,
+        durationMs,
+      });
+
       return { ok: false, status: res.status, data: null, error: errMessage };
     }
 
@@ -134,6 +151,15 @@ export async function safeFetchJson<T = any>(
       const data = await res.json();
       return { ok: true, status: res.status, data };
     }
+
+    const duration = Math.round(performance.now() - startTime);
+    trackApiFailure({
+      endpoint: inputStr,
+      status: res.status,
+      error: 'Unexpected non-JSON response from server',
+      context: context || `${init?.method || 'GET'} ${inputStr}`,
+      durationMs: duration,
+    });
 
     return {
       ok: false,
@@ -143,12 +169,23 @@ export async function safeFetchJson<T = any>(
     };
   } catch (err: any) {
     clearTimeout(timeoutId);
+    const durationMs = Math.round(performance.now() - startTime);
     const isTimeout = err?.name === 'AbortError';
+    const errMessage = isTimeout ? 'Request timed out. Please try again.' : (err?.message || 'Network request failed');
+
+    trackApiFailure({
+      endpoint: inputStr,
+      status: 0,
+      error: errMessage,
+      context: context || `${init?.method || 'GET'} ${inputStr}`,
+      durationMs,
+    });
+
     return {
       ok: false,
       status: 0,
       data: null,
-      error: isTimeout ? 'Request timed out. Please try again.' : (err?.message || 'Network request failed'),
+      error: errMessage,
     };
   }
 }

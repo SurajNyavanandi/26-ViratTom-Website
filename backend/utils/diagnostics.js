@@ -1,12 +1,11 @@
-const { checkSmtpStatus } = require('../services/mailer');
+const { verifyBrevoConnection } = require('../lib/email');
 
 /**
  * Startup system diagnostics and environment validation.
  * Prints structured logs highlighting:
  * - mongodb connected / in-memory store
- * - email sent successfully / failed to send email
+ * - Brevo connected / Brevo connection failed
  * - cors issue / allowed origins
- * - smptp issue / SMTP connected
  * - "Everything fine no issues" when all essential services are ready
  */
 async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port = 3000 } = {}) {
@@ -46,23 +45,19 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
     successes.push('cors active');
   }
 
-  // 4. SMTP / Email Configuration Check
+  // 4. Brevo Email Service Check
   try {
-    const smtpCheck = await checkSmtpStatus();
-    if (smtpCheck.ok) {
-      if (smtpCheck.status === 'connected') {
-        console.log(`[SMTP] ${smtpCheck.message}`);
-        successes.push('SMTP connected');
-      } else {
-        console.log(`[SMTP] ${smtpCheck.message}`);
-      }
+    const brevoCheck = await verifyBrevoConnection();
+    if (brevoCheck.ok) {
+      console.log(`[Email] ${brevoCheck.message}`);
+      successes.push('Brevo connected');
     } else {
-      console.warn(`[SMTP] ${smtpCheck.message}`);
-      issues.push(smtpCheck.message);
+      console.log(`[Email] ${brevoCheck.message}`);
+      warnings.push(`Brevo: ${brevoCheck.message}`);
     }
   } catch (err) {
-    console.warn(`[SMTP] smptp issue: ${err.message}`);
-    issues.push(`smptp issue: ${err.message}`);
+    console.log(`[Email] Brevo check notice: ${err.message}`);
+    warnings.push(`Brevo: ${err.message}`);
   }
 
   // 5. Authentication & Security Check
@@ -76,7 +71,7 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
   }
 
   // 6. Admin Email Check
-  const adminEmail = (process.env.ADMIN_EMAIL || process.env.SMTP_USER || 'kanusuraj15@gmail.com').trim();
+  const adminEmail = (process.env.ADMIN_EMAIL || process.env.BREVO_SENDER_EMAIL || 'kanusuraj15@gmail.com').trim();
   console.log(`[Admin] Admin email: ${adminEmail}`);
 
   // 7. Payment Gateway Check

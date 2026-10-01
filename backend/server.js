@@ -25,15 +25,32 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 
-// Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '.env') });
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+// Load environment variables from single source of truth (prevents duplicate injection)
+const rootEnvPath = path.resolve(__dirname, '../.env');
+const backendEnvPath = path.resolve(__dirname, '.env');
+const activeEnvPath = fs.existsSync(rootEnvPath) ? rootEnvPath : (fs.existsSync(backendEnvPath) ? backendEnvPath : rootEnvPath);
+dotenv.config({ path: activeEnvPath });
+
+// Validate Brevo email environment configuration at startup
+const { validateBrevoConfig } = require('./lib/email');
+validateBrevoConfig();
 
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./utils/errorHandler');
 const { runStartupDiagnostics } = require('./utils/diagnostics');
+const { logSystemError } = require('./utils/diagnosticLogger');
+
+// Intercept global unhandled promise rejections and uncaught exceptions with zero-guesswork logs
+process.on('unhandledRejection', (reason, promise) => {
+  logSystemError('Unhandled Promise Rejection', reason instanceof Error ? reason : new Error(String(reason)));
+});
+
+process.on('uncaughtException', (err) => {
+  logSystemError('Uncaught Exception', err);
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -152,7 +169,6 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-const fs = require('fs');
 const http = require('http');
 const frontendDir = path.resolve(__dirname, '../frontend');
 const distDir = path.resolve(frontendDir, 'dist');

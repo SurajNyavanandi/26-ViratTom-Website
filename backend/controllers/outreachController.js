@@ -27,7 +27,8 @@ const handleSendFresherEmail = async (req, res) => {
       });
     }
 
-    const results = await sendFresherEmail({ emails });
+    const response = await sendFresherEmail(emails);
+    const results = Array.isArray(response) ? response : (response.results || []);
     const hasFailures = results.some((r) => r.success === false);
 
     return res.json({
@@ -63,7 +64,8 @@ const handleSendExperiencedEmail = async (req, res) => {
       });
     }
 
-    const results = await sendExperiencedEmail({ emails });
+    const response = await sendExperiencedEmail(emails);
+    const results = Array.isArray(response) ? response : (response.results || []);
     const hasFailures = results.some((r) => r.success === false);
 
     return res.json({

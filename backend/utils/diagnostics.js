@@ -45,7 +45,7 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
 
   // 4. Gmail SMTP Email Service Check
   try {
-    const { validateGmailEnv } = await import('../../mailer/index.ts');
+    const { validateGmailEnv } = require('../lib/mailer');
     const gmailCheck = validateGmailEnv();
     if (gmailCheck.configured) {
       console.log(`[Email] Gmail SMTP configured (${process.env.GMAIL_USER})`);

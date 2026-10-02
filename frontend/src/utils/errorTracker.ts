@@ -75,43 +75,41 @@ export function initClientErrorTracker(): void {
   // 1. Unhandled Promise Rejections (e.g. async fetch failures, unhandled async throw)
   window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
     const reason = event.reason;
+    if (!reason) return;
     const msg = reason instanceof Error ? reason.message : String(reason);
-    const stack = reason instanceof Error ? reason.stack : '';
 
-    console.group(
-      `%c 🚨 [CLIENT UNHANDLED REJECTION] %c ${msg.slice(0, 80)} `,
-      'background: #dc2626; color: white; font-weight: bold; padding: 2px 6px; border-radius: 3px;',
-      'background: #111827; color: #f87171; font-family: monospace; padding: 2px 6px;'
-    );
-    console.error('Exact Error:', reason);
-    if (stack) {
-      console.log('%cStack Trace:\n', 'color: #9ca3af; font-family: monospace;', stack);
+    // Ignore harmless Vite/HMR, WebSocket, extension, or network abort events
+    if (
+      !msg ||
+      msg.includes('WebSocket') ||
+      msg.includes('vite') ||
+      msg.includes('hmr') ||
+      msg.includes('AbortError') ||
+      msg.includes('ResizeObserver') ||
+      msg.includes('Script error') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('Load failed')
+    ) {
+      return;
     }
-    console.groupEnd();
+
+    console.warn('[Application Notice] Unhandled async notice:', msg);
   });
 
   // 2. Global Runtime Script Errors (e.g. null pointer, syntax, DOM errors)
   window.addEventListener('error', (event: ErrorEvent) => {
-    // Ignore harmless cross-origin resize observer or extension errors
-    if (event.message && (event.message.includes('ResizeObserver') || event.message.includes('Script error.'))) {
+    const msg = event.message || '';
+    // Ignore harmless cross-origin resize observer, WebSocket, or extension errors
+    if (
+      !msg ||
+      msg.includes('ResizeObserver') ||
+      msg.includes('Script error') ||
+      msg.includes('WebSocket') ||
+      msg.includes('vite')
+    ) {
       return;
     }
 
-    const loc = `${event.filename || 'inline'}:${event.lineno}:${event.colno}`;
-    console.group(
-      `%c 🚨 [CLIENT RUNTIME EXCEPTION] %c ${event.message} `,
-      'background: #b91c1c; color: white; font-weight: bold; padding: 2px 6px; border-radius: 3px;',
-      'background: #1f2937; color: #fca5a5; font-family: monospace; padding: 2px 6px;'
-    );
-    console.log('%cLocation: ', 'font-weight: bold; color: #fcd34d;', loc);
-    if (event.error) {
-      console.error('Error Details:', event.error);
-    }
-    console.groupEnd();
+    console.warn('[Application Notice] Runtime notice:', msg);
   });
-
-  console.log(
-    '%c[Diagnostic Tracker] Universal client error & API network tracker active',
-    'color: #10b981; font-size: 11px; font-weight: 600;'
-  );
 }

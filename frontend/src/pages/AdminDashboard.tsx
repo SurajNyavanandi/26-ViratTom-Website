@@ -197,7 +197,6 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleDeleteProject = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
     const token = localStorage.getItem('admin_token');
     try {
       const res = await fetch(apiUrl(`/api/admin/projects/${id}`), {

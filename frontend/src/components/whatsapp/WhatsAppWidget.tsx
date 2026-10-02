@@ -161,15 +161,6 @@ export const WhatsAppWidget: React.FC = () => {
 
     setRedirectUrl(waUrl);
     setSubmitted(true);
-
-    try {
-      const opened = window.open(waUrl, '_blank', 'noopener,noreferrer');
-      if (!opened) {
-        window.location.href = waUrl;
-      }
-    } catch {
-      window.location.href = waUrl;
-    }
   };
 
   return (

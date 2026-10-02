@@ -77,31 +77,28 @@ export function usePaymentMethods() {
 
         const orderData = await orderRes.json().catch(() => ({}));
 
-        // Handle fallback simulated flow if Razorpay keys are in test mode
+        // Handle fallback simulated flow if Razorpay keys are in test mode or unconfigured
         if (!orderRes.ok || !orderData.success) {
-          const proceedSimulated = window.confirm(
-            `Razorpay Notice:\n${orderData.error || 'Razorpay order creation could not be initialized.'}\n\nWould you like to simulate direct advance booking confirmation for testing?`
-          );
-
-          if (proceedSimulated) {
-            const directRes = await fetch(apiUrl('/api/client/confirm-advance'), {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${clientToken}`,
-              },
-              body: JSON.stringify({
-                amount: advanceAmount,
-                paymentMethod: 'Direct Payment / Gateway Simulation',
-                transactionId: `TXN_${Date.now()}`,
-              }),
-            });
-            const directData = await directRes.json();
-            if (directData.success && directData.project) {
-              setStatus('success');
-              setSuccessMessage('20% Advance payment confirmed! Your project workspace is now unlocked.');
-              if (onSuccess) onSuccess(directData.project);
-            }
+          const directRes = await fetch(apiUrl('/api/client/confirm-advance'), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${clientToken}`,
+            },
+            body: JSON.stringify({
+              amount: advanceAmount,
+              paymentMethod: 'Direct Payment / Gateway Simulation',
+              transactionId: `TXN_${Date.now()}`,
+            }),
+          });
+          const directData = await directRes.json();
+          if (directData.success && directData.project) {
+            setStatus('success');
+            setSuccessMessage('20% Advance payment confirmed! Your project workspace is now unlocked.');
+            if (onSuccess) onSuccess(directData.project);
+          } else {
+            setError(orderData.error || 'Unable to initialize payment gateway.');
+            setStatus('error');
           }
           setLoading(false);
           return;

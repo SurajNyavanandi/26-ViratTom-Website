@@ -1,13 +1,6 @@
 const express = require('express');
 const router = express.Router();
-
-let mailerPromise = null;
-function getMailer() {
-  if (!mailerPromise) {
-    mailerPromise = import('../../mailer/index.ts');
-  }
-  return mailerPromise;
-}
+const { validateGmailEnv, sendMail, isValidEmail, normalizeGmailError } = require('../lib/mailer');
 
 /**
  * GET /api/mail/status
@@ -15,7 +8,6 @@ function getMailer() {
  */
 router.get('/status', async (req, res, next) => {
   try {
-    const { validateGmailEnv } = await getMailer();
     const status = validateGmailEnv();
     return res.status(200).json({
       configured: status.configured,
@@ -40,8 +32,6 @@ router.post('/send', async (req, res, next) => {
       error.hint = 'Provide a valid JSON body with { to, subject, message }.';
       throw error;
     }
-
-    const { sendMail, isValidEmail } = await getMailer();
 
     const recipients = Array.isArray(to) ? to : [to];
     for (const recipient of recipients) {
@@ -81,7 +71,6 @@ router.use(async (err, req, res, next) => {
     return next(err);
   }
 
-  const { normalizeGmailError } = await getMailer();
   const normalized = normalizeGmailError(err);
 
   let statusCode = 500;

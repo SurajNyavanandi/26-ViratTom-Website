@@ -1,22 +1,15 @@
 /**
- * Unified Email Service adapter delegating directly to the standalone Gmail SMTP mailer.
- * No external API providers (Brevo, SendGrid, Mailgun, etc.). Pure Nodemailer + Gmail SMTP.
+ * Unified Email Service adapter delegating directly to the local Nodemailer + Gmail SMTP mailer.
+ * Pure Nodemailer + Gmail SMTP with safe mock fallback when credentials are not supplied.
  */
 
-let mailerPromise = null;
-function getMailer() {
-  if (!mailerPromise) {
-    mailerPromise = import('../../mailer/index.ts');
-  }
-  return mailerPromise;
-}
+const mailer = require('./mailer');
 
 /**
  * Sends an email using the standalone Gmail mailer.
  */
 async function sendEmail({ to, subject, html, text, from }) {
-  const { sendMail } = await getMailer();
-  return sendMail({ to, subject, html, text, from });
+  return mailer.sendMail({ to, subject, html, text, from });
 }
 
 function escapeHtml(str) {

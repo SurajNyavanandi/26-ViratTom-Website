@@ -34,13 +34,12 @@ const activeEnvPath = fs.existsSync(rootEnvPath) ? rootEnvPath : (fs.existsSync(
 dotenv.config({ path: activeEnvPath });
 
 // Validate Gmail SMTP configuration at startup without crashing if credentials are missing
-import('../mailer/index.ts')
-  .then(({ checkGmailStartupConfig }) => {
-    checkGmailStartupConfig();
-  })
-  .catch((err) => {
-    console.warn('[gmail] Startup check notice:', err.message);
-  });
+const { checkGmailStartupConfig } = require('./lib/mailer');
+try {
+  checkGmailStartupConfig();
+} catch (err) {
+  console.warn('[gmail] Startup check notice:', err.message);
+}
 
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes');
@@ -58,7 +57,7 @@ process.on('uncaughtException', (err) => {
 });
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // Trust reverse proxy (Google Cloud Run / Nginx)
 app.set('trust proxy', 1);
@@ -190,9 +189,7 @@ async function setupServer() {
         root: frontendDir,
         server: {
           middlewareMode: true,
-          hmr: {
-            server: httpServer,
-          },
+          hmr: false,
         },
         appType: 'spa',
       });

@@ -63,9 +63,7 @@ export const Resume = () => {
   });
 
   const handleResetResume = () => {
-    if (window.confirm('Reset all resume sections to empty builder?')) {
-      resetResumeToEmpty();
-    }
+    resetResumeToEmpty();
   };
 
   return (

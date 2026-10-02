@@ -7,6 +7,10 @@ const path = require('path');
 const fs = require('fs');
 
 const RESUME_PATHS = [
+  path.join(process.cwd(), 'frontend', 'public', 'SurajNyavanandi-Resume.pdf'),
+  path.join(process.cwd(), 'frontend', 'public', 'SurajNyavanandi-26R.pdf'),
+  path.join(__dirname, '../../frontend/public/SurajNyavanandi-Resume.pdf'),
+  path.join(__dirname, '../../frontend/public/SurajNyavanandi-26R.pdf'),
   path.join(process.cwd(), 'SurajNyavanandi-26R.pdf'),
   path.join(process.cwd(), 'SurajNyavanandi-Resume.pdf'),
   path.join(process.cwd(), 'public', 'SurajNyavanandi-26R.pdf'),

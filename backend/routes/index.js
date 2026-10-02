@@ -3,6 +3,7 @@ const router = express.Router();
 const healthRoutes = require('./healthRoutes');
 const authRoutes = require('./authRoutes');
 const outreachRoutes = require('./outreachRoutes');
+const mailRoutes = require('./mailRoutes');
 const {
   handleSendFresherEmail,
   handleSendExperiencedEmail,
@@ -44,6 +45,7 @@ const { dispatchAlert } = require('../services/alertService');
 
 router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
+router.use('/mail', mailRoutes);
 
 router.get('/projects', getProjects);
 router.get('/project-prices', getProjectPrices);

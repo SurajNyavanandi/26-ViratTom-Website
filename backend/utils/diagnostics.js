@@ -1,5 +1,3 @@
-const { verifyBrevoConnection } = require('../lib/email');
-
 /**
  * Startup system diagnostics and environment validation.
  * Prints structured logs highlighting:
@@ -45,19 +43,20 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
     successes.push('cors active');
   }
 
-  // 4. Brevo Email Service Check
+  // 4. Gmail SMTP Email Service Check
   try {
-    const brevoCheck = await verifyBrevoConnection();
-    if (brevoCheck.ok) {
-      console.log(`[Email] ${brevoCheck.message}`);
-      successes.push('Brevo connected');
+    const { validateGmailEnv } = await import('../../mailer/index.ts');
+    const gmailCheck = validateGmailEnv();
+    if (gmailCheck.configured) {
+      console.log(`[Email] Gmail SMTP configured (${process.env.GMAIL_USER})`);
+      successes.push('Gmail connected');
     } else {
-      console.log(`[Email] ${brevoCheck.message}`);
-      warnings.push(`Brevo: ${brevoCheck.message}`);
+      console.log(`[Email] Gmail SMTP credentials missing: ${gmailCheck.missing.join(', ')}`);
+      warnings.push(`Gmail: missing ${gmailCheck.missing.join(', ')}`);
     }
   } catch (err) {
-    console.log(`[Email] Brevo check notice: ${err.message}`);
-    warnings.push(`Brevo: ${err.message}`);
+    console.log(`[Email] Gmail check notice: ${err.message}`);
+    warnings.push(`Gmail: ${err.message}`);
   }
 
   // 5. Authentication & Security Check

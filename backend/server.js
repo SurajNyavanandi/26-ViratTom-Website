@@ -33,9 +33,14 @@ const backendEnvPath = path.resolve(__dirname, '.env');
 const activeEnvPath = fs.existsSync(rootEnvPath) ? rootEnvPath : (fs.existsSync(backendEnvPath) ? backendEnvPath : rootEnvPath);
 dotenv.config({ path: activeEnvPath });
 
-// Validate Brevo email environment configuration at startup
-const { validateBrevoConfig } = require('./lib/email');
-validateBrevoConfig();
+// Validate Gmail SMTP configuration at startup without crashing if credentials are missing
+import('../mailer/index.ts')
+  .then(({ checkGmailStartupConfig }) => {
+    checkGmailStartupConfig();
+  })
+  .catch((err) => {
+    console.warn('[gmail] Startup check notice:', err.message);
+  });
 
 const connectDB = require('./config/db');
 const apiRoutes = require('./routes');

@@ -202,7 +202,7 @@ const requestEmailOtpHandler = async (req, res) => {
           .catch(() => {});
       }
 
-      console.log(`[OTP Client] Verification code successfully dispatched via Brevo to ${cleanEmail} (MessageId: ${mailRes.messageId})`);
+      console.log(`[OTP Client] Verification code successfully dispatched to ${cleanEmail} (MessageId: ${mailRes.messageId})`);
 
       return res.json({
         success: true,
@@ -372,11 +372,11 @@ const submitLead = async (req, res) => {
     leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
   });
 
-  // Dispatch via Brevo Transactional Email API - await delivery before confirming
+  // Dispatch inquiry verification email
   try {
     const sendResult = await sendOtpEmail(cleanEmail, code, 'Project Inquiry');
 
-    // Store in memory & DB only when Brevo accepted the email
+    // Store in memory & DB only when email is accepted
     emailOtpStore.set(cleanEmail, {
       code,
       expiresAt: Date.now() + 10 * 60 * 1000,
@@ -395,7 +395,7 @@ const submitLead = async (req, res) => {
         .catch(() => {});
     }
 
-    console.log(`[OTP Client] Inquiry OTP dispatched via Brevo to ${cleanEmail} (MessageId: ${sendResult.messageId})`);
+    console.log(`[OTP Client] Inquiry OTP dispatched to ${cleanEmail} (MessageId: ${sendResult.messageId})`);
 
     return res.json({
       success: true,
@@ -926,7 +926,7 @@ const requestAdminForgotPassword = async (req, res) => {
     console.error('[Admin Forgot Password] Email sending error:', err.message);
     return res.status(500).json({
       success: false,
-      error: `Could not send reset code: ${err.message}. Please check your Brevo configuration.`,
+      error: `Could not send reset code: ${err.message}. Please check your email configuration.`,
     });
   }
 };

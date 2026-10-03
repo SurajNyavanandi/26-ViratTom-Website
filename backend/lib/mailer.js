@@ -45,23 +45,32 @@ async function sendMail({ to, subject, html, text, from }) {
 
   if (status.configured) {
     const maskedUser = maskEmail(process.env.GMAIL_USER);
-    console.log(`[Email SMTP] Connecting to host:smtp.gmail.com port:465 user:<${maskedUser}>`);
+    const pass = (process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASS || '').replace(/\s+/g, '');
 
-    try {
-      const transporter = nodemailer.createTransport({
+    // Explicit custom lookup forcing IPv4 to completely prevent Render/Docker IPv6 ENETUNREACH
+    const ipv4Lookup = (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
+    };
+
+    const makeTransporter = (port, secure) =>
+      nodemailer.createTransport({
         host: 'smtp.gmail.com',
-        port: 465,
-        secure: true, // SSL
-        family: 4,    // Explicitly force IPv4 to avoid Render's IPv6 outbound block
+        port,
+        secure,
+        lookup: ipv4Lookup,
         auth: {
           user: process.env.GMAIL_USER,
-          pass: (process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASS || '').replace(/\s+/g, ''),
+          pass,
         },
-        connectionTimeout: 10000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000,
       });
 
+    console.log(`[Email SMTP] Connecting to host:smtp.gmail.com port:465 user:<${maskedUser}> (Forced IPv4)`);
+
+    try {
+      const transporter = makeTransporter(465, true);
       const info = await transporter.sendMail({
         from: from || `"${process.env.GMAIL_NAME || 'ViratTom'}" <${process.env.GMAIL_USER}>`,
         to,
@@ -74,10 +83,26 @@ async function sendMail({ to, subject, html, text, from }) {
       console.log(`[Email Result] SUCCESS id:<${cleanId}> to:<${recipientStr}>`);
       return info;
     } catch (err) {
-      console.error(
-        `[Email Result] FAILED code:<${err.code || 'UNKNOWN'}> message:<${err.message}> syscall:<${err.syscall || 'N/A'}>`
-      );
-      throw err;
+      console.warn(`[Email SMTP] Port 465 attempt failed (${err.code || err.message}). Retrying via Port 587 (STARTTLS, IPv4)...`);
+      try {
+        const fallbackTransporter = makeTransporter(587, false);
+        const info = await fallbackTransporter.sendMail({
+          from: from || `"${process.env.GMAIL_NAME || 'ViratTom'}" <${process.env.GMAIL_USER}>`,
+          to,
+          subject,
+          text,
+          html,
+        });
+
+        const cleanId = (info.messageId || '').replace(/^<|>$/g, '');
+        console.log(`[Email Result] SUCCESS (via 587 fallback) id:<${cleanId}> to:<${recipientStr}>`);
+        return info;
+      } catch (fallbackErr) {
+        console.error(
+          `[Email Result] FAILED code:<${fallbackErr.code || 'UNKNOWN'}> message:<${fallbackErr.message}> syscall:<${fallbackErr.syscall || 'N/A'}>`
+        );
+        throw fallbackErr;
+      }
     }
   }
 

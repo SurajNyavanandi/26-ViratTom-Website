@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { validateGmailEnv, sendMail, isValidEmail, normalizeGmailError } = require('../lib/mailer');
+const { validateResendEnv, sendMail, isValidEmail, normalizeResendError } = require('../lib/mailer');
 
 /**
  * GET /api/mail/status
- * Returns { configured: boolean, missing: string[] }
+ * Returns { configured: boolean, missing: string[], fromAddress: string }
  */
 router.get('/status', async (req, res, next) => {
   try {
-    const status = validateGmailEnv();
+    const status = validateResendEnv();
     return res.status(200).json({
       configured: status.configured,
       missing: status.missing,
+      fromAddress: status.fromAddress,
     });
   } catch (err) {
     next(err);
@@ -71,13 +72,13 @@ router.use(async (err, req, res, next) => {
     return next(err);
   }
 
-  const normalized = normalizeGmailError(err);
+  const normalized = normalizeResendError(err);
 
   let statusCode = 500;
   if (normalized.code === 'VALIDATION_ERROR' || normalized.code === 'INVALID_RECIPIENT') {
     statusCode = 400;
-  } else if (normalized.code === 'EAUTH') {
-    statusCode = 401;
+  } else if (normalized.code === 'EAUTH' || normalized.code === 'RESEND_ERROR') {
+    statusCode = err.statusCode || 400;
   } else if (normalized.code === 'CONFIG_MISSING') {
     statusCode = 503;
   } else if (normalized.code === 'ECONNECTION' || normalized.code === 'ETIMEDOUT') {

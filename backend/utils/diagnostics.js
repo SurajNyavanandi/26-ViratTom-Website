@@ -43,20 +43,20 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
     successes.push('cors active');
   }
 
-  // 4. Gmail SMTP Email Service Check
+  // 4. Resend Email Service Check
   try {
-    const { validateGmailEnv } = require('../lib/mailer');
-    const gmailCheck = validateGmailEnv();
-    if (gmailCheck.configured) {
-      console.log(`[Email] Gmail SMTP configured (${process.env.GMAIL_USER})`);
-      successes.push('Gmail connected');
+    const { validateResendEnv } = require('../lib/mailer');
+    const resendCheck = validateResendEnv();
+    if (resendCheck.configured) {
+      console.log(`[Email] Resend API configured (From: ${resendCheck.fromAddress})`);
+      successes.push('Resend connected');
     } else {
-      console.log(`[Email] Gmail SMTP credentials missing: ${gmailCheck.missing.join(', ')}`);
-      warnings.push(`Gmail: missing ${gmailCheck.missing.join(', ')}`);
+      console.log(`[Email] RESEND_API_KEY not configured (operating in safe simulation mode)`);
+      warnings.push(`Resend: missing RESEND_API_KEY`);
     }
   } catch (err) {
-    console.log(`[Email] Gmail check notice: ${err.message}`);
-    warnings.push(`Gmail: ${err.message}`);
+    console.log(`[Email] Resend check notice: ${err.message}`);
+    warnings.push(`Resend: ${err.message}`);
   }
 
   // 5. Authentication & Security Check
@@ -70,7 +70,7 @@ async function runStartupDiagnostics({ dbResult = null, corsOrigins = [], port =
   }
 
   // 6. Admin Email Check
-  const adminEmail = (process.env.ADMIN_EMAIL || process.env.BREVO_SENDER_EMAIL || 'kanusuraj15@gmail.com').trim();
+  const adminEmail = (process.env.ADMIN_EMAIL || 'kanusuraj15@gmail.com').trim();
   console.log(`[Admin] Admin email: ${adminEmail}`);
 
   // 7. Payment Gateway Check

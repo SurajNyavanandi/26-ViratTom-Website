@@ -6,6 +6,8 @@
 const path = require('path');
 const fs = require('fs');
 
+const { FROM_EMAIL } = require('../lib/mailer');
+
 const RESUME_PATHS = [
   path.join(process.cwd(), 'frontend', 'public', 'SurajNyavanandi-Resume.pdf'),
   path.join(process.cwd(), 'frontend', 'public', 'SurajNyavanandi-26R.pdf'),
@@ -31,7 +33,7 @@ function getOutreachConfig() {
     ecommerceUrl: 'https://shop.virattom.com',
     githubUrl: 'https://github.com/SurajNyavanandi',
     linkedinUrl: 'https://www.linkedin.com/in/suraj-nyavanandi-305962286',
-    fromEmail: process.env.BREVO_SENDER_EMAIL ? `Suraj Nyavanandi <${process.env.BREVO_SENDER_EMAIL}>` : 'kanusuraj15@gmail.com',
+    fromEmail: FROM_EMAIL,
   };
 }
 

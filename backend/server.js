@@ -1,23 +1,3 @@
-// Force IPv4-first DNS resolution to prevent ENETUNREACH errors on cloud container platforms (Render, Docker)
-const dns = require('dns');
-if (dns.setDefaultResultOrder) {
-  dns.setDefaultResultOrder('ipv4first');
-}
-
-// Global safeguard: intercept dns.lookup so any module defaulting without family receives family 4
-const originalDnsLookup = dns.lookup;
-dns.lookup = function (hostname, options, callback) {
-  let cb = callback;
-  let opts = options;
-  if (typeof options === 'function') {
-    cb = options;
-    opts = {};
-  }
-  const family = typeof opts === 'object' && opts && opts.family ? opts.family : (typeof opts === 'number' ? opts : 4);
-  const normalizedOpts = typeof opts === 'object' && opts !== null ? { ...opts, family: family || 4 } : { family: 4 };
-  return originalDnsLookup.call(dns, hostname, normalizedOpts, cb);
-};
-
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -27,18 +7,32 @@ const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 
-// Load environment variables from single source of truth (prevents duplicate injection)
-const rootEnvPath = path.resolve(__dirname, '../.env');
-const backendEnvPath = path.resolve(__dirname, '.env');
-const activeEnvPath = fs.existsSync(rootEnvPath) ? rootEnvPath : (fs.existsSync(backendEnvPath) ? backendEnvPath : rootEnvPath);
-dotenv.config({ path: activeEnvPath });
+// Load environment variables reliably across all project structures and working directories
+const possibleEnvPaths = [
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '../.env'),
+  path.resolve(__dirname, '.env'),
+];
 
-// Validate Gmail SMTP configuration at startup without crashing if credentials are missing
-const { checkGmailStartupConfig } = require('./lib/mailer');
+let loadedEnvCount = 0;
+for (const envPath of possibleEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    const result = dotenv.config({ path: envPath });
+    if (result.parsed) {
+      loadedEnvCount += Object.keys(result.parsed).length;
+    }
+  }
+}
+dotenv.config(); // Load default if available
+
+console.log(`[Environment] Loaded configuration (injected variables: ${loadedEnvCount})`);
+
+// Validate Resend Email Service configuration at startup without crashing if credentials are missing
+const { checkResendStartupConfig } = require('./lib/mailer');
 try {
-  checkGmailStartupConfig();
+  checkResendStartupConfig();
 } catch (err) {
-  console.warn('[gmail] Startup check notice:', err.message);
+  console.warn('[Resend] Startup check notice:', err.message);
 }
 
 const connectDB = require('./config/db');

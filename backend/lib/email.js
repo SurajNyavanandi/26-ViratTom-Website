@@ -1,12 +1,12 @@
 /**
- * Unified Email Service adapter delegating directly to the local Nodemailer + Gmail SMTP mailer.
- * Pure Nodemailer + Gmail SMTP with safe mock fallback when credentials are not supplied.
+ * Unified Email Service adapter delegating directly to the Resend email service.
+ * Standardized exclusively on Resend SDK.
  */
 
 const mailer = require('./mailer');
 
 /**
- * Sends an email using the standalone Gmail mailer.
+ * Sends an email using the Resend mailer.
  */
 async function sendEmail({ to, subject, html, text, from }) {
   return mailer.sendMail({ to, subject, html, text, from });
@@ -23,7 +23,7 @@ function escapeHtml(str) {
 }
 
 /**
- * Send 6-digit OTP verification email via Gmail SMTP
+ * Send 6-digit OTP verification email via Resend
  */
 async function sendOtpEmail(toEmail, otpCode, purpose = 'Verification') {
   const subject = `${otpCode} is your verification code`;
@@ -123,7 +123,7 @@ async function sendPaymentReceiptEmail(toEmail, paymentData = {}) {
  * Send admin alert email
  */
 async function sendAdminAlertEmail(subject, text, html) {
-  const target = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;
+  const target = process.env.ADMIN_EMAIL || 'kanusuraj15@gmail.com';
   if (!target) return { success: false, error: 'Recipient address not configured' };
   return sendEmail({ to: target, subject: `[Admin Alert] ${subject}`, text, html });
 }

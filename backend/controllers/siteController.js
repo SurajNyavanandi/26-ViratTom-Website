@@ -186,7 +186,12 @@ const requestEmailOtpHandler = async (req, res) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Dispatch via Brevo Transactional Email API - await confirmation before saving OTP
+    console.log(`\n🔑 ==========================================`);
+    console.log(`🔑 [OTP Generated] Target: ${cleanEmail}`);
+    console.log(`🔑 [OTP Security Code]: ${code}`);
+    console.log(`🔑 ==========================================\n`);
+
+    // Dispatch via Resend Transactional Email API - await confirmation before saving OTP
     try {
       const mailRes = await sendOtpEmail(
         cleanEmail,
@@ -194,12 +199,18 @@ const requestEmailOtpHandler = async (req, res) => {
         isResumeRequest ? 'Resume Builder' : 'Project Inquiry'
       );
 
-      // Persist OTP only after Brevo confirms acceptance
+      // Persist OTP in memory & database
       emailOtpStore.set(cleanEmail, { code, expiresAt: expiresAt.getTime(), email: cleanEmail, leadData });
       if (isDbReady()) {
-        EmailOtp.deleteMany({ email: cleanEmail })
-          .then(() => EmailOtp.create({ email: cleanEmail, code, expiresAt, leadData }))
-          .catch(() => {});
+        try {
+          await EmailOtp.findOneAndUpdate(
+            { email: cleanEmail },
+            { code, expiresAt, leadData },
+            { upsert: true, returnDocument: 'after' }
+          );
+        } catch (dbErr) {
+          console.warn('[OTP DB Sync Warning]', dbErr.message);
+        }
       }
 
       console.log(`[OTP Client] Verification code successfully dispatched to ${cleanEmail} (MessageId: ${mailRes.messageId})`);
@@ -372,6 +383,11 @@ const submitLead = async (req, res) => {
     leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
   });
 
+  console.log(`\n🔑 ==========================================`);
+  console.log(`🔑 [Inquiry OTP Generated] Target: ${cleanEmail}`);
+  console.log(`🔑 [Inquiry Security Code]: ${code}`);
+  console.log(`🔑 ==========================================\n`);
+
   // Dispatch inquiry verification email
   try {
     const sendResult = await sendOtpEmail(cleanEmail, code, 'Project Inquiry');
@@ -385,14 +401,19 @@ const submitLead = async (req, res) => {
     });
 
     if (isDbReady()) {
-      EmailOtp.deleteMany({ email: cleanEmail })
-        .then(() => EmailOtp.create({
-          email: cleanEmail,
-          code,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-          leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
-        }))
-        .catch(() => {});
+      try {
+        await EmailOtp.findOneAndUpdate(
+          { email: cleanEmail },
+          {
+            code,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company },
+          },
+          { upsert: true, returnDocument: 'after' }
+        );
+      } catch (dbErr) {
+        console.warn('[Inquiry OTP DB Sync Warning]', dbErr.message);
+      }
     }
 
     console.log(`[OTP Client] Inquiry OTP dispatched to ${cleanEmail} (MessageId: ${sendResult.messageId})`);
@@ -901,6 +922,11 @@ const requestAdminForgotPassword = async (req, res) => {
 
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 15 * 60 * 1000; // 15 mins
+
+  console.log(`\n🔑 ==========================================`);
+  console.log(`🔑 [Admin Reset OTP Generated] Target: ${ADMIN_EMAIL}`);
+  console.log(`🔑 [Admin Security Code]: ${code}`);
+  console.log(`🔑 ==========================================\n`);
 
   adminResetOtpStore.set(ADMIN_EMAIL, { code, expiresAt });
 

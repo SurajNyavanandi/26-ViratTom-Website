@@ -27,6 +27,11 @@ dotenv.config(); // Load default if available
 
 console.log(`[Environment] Loaded configuration (injected variables: ${loadedEnvCount})`);
 
+// Security Check: Validate JWT_SECRET in production
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET must be set in production.');
+}
+
 // Validate Resend Email Service configuration at startup without crashing if credentials are missing
 const { checkResendStartupConfig } = require('./lib/mailer');
 try {

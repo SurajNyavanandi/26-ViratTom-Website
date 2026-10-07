@@ -30,6 +30,7 @@ export const ClientDashboard: React.FC = () => {
   const [feedbackForm, setFeedbackForm] = useState({ area: '', description: '' });
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<ClientProject | null>(null);
+  const [projects, setProjects] = useState<ClientProject[]>([]);
 
   // Modals state
   const [showAddressModal, setShowAddressModal] = useState(false);
@@ -50,45 +51,69 @@ export const ClientDashboard: React.FC = () => {
 
   const handleLogout = useCallback(() => {
     Validation.removeStorageItem('client_token');
+    Validation.removeStorageItem('selected_project_id');
     navigate('/client-login');
   }, [navigate]);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadProjects = useCallback(async (selectedId?: string) => {
     const token = localStorage.getItem('client_token');
+    if (!token) {
+      navigate('/client-login', { replace: true });
+      return;
+    }
 
-    fetch(apiUrl('/api/client/project'), {
-      headers: {
-        Authorization: `Bearer ${token || ''}`,
-      },
-    })
-      .then(async (res) => {
-        if (res.status === 401) {
-          Validation.removeStorageItem('client_token');
-          window.location.href = '/client-login';
-          return;
-        }
-        const data = await res.json().catch(() => null);
-        if (isMounted) {
-          if (data && !data.error && data.id) {
-            setProject(data);
-          } else {
-            setProject(null);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('Error fetching project:', err);
-        if (isMounted) setProject(null);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
+    try {
+      // 1. Fetch all projects belonging to this client
+      const projectsRes = await fetch(apiUrl('/api/client/projects'), {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      if (projectsRes.status === 401) {
+        Validation.removeStorageItem('client_token');
+        navigate('/client-login', { replace: true });
+        return;
+      }
+
+      const projectsData = await projectsRes.json().catch(() => ({}));
+      const projectList: ClientProject[] = projectsData.projects || [];
+      setProjects(projectList);
+
+      // 2. Fetch specific or active project
+      const targetId = selectedId || localStorage.getItem('selected_project_id') || projectList[0]?.id || '';
+      const projectUrl = targetId ? apiUrl(`/api/client/project?projectId=${targetId}`) : apiUrl('/api/client/project');
+      const projectRes = await fetch(projectUrl, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const singleData = await projectRes.json().catch(() => null);
+      if (singleData && !singleData.error && singleData.id) {
+        setProject(singleData);
+        localStorage.setItem('selected_project_id', singleData.id);
+      } else if (projectList.length > 0) {
+        setProject(projectList[0]);
+        localStorage.setItem('selected_project_id', projectList[0].id);
+      } else {
+        setProject(null);
+      }
+    } catch (err) {
+      console.error('Error fetching client projects:', err);
+      setProject(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  const handleSwitchProject = useCallback(
+    (targetId: string) => {
+      setLoading(true);
+      loadProjects(targetId);
+    },
+    [loadProjects]
+  );
 
   const handlePayAdvance = useCallback(() => {
     if (!project) return;
@@ -149,6 +174,25 @@ export const ClientDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {projects.length > 1 && (
+            <div className="flex items-center gap-1.5 mr-1">
+              <span className="text-[11px] font-semibold text-apple-gray-400 uppercase tracking-wider hidden md:inline">
+                Project:
+              </span>
+              <select
+                value={project?.id || ''}
+                onChange={(e) => handleSwitchProject(e.target.value)}
+                className="text-[12px] font-semibold px-2.5 py-1.5 rounded-xl bg-apple-gray-100 dark:bg-[#2C2C2E] border border-apple-gray-200 dark:border-[#38383A] text-apple-black dark:text-white cursor-pointer focus:outline-none focus:ring-1 focus:ring-apple-blue"
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} {p.advancePaid ? '• Active' : '• 20% Pending'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <button
             onClick={handleLogout}
             className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium text-apple-red hover:bg-apple-red/10 transition-colors cursor-pointer"

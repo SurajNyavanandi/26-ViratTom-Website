@@ -87,6 +87,24 @@ class MailQueue extends EventEmitter {
         this.stats.failed++;
         console.error(`[Mail Queue] Job ${job.id} (${job.type} to ${job.to}) permanently failed after ${job.attempts} attempts: ${err.message}`);
         this.emit('failed', { job, error: err });
+
+        // Dead-Letter Queue persistence for admin inspection and retry
+        try {
+          const FailedEmailLog = require('../models/FailedEmailLog');
+          if (require('mongoose').connection?.readyState === 1) {
+            FailedEmailLog.create({
+              jobId: job.id,
+              to: job.to,
+              type: job.type,
+              attempts: job.attempts,
+              error: err.message || 'Dispatch failed',
+              status: 'failed',
+              failedAt: new Date(),
+            }).catch((logErr) => console.warn('[Mail Queue] Failed to write dead-letter log:', logErr.message));
+          }
+        } catch {
+          // Model loading fallback
+        }
       }
     } finally {
       this.activeWorkers--;

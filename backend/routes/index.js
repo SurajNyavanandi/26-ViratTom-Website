@@ -27,6 +27,7 @@ const {
   checkClientPhone,
   loginClient,
   getClientProject,
+  getClientProjects,
   confirmAdvancePayment,
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -73,12 +74,12 @@ router.post('/resume', generateResume);
 router.get('/resume/stats', getResumeStats);
 router.post('/resume/track-download', trackResumeDownload);
 
-// Recruiter Outreach & Direct Dispatch Services
-router.use('/outreach', outreachRoutes);
-router.post('/send-fresher-email', handleSendFresherEmail);
-router.post('/send-experienced-email', handleSendExperiencedEmail);
-router.post('/send-fresher-whatsapp', handleFresherWhatsApp);
-router.post('/send-experienced-whatsapp', handleExperiencedWhatsApp);
+// Recruiter Outreach & Direct Dispatch Services (Protected for Admin)
+router.use('/outreach', protectAdmin, outreachRoutes);
+router.post('/send-fresher-email', protectAdmin, handleSendFresherEmail);
+router.post('/send-experienced-email', protectAdmin, handleSendExperiencedEmail);
+router.post('/send-fresher-whatsapp', protectAdmin, handleFresherWhatsApp);
+router.post('/send-experienced-whatsapp', protectAdmin, handleExperiencedWhatsApp);
 
 // Razorpay Webhooks (Automated asynchronous reconciliation)
 router.post('/payment/razorpay-webhook', handleRazorpayWebhook);
@@ -87,12 +88,13 @@ router.post('/razorpay/webhook', handleRazorpayWebhook);
 // Client portal authentication & authorized operations
 router.post('/client/check-phone', checkClientPhone);
 router.post('/client/login', loginClient);
+router.get('/client/projects', protectClient, getClientProjects);
 router.get('/client/project', protectClient, getClientProject);
 router.post('/client/razorpay/create-order', protectClient, createRazorpayOrder);
 router.post('/client/create-razorpay-order', protectClient, createRazorpayOrder);
 router.post('/client/razorpay/verify', protectClient, verifyRazorpayPayment);
 router.post('/client/verify-razorpay-payment', protectClient, verifyRazorpayPayment);
-router.post('/client/confirm-advance', protectClient, confirmAdvancePayment);
+router.post('/client/confirm-advance', protectAdmin, confirmAdvancePayment);
 router.post('/client/feedback', protectClient, addClientFeedback);
 
 // Admin portal authentication & authorized operations

@@ -11,9 +11,9 @@ export interface SEOProps {
   jsonLd?: Record<string, any> | Array<Record<string, any>>;
 }
 
-const DEFAULT_TITLE = 'ViratTom | Full-Stack Web Developer & UI/UX Specialist | Custom Software & Web Apps';
-const DEFAULT_DESCRIPTION = 'Suraj Kanu (ViratTom) – Expert Full-Stack Developer & UI/UX Specialist. Building high-performance web applications, SaaS platforms, and free ATS-optimized developer tools.';
-const DEFAULT_KEYWORDS = 'Full Stack Web Developer, Hire Web Developer India, Custom Web Application Development, React Developer, Node.js Developer, Next.js Expert, UI/UX Designer, Free ATS Resume Builder, Modern Developer Resume Template PDF, Suraj Kanu, ViratTom';
+const DEFAULT_TITLE = 'ViratTom Technologies | Custom Web & Mobile App Development Company | Free ATS Resume Builder';
+const DEFAULT_DESCRIPTION = 'ViratTom Technologies is an IT software engineering company delivering high-performance web applications, scalable mobile apps (iOS & Android), custom SaaS solutions, and free developer tools.';
+const DEFAULT_KEYWORDS = 'IT Software Company, Custom Software Development Company, Web Application Development, Mobile App Development Services, React Node.js Agency, Full Stack Developers India, Free ATS Resume Builder, Developer CV Maker Online, ViratTom Technologies, Enterprise Software Solutions';
 const SITE_URL = (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://virattom.com').replace(/\/+$/, '');
 const DEFAULT_OG_IMAGE = `${SITE_URL}/projects/inisio.png`;
 
@@ -46,7 +46,7 @@ export const SEO: React.FC<SEOProps> = ({
     // 2. Standard Meta Tags
     setMetaTag('name', 'description', description);
     setMetaTag('name', 'keywords', keywords);
-    setMetaTag('name', 'author', 'Suraj Kanu (ViratTom)');
+    setMetaTag('name', 'author', 'ViratTom Technologies');
     setMetaTag('name', 'robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
 
     // 3. Canonical Link
@@ -60,7 +60,7 @@ export const SEO: React.FC<SEOProps> = ({
     canonicalLink.setAttribute('href', targetCanonical);
 
     // 4. OpenGraph Tags
-    setMetaTag('property', 'og:site_name', 'ViratTom');
+    setMetaTag('property', 'og:site_name', 'ViratTom Technologies');
     setMetaTag('property', 'og:locale', 'en_US');
     setMetaTag('property', 'og:type', ogType);
     setMetaTag('property', 'og:title', title);

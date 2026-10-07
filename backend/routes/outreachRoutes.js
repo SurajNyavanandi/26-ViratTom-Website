@@ -7,11 +7,12 @@ const {
   handleExperiencedWhatsApp,
   handleDownloadResume,
 } = require('../controllers/outreachController');
+const { protectAdmin } = require('../middleware/authMiddleware');
 
-router.post('/send-fresher-email', handleSendFresherEmail);
-router.post('/send-experienced-email', handleSendExperiencedEmail);
-router.post('/send-fresher-whatsapp', handleFresherWhatsApp);
-router.post('/send-experienced-whatsapp', handleExperiencedWhatsApp);
+router.post('/send-fresher-email', protectAdmin, handleSendFresherEmail);
+router.post('/send-experienced-email', protectAdmin, handleSendExperiencedEmail);
+router.post('/send-fresher-whatsapp', protectAdmin, handleFresherWhatsApp);
+router.post('/send-experienced-whatsapp', protectAdmin, handleExperiencedWhatsApp);
 router.get('/resume-pdf', handleDownloadResume);
 router.get('/download-resume', handleDownloadResume);
 

@@ -37,6 +37,49 @@ const fallbackLeads = [];
 let fallbackIdCounter = 1;
 let inMemoryResumeDownloads = 26;
 
+// Webhook Idempotency & Replay Protection Cache
+const processedWebhooks = new Map();
+
+// Synchronize in-memory fallback leads to MongoDB upon database reconnection
+const syncFallbackData = async () => {
+  if (!isDbReady() || fallbackLeads.length === 0) return;
+  console.log(`[Database Sync] Synchronizing ${fallbackLeads.length} in-memory fallback leads to MongoDB...`);
+  const leadsToSync = [...fallbackLeads];
+  for (const item of leadsToSync) {
+    try {
+      const exists = await Lead.findOne({ email: item.email, createdAt: item.createdAt });
+      if (!exists) {
+        await Lead.create({
+          name: item.name,
+          email: item.email,
+          phone: item.phone,
+          company: item.company,
+          service: item.service || item.projectType,
+          budget: item.budget,
+          message: item.message,
+          scope: item.scope,
+          projectType: item.projectType,
+          verified: item.verified,
+          whatsappVerified: item.whatsappVerified,
+          waId: item.waId,
+          createdAt: item.createdAt,
+        });
+      }
+      const idx = fallbackLeads.indexOf(item);
+      if (idx !== -1) fallbackLeads.splice(idx, 1);
+    } catch (err) {
+      console.warn('[Database Sync] Lead sync notice:', err.message);
+    }
+  }
+  console.log('[Database Sync] In-memory lead synchronization complete.');
+};
+
+if (mongoose.connection) {
+  mongoose.connection.on('connected', () => {
+    syncFallbackData().catch(() => {});
+  });
+}
+
 const portfolioProjects = [
   {
     _id: '1',
@@ -142,11 +185,48 @@ const getProjects = async (req, res) => {
 };
 
 // -------------------------------------------------------------
+// Sanitization & Telecom Verification Helpers
+// -------------------------------------------------------------
+const checkWhatsAppWithTimeout = async (cleanPhone) => {
+  try {
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve({ isValid: true, status: 'timeout_fallback', method: 'timeout_fallback' }), 2000)
+    );
+    return await Promise.race([verifyWhatsAppNumber(cleanPhone), timeoutPromise]);
+  } catch {
+    return { isValid: true, status: 'fallback', method: 'fallback' };
+  }
+};
+
+const sanitizeLeadData = (data = {}) => {
+  const cleanEmail = String(data.email || '').trim().toLowerCase().slice(0, 100);
+  const rawPhone = String(data.phone || '').replace(/\D/g, '');
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : (rawPhone || 'N/A').slice(0, 15);
+  const rawBudget = Number(data.budget) || 0;
+  const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
+  const isResume = data.projectType === 'Resume User' || String(data.scope || '').toLowerCase().includes('resume');
+
+  return {
+    name: String(data.name || (isResume ? 'Resume User' : 'Inquiry User')).trim().slice(0, 100),
+    email: cleanEmail,
+    phone: cleanPhone,
+    company: String(data.company || '').trim().slice(0, 100),
+    budget: cappedBudget,
+    scope: String(data.scope || '').trim().slice(0, 1000),
+    service: String(data.service || data.projectType || 'Custom Application Development').trim().slice(0, 100),
+    message: String(data.message || '').trim().slice(0, 2000),
+    projectType: String(data.projectType || (isResume ? 'Resume User' : 'Static Website')).trim().slice(0, 100),
+    whatsappVerified: Boolean(data.whatsappVerified),
+    waId: String(data.waId || '').trim().slice(0, 30),
+  };
+};
+
+// -------------------------------------------------------------
 // Email OTP Request & Verification
 // -------------------------------------------------------------
 const requestEmailOtpHandler = async (req, res) => {
   const { name = '', email = '', phone = '', budget = '', scope = '', projectType = '', company = '' } = req.body || {};
-  const cleanEmail = String(email || '').trim().toLowerCase();
+  const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 100);
   const rawPhone = String(phone || '').replace(/\D/g, '');
   const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : (rawPhone || 'N/A');
 
@@ -157,10 +237,10 @@ const requestEmailOtpHandler = async (req, res) => {
   try {
     const isResumeRequest = projectType === 'Resume User' || String(scope || '').toLowerCase().includes('resume');
 
-    // Silent background WhatsApp presence verification (zero notifications, transparent to user)
+    // Silent background WhatsApp presence verification with 2s strict timeout
     let waResult = { isValid: true };
     if (!isResumeRequest && cleanPhone && cleanPhone !== 'N/A') {
-      waResult = await verifyWhatsAppNumber(cleanPhone);
+      waResult = await checkWhatsAppWithTimeout(cleanPhone);
       if (!waResult.isValid) {
         return res.status(400).json({
           error: waResult.error || 'Please enter a valid mobile number with an active WhatsApp account.',
@@ -168,20 +248,17 @@ const requestEmailOtpHandler = async (req, res) => {
       }
     }
 
-    const rawBudget = Number.parseInt(budget) || 0;
-    const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
-
-    const leadData = {
-      name: name || (isResumeRequest ? 'Resume User' : 'Inquiry User'),
+    const leadData = sanitizeLeadData({
+      name,
       email: cleanEmail,
-      phone: cleanPhone || 'N/A',
+      phone: cleanPhone,
       company,
-      budget: cappedBudget,
+      budget,
       scope,
-      projectType: projectType || (isResumeRequest ? 'Resume User' : 'Static Website'),
+      projectType,
       whatsappVerified: Boolean(waResult.isValid),
       waId: waResult.waId || '',
-    };
+    });
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -239,6 +316,7 @@ const verifyEmailOtpHandler = async (req, res) => {
 
   let isValid = false;
   let finalLeadData = leadData;
+  let attemptsCount = 0;
 
   // 1. Check Memory Store first for ultra-fast verification (< 1ms)
   const memSession = emailOtpStore.get(cleanEmail);
@@ -246,6 +324,9 @@ const verifyEmailOtpHandler = async (req, res) => {
     isValid = true;
     finalLeadData = memSession.leadData || leadData;
     emailOtpStore.delete(cleanEmail);
+    if (isDbReady()) {
+      EmailOtp.deleteMany({ email: cleanEmail }).catch(() => {});
+    }
   }
 
   // 2. Check MongoDB if not matched in memory
@@ -256,6 +337,9 @@ const verifyEmailOtpHandler = async (req, res) => {
         isValid = true;
         finalLeadData = dbOtp.leadData || leadData;
         EmailOtp.deleteOne({ _id: dbOtp._id }).catch(() => {});
+        emailOtpStore.delete(cleanEmail);
+      } else if (dbOtp) {
+        attemptsCount = (dbOtp.attempts || 0) + 1;
       }
     } catch {
       // Fall back to validation result
@@ -263,34 +347,59 @@ const verifyEmailOtpHandler = async (req, res) => {
   }
 
   if (!isValid) {
-    console.warn(`[OTP Verify Failed] For: ${cleanEmail} | Attempted Code: ${inputOtp}`);
-    return res.status(400).json({ error: 'Invalid or expired verification code. Please check your email or request a new code.' });
+    if (memSession) {
+      memSession.attempts = (memSession.attempts || 0) + 1;
+      attemptsCount = Math.max(attemptsCount, memSession.attempts);
+    }
+
+    // Invalidate OTP immediately if max attempts reached (5 attempts)
+    if (attemptsCount >= 5) {
+      emailOtpStore.delete(cleanEmail);
+      if (isDbReady()) {
+        EmailOtp.deleteMany({ email: cleanEmail }).catch(() => {});
+      }
+      console.warn(`[OTP Locked] Too many failed attempts for: ${cleanEmail}. Invalidated OTP.`);
+      return res.status(429).json({
+        error: 'Too many failed attempts. For your security, this verification code has been invalidated. Please request a new code.',
+      });
+    }
+
+    // Persist attempt counter to MongoDB
+    if (isDbReady()) {
+      EmailOtp.updateOne({ email: cleanEmail }, { $inc: { attempts: 1 } }).catch(() => {});
+    }
+
+    const remaining = Math.max(1, 5 - attemptsCount);
+    console.warn(`[OTP Verify Failed] For: ${cleanEmail} | Attempted Code: ${inputOtp} | Attempts: ${attemptsCount}`);
+    return res.status(400).json({
+      error: `Invalid verification code. Please check your email or request a new code. (${remaining} attempts remaining)`,
+    });
   }
 
   console.log(`✅ [OTP Verified] Success for: ${cleanEmail}`);
 
   try {
     let savedLead = null;
-    const isResume = finalLeadData.projectType === 'Resume User';
-    const rawBudget = Number(finalLeadData.budget) || 0;
-    const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
-    finalLeadData.budget = cappedBudget;
+    const sanitized = sanitizeLeadData({ ...finalLeadData, email: cleanEmail });
+    const isResume = sanitized.projectType === 'Resume User';
 
-    // Persist Lead in MongoDB if connected
+    // Persist Lead in MongoDB if connected (strictly whitelisted fields)
     if (isDbReady()) {
       try {
         savedLead = await Lead.create({
-          name: finalLeadData.name || (isResume ? 'Resume User' : 'Verified Lead'),
+          name: sanitized.name,
           email: cleanEmail,
-          phone: finalLeadData.phone || 'N/A',
-          company: finalLeadData.company || '',
-          budget: cappedBudget,
-          scope: finalLeadData.scope || '',
-          projectType: finalLeadData.projectType || 'Static Website',
+          phone: sanitized.phone,
+          company: sanitized.company,
+          budget: sanitized.budget,
+          scope: sanitized.scope,
+          service: sanitized.service,
+          message: sanitized.message,
+          projectType: sanitized.projectType,
           verified: true,
-          whatsappVerified: Boolean(finalLeadData.whatsappVerified),
-          waId: finalLeadData.waId || '',
-          ipAddress: req.ip || '',
+          whatsappVerified: sanitized.whatsappVerified,
+          waId: sanitized.waId,
+          ipAddress: String(req.ip || '').slice(0, 45),
         });
       } catch {
         // Fallback below
@@ -300,8 +409,7 @@ const verifyEmailOtpHandler = async (req, res) => {
     if (!savedLead) {
       savedLead = {
         _id: String(fallbackIdCounter++),
-        ...finalLeadData,
-        email: cleanEmail,
+        ...sanitized,
         verified: true,
         createdAt: new Date().toISOString(),
       };
@@ -310,7 +418,7 @@ const verifyEmailOtpHandler = async (req, res) => {
 
     // Send confirmation email to lead via non-blocking queue
     if (!isResume && cleanEmail.includes('@')) {
-      queueLeadConfirmationEmail(cleanEmail, finalLeadData);
+      queueLeadConfirmationEmail(cleanEmail, sanitized);
     }
 
     // Trigger Instant Webhook Alerts (Telegram, Discord, Slack)
@@ -327,12 +435,26 @@ const verifyEmailOtpHandler = async (req, res) => {
       },
     }).catch(() => {});
 
+    // Resolve associated project if one exists for this lead's phone/email
+    const leadPhone = String(finalLeadData.phone || '').replace(/\D/g, '').slice(-10);
+    let associatedProject = null;
+    if (isDbReady() && leadPhone) {
+      try {
+        associatedProject = await ClientProject.findOne({ clientPhone: leadPhone }).sort({ createdAt: -1 });
+      } catch {}
+    }
+    if (!associatedProject && leadPhone) {
+      associatedProject = clientProjects.find((p) => String(p.clientPhone || '').slice(-10) === leadPhone);
+    }
+    const resolvedProjectId = associatedProject ? (associatedProject.id || String(associatedProject._id)) : 'proj_1';
+
     // Create client session token
     const token = jwt.sign(
       {
         id: savedLead._id || cleanEmail,
         email: cleanEmail,
-        phone: finalLeadData.phone,
+        phone: leadPhone || finalLeadData.phone,
+        projectId: resolvedProjectId,
         role: 'verified_user',
       },
       JWT_SECRET,
@@ -344,6 +466,7 @@ const verifyEmailOtpHandler = async (req, res) => {
       message: 'Email successfully verified!',
       token,
       email: cleanEmail,
+      projectId: resolvedProjectId,
       lead: savedLead,
     });
   } catch (error) {
@@ -364,23 +487,32 @@ const submitLead = async (req, res) => {
     return res.status(400).json({ error: 'Email and phone number are required.' });
   }
 
-  // Silent WhatsApp presence & valid mobile number check
-  const waCheck = await verifyWhatsAppNumber(cleanPhone);
+  // Silent WhatsApp presence & valid mobile number check with 2s strict timeout
+  const waCheck = await checkWhatsAppWithTimeout(cleanPhone);
   if (!waCheck.isValid) {
     return res.status(400).json({
       error: waCheck.error || 'Please enter a valid mobile number with an active WhatsApp account.',
     });
   }
 
-  const rawBudget = Number(budget) || 0;
-  const cappedBudget = Math.min(300000, Math.max(0, rawBudget));
+  const sanitized = sanitizeLeadData({
+    name,
+    email: cleanEmail,
+    phone: cleanPhone,
+    service,
+    budget,
+    message,
+    company,
+    whatsappVerified: Boolean(waCheck.isValid),
+    waId: waCheck.waId || '',
+  });
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
   emailOtpStore.set(cleanEmail, {
     code,
     expiresAt: Date.now() + 10 * 60 * 1000,
     email: cleanEmail,
-    leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
+    leadData: sanitized,
   });
 
   console.log(`\n🔑 ==========================================`);
@@ -397,7 +529,7 @@ const submitLead = async (req, res) => {
       code,
       expiresAt: Date.now() + 10 * 60 * 1000,
       email: cleanEmail,
-      leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company }
+      leadData: sanitized,
     });
 
     if (isDbReady()) {
@@ -407,7 +539,7 @@ const submitLead = async (req, res) => {
           {
             code,
             expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-            leadData: { name, email: cleanEmail, phone: cleanPhone, service, budget: cappedBudget, message, company },
+            leadData: sanitized,
           },
           { upsert: true, returnDocument: 'after' }
         );
@@ -437,12 +569,17 @@ const verifyOtp = async (req, res) => {
   const inputOtp = String(otp || '').replace(/\D/g, '').trim();
 
   let isValid = false;
+  let attemptsCount = 0;
+
   if (isDbReady()) {
     try {
       const dbOtp = await EmailOtp.findOne({ email: cleanEmail });
       if (dbOtp && dbOtp.code === inputOtp && new Date() < dbOtp.expiresAt) {
         isValid = true;
         await EmailOtp.deleteOne({ _id: dbOtp._id });
+        emailOtpStore.delete(cleanEmail);
+      } else if (dbOtp) {
+        attemptsCount = (dbOtp.attempts || 0) + 1;
       }
     } catch {
       // fallback
@@ -454,17 +591,55 @@ const verifyOtp = async (req, res) => {
     if (memSession && memSession.code === inputOtp && Date.now() < memSession.expiresAt) {
       isValid = true;
       emailOtpStore.delete(cleanEmail);
+      if (isDbReady()) {
+        EmailOtp.deleteMany({ email: cleanEmail }).catch(() => {});
+      }
+    } else if (memSession) {
+      memSession.attempts = (memSession.attempts || 0) + 1;
+      attemptsCount = Math.max(attemptsCount, memSession.attempts);
     }
   }
 
   if (!isValid) {
-    return res.status(400).json({ error: 'Invalid or expired OTP code.' });
+    if (attemptsCount >= 5) {
+      emailOtpStore.delete(cleanEmail);
+      if (isDbReady()) {
+        EmailOtp.deleteMany({ email: cleanEmail }).catch(() => {});
+      }
+      return res.status(429).json({
+        error: 'Too many failed attempts. For your security, this verification code has been invalidated. Please request a new code.',
+      });
+    }
+
+    if (isDbReady()) {
+      EmailOtp.updateOne({ email: cleanEmail }, { $inc: { attempts: 1 } }).catch(() => {});
+    }
+
+    const remaining = Math.max(1, 5 - attemptsCount);
+    return res.status(400).json({ error: `Invalid or expired OTP code. (${remaining} attempts remaining)` });
   }
+
+  const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+  let userProject = null;
+  if (isDbReady() && cleanPhone) {
+    try {
+      userProject = await ClientProject.findOne({ clientPhone: cleanPhone }).sort({ createdAt: -1 });
+    } catch {}
+  }
+  if (!userProject && cleanPhone) {
+    userProject = clientProjects.find((p) => String(p.clientPhone || '').slice(-10) === cleanPhone);
+  }
+  const resolvedProjectId = userProject ? (userProject.id || String(userProject._id)) : 'proj_1';
 
   return res.json({
     success: true,
     message: 'Inquiry verified and recorded successfully!',
-    token: jwt.sign({ email: cleanEmail, phone: phone || 'N/A', role: 'client' }, JWT_SECRET, { expiresIn: '30d' }),
+    token: jwt.sign(
+      { email: cleanEmail, phone: cleanPhone || 'N/A', projectId: resolvedProjectId, role: 'client' },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    ),
+    projectId: resolvedProjectId,
   });
 };
 
@@ -475,53 +650,76 @@ const checkClientPhone = async (req, res) => {
   const { phone } = req.body || {};
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
 
-  let project = null;
+  let projects = [];
   if (isDbReady()) {
     try {
-      project = await ClientProject.findOne({ clientPhone: cleanPhone });
+      projects = await ClientProject.find({ clientPhone: cleanPhone }).sort({ createdAt: -1 });
     } catch {
       // Memory fallback
     }
   }
 
-  if (!project) {
-    project = clientProjects.find((p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
+  if (!projects || projects.length === 0) {
+    projects = clientProjects.filter((p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
   }
 
-  if (project) {
-    return res.json({ exists: true, clientName: project.clientName, projectTitle: project.title });
+  if (projects.length > 0) {
+    return res.json({
+      exists: true,
+      count: projects.length,
+      clientName: projects[0].clientName || 'Client',
+      projectTitle: projects[0].title || '',
+      projects: projects.map((p) => ({
+        id: p.id || p._id,
+        title: p.title,
+        type: p.type,
+        totalBudget: p.totalBudget,
+        advancePaid: p.advancePaid,
+        status: p.status,
+      })),
+    });
   }
 
-  return res.json({ exists: false });
+  return res.json({ exists: false, count: 0, projects: [] });
 };
 
 const loginClient = async (req, res) => {
-  const { phone, otp } = req.body || {};
+  const { phone, projectId } = req.body || {};
   const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
 
-  let project = null;
+  let projects = [];
   if (isDbReady()) {
     try {
-      project = await ClientProject.findOne({ clientPhone: cleanPhone });
+      projects = await ClientProject.find({ clientPhone: cleanPhone }).sort({ createdAt: -1 });
     } catch {
       // Memory fallback
     }
   }
 
-  if (!project) {
-    project = clientProjects.find((p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
+  if (!projects || projects.length === 0) {
+    projects = clientProjects.filter((p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === cleanPhone);
   }
 
   // Allow standard verification code or demo fallback
   const adminPhone = '9666635009';
-  if (!project && cleanPhone !== adminPhone) {
+  if (projects.length === 0 && cleanPhone !== adminPhone) {
     return res.status(404).json({ error: 'No active project found for this phone number.' });
   }
+
+  if (projects.length === 0 && cleanPhone === adminPhone) {
+    projects = clientProjects;
+  }
+
+  // Resolve selected project (or default to specified projectId, or first unpaid/active project)
+  const selectedProject =
+    (projectId && projects.find((p) => String(p.id || p._id) === String(projectId))) ||
+    projects.find((p) => !p.advancePaid) ||
+    projects[0];
 
   const token = jwt.sign(
     {
       phone: cleanPhone,
-      projectId: project ? (project.id || project._id) : 'proj_1',
+      projectId: selectedProject ? (selectedProject.id || String(selectedProject._id)) : 'proj_1',
       role: 'client',
     },
     JWT_SECRET,
@@ -531,26 +729,78 @@ const loginClient = async (req, res) => {
   return res.json({
     success: true,
     token,
-    project: project || clientProjects[0],
+    count: projects.length,
+    projects: projects.map((p) => ({
+      id: p.id || p._id,
+      title: p.title,
+      type: p.type,
+      totalBudget: p.totalBudget,
+      advancePaid: p.advancePaid,
+      status: p.status,
+    })),
+    project: selectedProject,
   });
 };
 
-const getClientProject = async (req, res) => {
-  const userPhone = req.user?.phone || '';
-  const projectId = req.user?.projectId || '';
+const getClientProjects = async (req, res) => {
+  const userPhone = req.user?.phone || req.client?.phone || '';
+  if (!userPhone) {
+    return res.status(401).json({ error: 'Unauthorized: Client phone required' });
+  }
 
-  let project = null;
+  let projects = [];
   if (isDbReady()) {
     try {
-      if (projectId) project = await ClientProject.findOne({ id: projectId });
-      if (!project && userPhone) project = await ClientProject.findOne({ clientPhone: userPhone });
+      projects = await ClientProject.find({ clientPhone: userPhone }).sort({ createdAt: -1 });
     } catch {
       // Memory fallback
     }
   }
 
+  if (!projects || projects.length === 0) {
+    projects = clientProjects.filter((p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === userPhone);
+  }
+
+  if (projects.length === 0 && userPhone === '9666635009') {
+    projects = clientProjects;
+  }
+
+  return res.json({
+    success: true,
+    count: projects.length,
+    projects,
+  });
+};
+
+const getClientProject = async (req, res) => {
+  const userPhone = req.user?.phone || req.client?.phone || '';
+  const requestedProjectId = req.query.projectId || req.headers['x-project-id'] || req.user?.projectId || req.client?.projectId || '';
+
+  let projects = [];
+  if (isDbReady()) {
+    try {
+      projects = await ClientProject.find({ clientPhone: userPhone }).sort({ createdAt: -1 });
+    } catch {
+      // Memory fallback
+    }
+  }
+
+  if (!projects || projects.length === 0) {
+    projects = clientProjects.filter((p) => String(p.clientPhone || '').replace(/\D/g, '').slice(-10) === userPhone);
+  }
+
+  if (projects.length === 0 && userPhone === '9666635009') {
+    projects = clientProjects;
+  }
+
+  // Resolve specific requested project or fallback to first
+  const project =
+    (requestedProjectId && projects.find((p) => String(p.id || p._id) === String(requestedProjectId))) ||
+    projects[0] ||
+    null;
+
   if (!project) {
-    project = clientProjects.find((p) => p.id === projectId || String(p.clientPhone || '').slice(-10) === userPhone) || clientProjects[0];
+    return res.status(404).json({ error: 'Project not found for this account' });
   }
 
   return res.json(project);
@@ -561,11 +811,53 @@ const getClientProject = async (req, res) => {
 // -------------------------------------------------------------
 const createRazorpayOrder = async (req, res) => {
   try {
-    const { amount, currency = 'INR', receipt, projectId } = req.body || {};
-    const numericAmount = Number.parseInt(amount, 10);
+    const { currency = 'INR', receipt, projectId } = req.body || {};
+    const userPhone = req.user?.phone || req.client?.phone || '';
+    const targetProjectId = projectId || req.user?.projectId || req.client?.projectId || '';
 
-    if (!numericAmount || numericAmount <= 0) {
-      return res.status(400).json({ error: 'Valid payment amount is required.' });
+    // 1. Resolve project strictly belonging to authenticated client
+    let project = null;
+    if (isDbReady()) {
+      try {
+        if (targetProjectId) {
+          const idQuery = mongoose.isValidObjectId(targetProjectId)
+            ? { $or: [{ id: targetProjectId }, { _id: targetProjectId }] }
+            : { id: targetProjectId };
+          project = await ClientProject.findOne({
+            $and: [idQuery, { clientPhone: userPhone }],
+          });
+        }
+        if (!project && userPhone) {
+          project = await ClientProject.findOne({ clientPhone: userPhone });
+        }
+      } catch (err) {
+        console.warn('[DB Project Lookup Notice]', err.message);
+      }
+    }
+
+    if (!project) {
+      project = clientProjects.find(
+        (p) =>
+          (p.id === targetProjectId || String(p.clientPhone || '').slice(-10) === userPhone) &&
+          String(p.clientPhone || '').slice(-10) === userPhone
+      ) || (userPhone === '9666635009' ? clientProjects[0] : null);
+    }
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found or not associated with your account.' });
+    }
+
+    if (project.advancePaid) {
+      return res.status(400).json({ error: 'Advance payment has already been completed for this project.' });
+    }
+
+    // 2. Server-authoritative calculation: disregard any client-provided amount
+    const advancePct = Number(project.advancePercentage) || 20;
+    const totalBudget = Number(project.totalBudget) || 25000;
+    const serverAdvanceAmount = Number(project.advanceAmount) || Math.round(totalBudget * (advancePct / 100));
+
+    if (serverAdvanceAmount <= 0) {
+      return res.status(400).json({ error: 'Invalid project budget or advance amount.' });
     }
 
     const rzp = getRazorpayInstance();
@@ -573,21 +865,28 @@ const createRazorpayOrder = async (req, res) => {
 
     if (rzp) {
       const order = await rzp.orders.create({
-        amount: numericAmount * 100, // Amount in paise
+        amount: serverAdvanceAmount * 100, // Amount in paise
         currency,
         receipt: orderReceipt,
         notes: {
-          projectId: projectId || 'proj_1',
-          clientPhone: req.user?.phone || 'N/A',
+          projectId: project.id || String(project._id),
+          projectTitle: project.title,
+          clientPhone: userPhone || 'N/A',
+          serverAdvanceAmount: String(serverAdvanceAmount),
         },
       });
 
       return res.json({
         success: true,
         orderId: order.id,
-        amount: numericAmount,
+        amount: serverAdvanceAmount,
+        amountInPaise: serverAdvanceAmount * 100,
         currency: order.currency,
         key: process.env.RAZORPAY_KEY_ID,
+        projectName: project.title,
+        clientName: project.clientName,
+        clientPhone: userPhone,
+        clientEmail: project.clientEmail,
       });
     }
 
@@ -596,10 +895,15 @@ const createRazorpayOrder = async (req, res) => {
     return res.json({
       success: true,
       orderId: mockOrderId,
-      amount: numericAmount,
+      amount: serverAdvanceAmount,
+      amountInPaise: serverAdvanceAmount * 100,
       currency: 'INR',
       key: process.env.RAZORPAY_KEY_ID || 'rzp_test_simulated_key',
       simulated: true,
+      projectName: project.title,
+      clientName: project.clientName,
+      clientPhone: userPhone,
+      clientEmail: project.clientEmail,
     });
   } catch (err) {
     console.error('[Create Razorpay Order Error]', err);
@@ -613,13 +917,47 @@ const verifyRazorpayPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      amount,
       projectId,
     } = req.body || {};
 
+    const userPhone = req.user?.phone || req.client?.phone || '';
+    const targetProjectId = projectId || req.user?.projectId || req.client?.projectId || '';
+
+    // 1. Resolve project strictly belonging to authenticated client
+    let project = null;
+    if (isDbReady()) {
+      try {
+        if (targetProjectId) {
+          const idQuery = mongoose.isValidObjectId(targetProjectId)
+            ? { $or: [{ id: targetProjectId }, { _id: targetProjectId }] }
+            : { id: targetProjectId };
+          project = await ClientProject.findOne({
+            $and: [idQuery, { clientPhone: userPhone }],
+          });
+        }
+        if (!project && userPhone) {
+          project = await ClientProject.findOne({ clientPhone: userPhone });
+        }
+      } catch (err) {
+        console.warn('[DB Project Lookup Notice]', err.message);
+      }
+    }
+
+    if (!project) {
+      project = clientProjects.find(
+        (p) =>
+          (p.id === targetProjectId || String(p.clientPhone || '').slice(-10) === userPhone) &&
+          String(p.clientPhone || '').slice(-10) === userPhone
+      ) || (userPhone === '9666635009' ? clientProjects[0] : null);
+    }
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: 'Project not found or not associated with your account.' });
+    }
+
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
-    // Verify cryptographic signature if secret is present
+    // 2. Verify cryptographic signature if secret is present
     if (key_secret && razorpay_signature && !razorpay_order_id.startsWith('order_sim_')) {
       const hmac = crypto.createHmac('sha256', key_secret);
       hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
@@ -630,29 +968,18 @@ const verifyRazorpayPayment = async (req, res) => {
       }
     }
 
-    const paidAmount = Number(amount) || 7000;
+    // 3. Server-authoritative advance amount (client cannot tamper)
+    const advancePct = Number(project.advancePercentage) || 20;
+    const totalBudget = Number(project.totalBudget) || 25000;
+    const paidAmount = Number(project.advanceAmount) || Math.round(totalBudget * (advancePct / 100));
     const txnId = razorpay_payment_id || `PAY_${Date.now()}`;
-
-    // Find and update project
-    let project = null;
-    if (isDbReady()) {
-      try {
-        project = await ClientProject.findOne({ $or: [{ id: projectId }, { clientPhone: req.user?.phone }] });
-      } catch {
-        // Memory fallback
-      }
-    }
-
-    if (!project) {
-      project = clientProjects.find((p) => p.id === projectId || p.clientPhone === req.user?.phone) || clientProjects[0];
-    }
 
     project.advancePaid = true;
     project.paymentHistory = project.paymentHistory || [];
     project.paymentHistory.unshift({
       id: 'pay_' + Date.now(),
       amount: paidAmount,
-      type: 'Advance (20% Initial Booking)',
+      type: `Advance (${advancePct}% Initial Booking)`,
       date: new Date().toISOString().split('T')[0],
       paymentMethod: 'Razorpay Gateway (UPI / Cards / NetBanking)',
       transactionId: txnId,
@@ -668,8 +995,8 @@ const verifyRazorpayPayment = async (req, res) => {
           orderId: razorpay_order_id || 'order_rec',
           paymentId: txnId,
           signature: razorpay_signature || '',
-          projectId: project.id || 'proj_1',
-          clientPhone: project.clientPhone || req.user?.phone,
+          projectId: project.id || project._id,
+          clientPhone: project.clientPhone || userPhone,
           clientEmail: project.clientEmail || '',
           amount: paidAmount,
           currency: 'INR',
@@ -686,7 +1013,7 @@ const verifyRazorpayPayment = async (req, res) => {
       queuePaymentReceiptEmail(project.clientEmail, {
         amount: paidAmount,
         projectTitle: project.title,
-        type: '20% Advance Milestone Payment',
+        type: `${advancePct}% Advance Milestone Payment`,
         transactionId: txnId,
         orderId: razorpay_order_id,
         date: new Date().toLocaleDateString('en-IN'),
@@ -742,8 +1069,26 @@ const handleRazorpayWebhook = async (req, res) => {
 
   const event = req.body?.event;
   const payload = req.body?.payload?.payment?.entity || {};
+  const dedupKey = payload.id || req.body?.event_id || payload.order_id || '';
 
-  console.log(`[Razorpay Webhook] Received event: ${event} (Payment ID: ${payload.id})`);
+  console.log(`[Razorpay Webhook] Received event: ${event} (Payment ID: ${payload.id || 'N/A'})`);
+
+  // Idempotency check: prevent duplicate alert spam and redundant operations
+  if (dedupKey && processedWebhooks.has(dedupKey)) {
+    console.log(`[Razorpay Webhook] Duplicate webhook detected for ${dedupKey}. Skipping replay.`);
+    return res.json({ status: 'already_processed', dedupKey });
+  }
+
+  if (dedupKey) {
+    processedWebhooks.set(dedupKey, Date.now());
+    // Auto-clean records older than 24 hours to prevent memory bloat
+    if (processedWebhooks.size > 1000) {
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      for (const [k, ts] of processedWebhooks.entries()) {
+        if (ts < oneDayAgo) processedWebhooks.delete(k);
+      }
+    }
+  }
 
   if (event === 'payment.captured') {
     const amount = (payload.amount || 0) / 100;
@@ -767,37 +1112,82 @@ const handleRazorpayWebhook = async (req, res) => {
   return res.json({ status: 'ok' });
 };
 
+/**
+ * Admin-only Manual Advance Confirmation (prevents client-side payment bypass)
+ */
 const confirmAdvancePayment = async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized: Admin authorization required' });
   }
 
   try {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    const project = clientProjects.find((item) => item.id === decoded.projectId || String(item.clientPhone || '').slice(-10) === decoded.phone) || clientProjects[0];
 
-    const { paymentMethod = 'Razorpay Gateway', transactionId, orderId } = req.body || {};
-    const txnId = transactionId || 'TXN_ADV_' + Math.floor(100000 + Math.random() * 900000);
-    const amount = project.advanceAmount || Math.round((project.totalBudget || 25000) * 0.2);
+    // SECURITY: Restrict manual advance confirmation exclusively to administrators
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden: Manual advance confirmation is restricted to administrators. Client payments must be completed via Razorpay.',
+      });
+    }
+
+    const { projectId, paymentMethod = 'Direct / Admin Cleared', transactionId, notes } = req.body || {};
+    if (!projectId) {
+      return res.status(400).json({ success: false, error: 'projectId is required' });
+    }
+
+    let project = null;
+    if (isDbReady()) {
+      try {
+        const idFilter = mongoose.isValidObjectId(projectId)
+          ? { $or: [{ id: projectId }, { _id: projectId }] }
+          : { id: projectId };
+        project = await ClientProject.findOne(idFilter);
+      } catch (err) {
+        console.warn('[Confirm Advance Project Lookup]', err.message);
+      }
+    }
+
+    if (!project) {
+      project = clientProjects.find((item) => item.id === projectId || String(item._id) === projectId);
+    }
+
+    if (!project) {
+      return res.status(404).json({ success: false, error: 'Project not found' });
+    }
+
+    const advancePct = Number(project.advancePercentage) || 20;
+    const totalBudget = Number(project.totalBudget) || 25000;
+    const amount = Number(project.advanceAmount) || Math.round(totalBudget * (advancePct / 100));
+    const txnId = transactionId || 'TXN_ADM_' + Math.floor(100000 + Math.random() * 900000);
 
     project.advancePaid = true;
     project.paymentHistory = project.paymentHistory || [];
     project.paymentHistory.unshift({
       id: 'pay_' + Date.now(),
       amount,
-      type: 'Advance (20% Initial Booking)',
+      type: `Advance (${advancePct}% Initial Booking - Admin Cleared)`,
       date: new Date().toISOString().split('T')[0],
       paymentMethod,
       transactionId: txnId,
-      orderId: orderId || `order_rec_${Date.now()}`,
+      orderId: `order_adm_${Date.now()}`,
       status: 'Completed',
+      notes: notes || 'Admin verified offline payment',
     });
 
-    return res.json({ success: true, message: '20% Advance payment confirmed! Your project workspace is now unlocked.', project });
+    if (isDbReady() && project.save) {
+      await project.save().catch(() => {});
+    }
+
+    return res.json({
+      success: true,
+      message: `Advance payment confirmed for "${project.title}". Workspace unlocked.`,
+      project,
+    });
   } catch {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Invalid or expired authorization token' });
   }
 };
 
@@ -810,35 +1200,57 @@ const addClientFeedback = async (req, res) => {
   try {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
-    const project = clientProjects.find((item) => item.id === decoded.projectId || String(item.clientPhone || '').slice(-10) === decoded.phone) || clientProjects[0];
     const { text } = req.body || {};
 
-    if (project && text) {
-      const feedbackItem = {
-        id: Date.now(),
-        text,
-        time: 'Just now',
-        resolved: false,
-      };
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Feedback text required' });
+    }
+
+    const feedbackItem = {
+      id: Date.now(),
+      text: text.trim(),
+      time: 'Just now',
+      resolved: false,
+    };
+
+    if (isDbReady()) {
+      try {
+        const idFilter = mongoose.isValidObjectId(decoded.projectId)
+          ? { $or: [{ id: decoded.projectId }, { _id: decoded.projectId }] }
+          : { id: decoded.projectId };
+        const updated = await ClientProject.findOneAndUpdate(
+          { $or: [idFilter, { clientPhone: decoded.phone }] },
+          { $push: { feedback: { $each: [feedbackItem], $position: 0 } } },
+          { returnDocument: 'after' }
+        );
+        if (updated) {
+          project = updated;
+        }
+      } catch (err) {
+        console.warn('[Feedback DB Update Notice]', err.message);
+      }
+    }
+
+    if (!project) {
+      project = clientProjects.find((item) => item.id === decoded.projectId || String(item.clientPhone || '').slice(-10) === decoded.phone) || clientProjects[0];
       project.feedback = project.feedback || [];
       project.feedback.unshift(feedbackItem);
-
-      // Dispatch alert to admin
-      dispatchAlert({
-        type: 'CLIENT_FEEDBACK',
-        title: '💬 Client Feedback Received',
-        message: `Feedback on "${project.title}" from ${project.clientName || project.clientPhone}: "${text}"`,
-        meta: {
-          projectTitle: project.title,
-          client: project.clientName || 'Client',
-          phone: project.clientPhone,
-          feedback: text,
-        },
-      }).catch(() => {});
-
-      return res.json({ success: true, project });
     }
-    return res.status(400).json({ error: 'Feedback text required' });
+
+    // Dispatch alert to admin
+    dispatchAlert({
+      type: 'CLIENT_FEEDBACK',
+      title: '💬 Client Feedback Received',
+      message: `Feedback on "${project.title}" from ${project.clientName || project.clientPhone}: "${text.trim()}"`,
+      meta: {
+        projectTitle: project.title,
+        client: project.clientName || 'Client',
+        phone: project.clientPhone,
+        feedback: text.trim(),
+      },
+    }).catch(() => {});
+
+    return res.json({ success: true, project });
   } catch {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -881,11 +1293,18 @@ const loginAdmin = async (req, res) => {
       passwordMatches = await bcrypt.compare(password, dbAdmin.password);
     } else if (inMemoryAdminPasswordHash) {
       passwordMatches = await bcrypt.compare(password, inMemoryAdminPasswordHash);
-    } else {
-      // Initial default bootstrap password matches
-      passwordMatches = (password === ADMIN_EMAIL || password === 'admin261125@gmail.com');
+    } else if (process.env.ADMIN_PASSWORD) {
+      // Secure bootstrap using ADMIN_PASSWORD from environment only
+      passwordMatches = (password === process.env.ADMIN_PASSWORD);
       if (passwordMatches) {
         inMemoryAdminPasswordHash = await bcrypt.hash(password, 10);
+        if (isDbReady()) {
+          await User.findOneAndUpdate(
+            { email: ADMIN_EMAIL },
+            { name: 'Suraj Kanu', email: ADMIN_EMAIL, role: 'admin', password: inMemoryAdminPasswordHash },
+            { upsert: true }
+          ).catch(() => {});
+        }
       }
     }
 
@@ -896,8 +1315,9 @@ const loginAdmin = async (req, res) => {
       });
     }
 
+    const adminId = dbAdmin ? String(dbAdmin._id) : 'admin_root';
     const token = jwt.sign(
-      { id: 'admin_root', role: 'admin', email: ADMIN_EMAIL, name: 'Suraj Kanu' },
+      { id: adminId, role: 'admin', email: ADMIN_EMAIL, name: 'Suraj Kanu' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -932,11 +1352,14 @@ const requestAdminForgotPassword = async (req, res) => {
 
   if (isDbReady()) {
     try {
-      await EmailOtp.findOneAndUpdate(
-        { email: ADMIN_EMAIL, type: 'admin_password_reset' },
-        { code, expiresAt: new Date(expiresAt), verified: false },
-        { upsert: true, returnDocument: 'after' }
-      );
+      await EmailOtp.deleteMany({ email: ADMIN_EMAIL, type: 'admin_password_reset' });
+      await EmailOtp.create({
+        email: ADMIN_EMAIL,
+        code,
+        type: 'admin_password_reset',
+        expiresAt: new Date(expiresAt),
+        verified: false,
+      });
     } catch {
       // Memory fallback
     }
@@ -977,15 +1400,19 @@ const resetAdminPassword = async (req, res) => {
   }
 
   let isValidOtp = false;
+  let attemptsCount = 0;
   const memSession = adminResetOtpStore.get(ADMIN_EMAIL);
   if (memSession && memSession.code === inputOtp && Date.now() < memSession.expiresAt) {
     isValidOtp = true;
     adminResetOtpStore.delete(ADMIN_EMAIL);
+    if (isDbReady()) {
+      EmailOtp.deleteMany({ email: ADMIN_EMAIL, type: 'admin_password_reset' }).catch(() => {});
+    }
   }
 
   if (!isValidOtp && isDbReady()) {
     try {
-      const dbOtp = await EmailOtp.findOne({
+      const dbOtp = await EmailOtp.findOneAndDelete({
         email: ADMIN_EMAIL,
         code: inputOtp,
         type: 'admin_password_reset',
@@ -993,7 +1420,12 @@ const resetAdminPassword = async (req, res) => {
       });
       if (dbOtp) {
         isValidOtp = true;
-        await EmailOtp.deleteOne({ _id: dbOtp._id });
+        adminResetOtpStore.delete(ADMIN_EMAIL);
+      } else {
+        const anyOtp = await EmailOtp.findOne({ email: ADMIN_EMAIL, type: 'admin_password_reset' });
+        if (anyOtp) {
+          attemptsCount = (anyOtp.attempts || 0) + 1;
+        }
       }
     } catch {
       // Memory fallback
@@ -1001,9 +1433,30 @@ const resetAdminPassword = async (req, res) => {
   }
 
   if (!isValidOtp) {
+    if (memSession) {
+      memSession.attempts = (memSession.attempts || 0) + 1;
+      attemptsCount = Math.max(attemptsCount, memSession.attempts);
+    }
+
+    if (attemptsCount >= 5) {
+      adminResetOtpStore.delete(ADMIN_EMAIL);
+      if (isDbReady()) {
+        EmailOtp.deleteMany({ email: ADMIN_EMAIL, type: 'admin_password_reset' }).catch(() => {});
+      }
+      return res.status(429).json({
+        success: false,
+        error: 'Too many failed attempts. For security, this reset code has been invalidated. Please request a new code.'
+      });
+    }
+
+    if (isDbReady()) {
+      EmailOtp.updateOne({ email: ADMIN_EMAIL, type: 'admin_password_reset' }, { $inc: { attempts: 1 } }).catch(() => {});
+    }
+
+    const remaining = Math.max(1, 5 - attemptsCount);
     return res.status(400).json({
       success: false,
-      error: 'Invalid or expired OTP code. Please request a fresh reset code.'
+      error: `Invalid or expired OTP code. (${remaining} attempts remaining)`
     });
   }
 
@@ -1011,9 +1464,10 @@ const resetAdminPassword = async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     inMemoryAdminPasswordHash = hashedPassword;
 
+    let updatedAdmin = null;
     if (isDbReady()) {
       try {
-        await User.findOneAndUpdate(
+        updatedAdmin = await User.findOneAndUpdate(
           { email: ADMIN_EMAIL },
           {
             name: 'Suraj Kanu',
@@ -1028,8 +1482,9 @@ const resetAdminPassword = async (req, res) => {
       }
     }
 
+    const adminId = updatedAdmin ? String(updatedAdmin._id) : 'admin_root';
     const token = jwt.sign(
-      { id: 'admin_root', role: 'admin', email: ADMIN_EMAIL, name: 'Suraj Kanu' },
+      { id: adminId, role: 'admin', email: ADMIN_EMAIL, name: 'Suraj Kanu' },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -1067,8 +1522,10 @@ const changeAdminPassword = async (req, res) => {
       passwordMatches = await bcrypt.compare(currentPassword, dbAdmin.password);
     } else if (inMemoryAdminPasswordHash) {
       passwordMatches = await bcrypt.compare(currentPassword, inMemoryAdminPasswordHash);
+    } else if (process.env.ADMIN_PASSWORD) {
+      passwordMatches = (currentPassword === process.env.ADMIN_PASSWORD);
     } else {
-      passwordMatches = (currentPassword === ADMIN_EMAIL || currentPassword === 'admin261125@gmail.com');
+      passwordMatches = false;
     }
 
     if (!passwordMatches) {
@@ -1089,27 +1546,87 @@ const changeAdminPassword = async (req, res) => {
 };
 
 const getLeads = async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+  const skip = (page - 1) * limit;
+
+  let leads = [];
+  let total = 0;
+
   if (isDbReady()) {
     try {
-      const dbLeads = await Lead.find().sort({ createdAt: -1 }).limit(100);
-      if (dbLeads && dbLeads.length > 0) return res.json(dbLeads);
+      total = await Lead.countDocuments();
+      leads = await Lead.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
     } catch {
       // Fallback
     }
   }
-  return res.json(fallbackLeads);
+
+  if (leads.length === 0 && fallbackLeads.length > 0) {
+    total = fallbackLeads.length;
+    leads = fallbackLeads.slice(skip, skip + limit);
+  }
+
+  const totalPages = Math.ceil(total / limit) || 1;
+  res.set('X-Total-Count', String(total));
+  res.set('X-Page', String(page));
+  res.set('X-Total-Pages', String(totalPages));
+
+  if (req.query.paginated === 'true') {
+    return res.json({
+      success: true,
+      data: leads,
+      leads,
+      total,
+      page,
+      limit,
+      totalPages,
+    });
+  }
+
+  return res.json(leads);
 };
 
 const getAdminProjects = async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
+  const skip = (page - 1) * limit;
+
+  let projects = [];
+  let total = 0;
+
   if (isDbReady()) {
     try {
-      const dbProjects = await ClientProject.find().sort({ createdAt: -1 });
-      if (dbProjects && dbProjects.length > 0) return res.json(dbProjects);
+      total = await ClientProject.countDocuments();
+      projects = await ClientProject.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
     } catch {
       // Fallback
     }
   }
-  return res.json(clientProjects);
+
+  if (projects.length === 0 && clientProjects.length > 0) {
+    total = clientProjects.length;
+    projects = clientProjects.slice(skip, skip + limit);
+  }
+
+  const totalPages = Math.ceil(total / limit) || 1;
+  res.set('X-Total-Count', String(total));
+  res.set('X-Page', String(page));
+  res.set('X-Total-Pages', String(totalPages));
+
+  if (req.query.paginated === 'true') {
+    return res.json({
+      success: true,
+      data: projects,
+      projects,
+      total,
+      page,
+      limit,
+      totalPages,
+    });
+  }
+
+  return res.json(projects);
 };
 
 const createAdminProject = async (req, res) => {
@@ -1119,8 +1636,8 @@ const createAdminProject = async (req, res) => {
   }
 
   const cleanPhone = String(clientPhone).replace(/\D/g, '').slice(-10);
-  const budget = Number.parseInt(totalBudget) || 25000;
-  const advPct = Number.parseInt(advancePercentage) || 20;
+  const budget = Math.max(1000, Math.min(10000000, Number.parseInt(totalBudget) || 25000));
+  const advPct = Math.max(5, Math.min(100, Number.parseInt(advancePercentage) || 20));
   const advAmount = Math.round(budget * (advPct / 100));
 
   const newProject = {
@@ -1176,7 +1693,8 @@ const createAdminProject = async (req, res) => {
 
 const updateAdminProject = async (req, res) => {
   const { id } = req.params;
-  let project = clientProjects.find((item) => item.id === id);
+  const idQuery = mongoose.isValidObjectId(id) ? { $or: [{ id }, { _id: id }] } : { id };
+  let project = clientProjects.find((item) => item.id === id || String(item._id) === id);
 
   if (project) {
     Object.assign(project, req.body);
@@ -1184,7 +1702,7 @@ const updateAdminProject = async (req, res) => {
 
   if (isDbReady()) {
     try {
-      const updated = await ClientProject.findOneAndUpdate({ id }, req.body, { returnDocument: 'after' });
+      const updated = await ClientProject.findOneAndUpdate(idQuery, req.body, { returnDocument: 'after' });
       if (updated) project = updated;
     } catch {
       // Fallback
@@ -1200,14 +1718,15 @@ const updateAdminProject = async (req, res) => {
 
 const deleteAdminProject = async (req, res) => {
   const { id } = req.params;
-  const index = clientProjects.findIndex((item) => item.id === id);
+  const idQuery = mongoose.isValidObjectId(id) ? { $or: [{ id }, { _id: id }] } : { id };
+  const index = clientProjects.findIndex((item) => item.id === id || String(item._id) === id);
   if (index !== -1) {
     clientProjects.splice(index, 1);
   }
 
   if (isDbReady()) {
     try {
-      await ClientProject.deleteOne({ id });
+      await ClientProject.deleteOne(idQuery);
     } catch {
       // Fallback
     }
@@ -1236,6 +1755,13 @@ const generateResume = (req, res) => {
 
     const doc = new PDFDocument({ size: 'A4', margins: { top: 36, bottom: 36, left: 36, right: 36 }, bufferPages: true, autoFirstPage: true });
     doc.pipe(res);
+
+    // Prevent memory leaks on aborted client downloads
+    req.on('close', () => {
+      if (!doc._readableState?.ended) {
+        doc.destroy();
+      }
+    });
 
     const margin = 36;
     const pageWidth = 595.28;
@@ -1329,7 +1855,10 @@ const generateResume = (req, res) => {
     doc.end();
   } catch (error) {
     console.error('[Resume generation error]', error);
-    return res.status(500).json({ error: 'Failed to generate resume PDF.' });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Failed to generate resume PDF.' });
+    }
+    res.end();
   }
 };
 
@@ -1407,8 +1936,14 @@ const trackResumeDownload = async (req, res) => {
 // -------------------------------------------------------------
 // Base Project Prices (Admin Managed & Client Validation)
 // -------------------------------------------------------------
+let lastPriceFetchTime = 0;
+const PRICE_CACHE_TTL_MS = 60 * 1000; // 60s TTL cache
+
 const getProjectPrices = async (req, res) => {
-  if (isDbReady()) {
+  const forceRefresh = req.query?.refresh === 'true';
+  const shouldRefresh = forceRefresh || (Date.now() - lastPriceFetchTime > PRICE_CACHE_TTL_MS);
+
+  if (shouldRefresh && isDbReady()) {
     try {
       const dbPrices = await SiteStat.find({ key: { $regex: /^price_/ } });
       if (dbPrices && dbPrices.length > 0) {
@@ -1421,6 +1956,7 @@ const getProjectPrices = async (req, res) => {
             inMemoryProjectPrices[matchedKey] = item.value;
           }
         });
+        lastPriceFetchTime = Date.now();
       }
     } catch {
       // Use in-memory prices
@@ -1436,8 +1972,9 @@ const updateProjectPrices = async (req, res) => {
   }
 
   for (const [key, val] of Object.entries(prices)) {
-    const num = Number(val);
-    if (!isNaN(num) && num > 0 && inMemoryProjectPrices.hasOwnProperty(key)) {
+    const rawNum = Number(val);
+    if (!isNaN(rawNum) && inMemoryProjectPrices.hasOwnProperty(key)) {
+      const num = Math.max(500, Math.min(5000000, Math.round(rawNum)));
       inMemoryProjectPrices[key] = num;
       if (isDbReady()) {
         try {
@@ -1453,6 +1990,8 @@ const updateProjectPrices = async (req, res) => {
       }
     }
   }
+
+  lastPriceFetchTime = Date.now();
 
   return res.json({
     success: true,
@@ -1490,6 +2029,7 @@ module.exports = {
   checkClientPhone,
   loginClient,
   getClientProject,
+  getClientProjects,
   confirmAdvancePayment,
   createRazorpayOrder,
   verifyRazorpayPayment,
@@ -1499,4 +2039,5 @@ module.exports = {
   updateAdminProject,
   createAdminProject,
   deleteAdminProject,
+  syncFallbackData,
 };

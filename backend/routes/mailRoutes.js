@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { validateResendEnv, sendMail, isValidEmail, normalizeResendError } = require('../lib/mailer');
+const { protectAdmin } = require('../middleware/authMiddleware');
 
 /**
  * GET /api/mail/status
@@ -21,9 +22,10 @@ router.get('/status', async (req, res, next) => {
 
 /**
  * POST /api/mail/send
+ * Protected: Admin-only dispatch to prevent unauthorized open mail relay exploitation.
  * Accepts { to, subject, message }
  */
-router.post('/send', async (req, res, next) => {
+router.post('/send', protectAdmin, async (req, res, next) => {
   try {
     const { to, subject, message, text, html, from } = req.body || {};
 

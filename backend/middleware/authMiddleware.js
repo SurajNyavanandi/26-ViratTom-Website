@@ -26,8 +26,21 @@ const protect = async (req, res, next) => {
       process.env.JWT_SECRET || 'virat-tom-secure-jwt-secret-key-2026'
     );
     if (mongoose.connection.readyState === 1) {
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
+      if (mongoose.isValidObjectId(decoded.id)) {
+        req.user = await User.findById(decoded.id).select('-password');
+      } else if (decoded.email) {
+        req.user = await User.findOne({ email: decoded.email }).select('-password');
+      }
+
+      if (!req.user && decoded.role === 'admin') {
+        req.user = {
+          _id: decoded.id || 'admin_root',
+          id: decoded.id || 'admin_root',
+          role: 'admin',
+          name: decoded.name || 'Suraj Kanu',
+          email: decoded.email || process.env.ADMIN_EMAIL || 'kanusuraj15@gmail.com',
+        };
+      } else if (!req.user) {
         return errorResponse(res, 'User not found', 401);
       }
     } else {
@@ -118,6 +131,7 @@ const protectClient = (req, res, next) => {
       return res.status(403).json({ success: false, error: 'Forbidden: Client access required' });
     }
     req.client = decoded;
+    req.user = decoded;
     next();
   } catch {
     return res.status(401).json({ success: false, error: 'Session expired or invalid token' });

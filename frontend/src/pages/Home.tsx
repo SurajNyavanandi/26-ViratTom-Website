@@ -209,9 +209,26 @@ export const Home = () => {
   return (
     <div className="flex flex-col items-center">
       <SEO
-        title="ViratTom | Full-Stack Web Developer & UI/UX Specialist | Custom Software & Web Apps"
-        description="Suraj Kanu (ViratTom) – Expert Full-Stack Developer & UI/UX Specialist. Building high-performance web applications, scalable SaaS systems, and free ATS-optimized developer tools."
-        keywords="Full Stack Web Developer, Hire Web Developer India, Custom Web Application Development, React Developer, Node.js Developer, Next.js Expert, UI/UX Designer, Free ATS Resume Builder, Modern Developer Resume Template PDF, Suraj Kanu, ViratTom"
+        title="ViratTom Technologies | Custom Web & Mobile App Development Company | Enterprise Software Solutions"
+        description="ViratTom Technologies is an IT software engineering company delivering scalable web applications, mobile apps (iOS & Android), custom SaaS platforms, and free ATS career tools."
+        keywords="Custom Software Development Company, Full Stack Web Development Services, Hire Mobile App Developers, React Node.js Agency India, Enterprise SaaS Engineering, Web App Development Company, ViratTom Technologies"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "ProfessionalService",
+          "name": "ViratTom Technologies",
+          "url": "https://virattom.com",
+          "logo": "https://res.cloudinary.com/dfr0zghtc/image/upload/v1790404330/logo26_uyogzp.jpg",
+          "image": "https://virattom.com/projects/inisio.png",
+          "description": "Enterprise IT software engineering company delivering full-stack web applications, iOS and Android mobile software, and digital cloud platforms.",
+          "telephone": "+91-96666-35009",
+          "email": "contact@virattom.com",
+          "priceRange": "$$$",
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IN"
+          },
+          "serviceArea": "Worldwide"
+        }}
       />
       {/* Hero Section */}
       <section className="w-full max-w-360 px-4 sm:px-8 py-16 sm:py-24 text-center md:py-32">
@@ -226,7 +243,7 @@ export const Home = () => {
               className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-apple-gray-200 text-apple-gray-600 hover:text-apple-black text-[13px] font-medium transition-all hover:scale-[1.01] shadow-xs cursor-pointer"
             >
               <FileText className="h-3.5 w-3.5 text-apple-blue" />
-              <span>Resume Template</span>
+              <span>Free ATS Resume Builder</span>
               <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md bg-apple-blue/10 text-apple-blue">
                 Free
               </span>
@@ -237,13 +254,13 @@ export const Home = () => {
           <span className="text-[12px] sm:text-[14px] font-semibold tracking-widest text-apple-gray-500 uppercase">
             VI<span className="font-bold text-apple-blue">R</span>
             <span className="font-bold text-apple-blue">A</span>T TO
-            <span className="font-bold text-apple-blue">M</span>
+            <span className="font-bold text-apple-blue">M</span> TECHNOLOGIES
           </span>
           <h1 className="mt-4 text-[32px] xs:text-[38px] sm:text-[48px] md:text-[56px] font-bold tracking-[-0.03em] leading-[1.15]">
-            Website & Mobile App Development.
+            Custom Web & Mobile App Development.
           </h1>
           <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[16px] sm:text-[20px] text-apple-gray-500 leading-relaxed">
-            Fast, scalable apps and websites tailored to your business.
+            Enterprise-grade web applications, native & cross-platform mobile apps, and scalable digital software engineered for your business.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
             <Button 

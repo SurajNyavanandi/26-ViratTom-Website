@@ -50,6 +50,9 @@ export const ClientLogin = () => {
       if (res.ok && data.token) {
         console.log('[Client Portal] Authenticated successfully. Redirecting to workspace...');
         localStorage.setItem('client_token', data.token);
+        if (data.project?.id) {
+          localStorage.setItem('selected_project_id', data.project.id);
+        }
         navigate('/client');
       } else {
         console.warn('[Client Portal] Access rejected:', data.error);

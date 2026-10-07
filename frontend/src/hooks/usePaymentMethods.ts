@@ -77,29 +77,37 @@ export function usePaymentMethods() {
 
         const orderData = await orderRes.json().catch(() => ({}));
 
-        // Handle fallback simulated flow if Razorpay keys are in test mode or unconfigured
-        if (!orderRes.ok || !orderData.success) {
-          const directRes = await fetch(apiUrl('/api/client/confirm-advance'), {
+        // Handle simulated checkout flow if test/demo mode
+        if (orderData.simulated) {
+          const verifyRes = await fetch(apiUrl('/api/client/verify-razorpay-payment'), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${clientToken}`,
             },
             body: JSON.stringify({
-              amount: advanceAmount,
-              paymentMethod: 'Direct Payment / Gateway Simulation',
-              transactionId: `TXN_${Date.now()}`,
+              razorpay_order_id: orderData.orderId,
+              razorpay_payment_id: `PAY_SIM_${Date.now()}`,
+              razorpay_signature: 'sig_simulated_test_ok',
+              projectId: project.id,
             }),
           });
-          const directData = await directRes.json();
-          if (directData.success && directData.project) {
+          const verifyData = await verifyRes.json().catch(() => ({}));
+          if (verifyRes.ok && verifyData.success && verifyData.project) {
             setStatus('success');
-            setSuccessMessage('20% Advance payment confirmed! Your project workspace is now unlocked.');
-            if (onSuccess) onSuccess(directData.project);
+            setSuccessMessage('20% Advance payment verified! Your project workspace is now unlocked.');
+            if (onSuccess) onSuccess(verifyData.project);
           } else {
-            setError(orderData.error || 'Unable to initialize payment gateway.');
+            setErrorMessage(verifyData.error || 'Payment verification failed.');
             setStatus('error');
           }
+          setLoading(false);
+          return;
+        }
+
+        if (!orderRes.ok || !orderData.success) {
+          setErrorMessage(orderData.error || 'Unable to initialize payment gateway.');
+          setStatus('error');
           setLoading(false);
           return;
         }
@@ -110,10 +118,10 @@ export function usePaymentMethods() {
           throw new Error('Could not load Razorpay SDK. Please check your internet connection.');
         }
 
-        // 3. Open Razorpay modal
+        // 3. Open Razorpay modal (amount specified in paise matching order_id)
         const options = {
           key: orderData.keyId || orderData.key,
-          amount: orderData.amount,
+          amount: orderData.amountInPaise || Math.round(Number(orderData.amount) * 100),
           currency: orderData.currency || 'INR',
           name: 'ViratTom',
           description: `20% Advance Booking - ${orderData.projectName || project.title}`,

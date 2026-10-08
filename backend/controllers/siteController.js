@@ -1779,9 +1779,31 @@ const generateResume = (req, res) => {
     doc.fontSize(16).font('Times-Bold').text((header.name || 'Candidate Name').toUpperCase(), { align: 'center' });
     doc.moveDown(0.2);
 
-    const contacts = [header.location, header.phone, header.email, header.linkedin, header.github, header.portfolio].filter(Boolean);
-    if (contacts.length > 0) {
-      doc.fontSize(9.5).font('Times-Roman').text(contacts.join(' | '), { align: 'center' });
+    const contactItems = [];
+    if (header.location) contactItems.push({ text: header.location });
+    if (header.phone) contactItems.push({ text: header.phone, link: `tel:${header.phone.replace(/[^\d+]/g, '')}` });
+    if (header.email) contactItems.push({ text: header.email, link: `mailto:${header.email.trim()}` });
+    if (header.linkedin) {
+      const lUrl = header.linkedin.startsWith('http') ? header.linkedin : `https://linkedin.com/in/${header.linkedin.replace(/^@/, '')}`;
+      contactItems.push({ text: header.linkedin, link: lUrl });
+    }
+    if (header.github) {
+      const gUrl = header.github.startsWith('http') ? header.github : `https://github.com/${header.github.replace(/^@/, '')}`;
+      contactItems.push({ text: header.github, link: gUrl });
+    }
+    if (header.portfolio) {
+      const pUrl = header.portfolio.startsWith('http') ? header.portfolio : `https://${header.portfolio}`;
+      contactItems.push({ text: header.portfolio, link: pUrl });
+    }
+
+    if (contactItems.length > 0) {
+      doc.fontSize(9.5).font('Times-Roman');
+      contactItems.forEach((c, idx) => {
+        const isLast = idx === contactItems.length - 1;
+        const opts = { continued: !isLast, align: 'center' };
+        if (c.link) opts.link = c.link;
+        doc.text(c.text + (isLast ? '' : ' | '), opts);
+      });
     }
 
     if (skills) {
@@ -1829,6 +1851,13 @@ const generateResume = (req, res) => {
           proj.description.split('\n').filter(Boolean).forEach((b) => {
             doc.fontSize(9.5).font('Times-Roman').text('•  ' + b.replace(/^[-–•]\s*/, ''), { indent: 10, lineGap: 1.5 });
           });
+        }
+        if (proj.demoLink || proj.demoLabel) {
+          const dUrl = (proj.demoLink || proj.demoLabel).startsWith('http')
+            ? (proj.demoLink || proj.demoLabel)
+            : `https://${proj.demoLink || proj.demoLabel}`;
+          doc.fontSize(9.5).font('Times-Roman').text('•  Live Demo: ', { indent: 10, lineGap: 1.5, continued: true })
+             .font('Times-Bold').text(`${proj.demoLabel || proj.demoLink} Link ->`, { link: dUrl, underline: true });
         }
         doc.moveDown(0.3);
       });

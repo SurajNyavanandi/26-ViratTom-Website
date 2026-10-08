@@ -70,7 +70,7 @@ export const ResumeSheet: React.FC<ResumeSheetProps> = ({
 
           {/* Ultra-minimal, elegant footer watermark */}
           <div
-            className="w-full pt-2 flex items-center justify-between text-[8pt] text-[#9ca3af] border-t border-[#e5e7eb]"
+            className="w-full pt-2 flex items-center justify-center text-[8pt] text-[#9ca3af] border-t border-[#e5e7eb]"
             style={{
               fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             }}
@@ -83,15 +83,6 @@ export const ResumeSheet: React.FC<ResumeSheetProps> = ({
               title="Visit ViratTom"
             >
               Created with ViratTom
-            </a>
-            <a
-              href="https://virattom.com"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#9ca3af] hover:text-[#4b5563] transition-colors cursor-pointer"
-              title="Visit ViratTom"
-            >
-              virattom.com
             </a>
           </div>
         </div>

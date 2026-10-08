@@ -10,6 +10,7 @@ import { Validation } from '@/lib/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
 import { SEO } from '@/components/seo/SEO';
+import { TechStackMarquee } from '@/components/common/TechStackMarquee';
 import { DEFAULT_PORTFOLIO_PROJECTS, type PortfolioProject } from '@/types';
 
 export const Home = () => {
@@ -225,6 +226,10 @@ export const Home = () => {
           "priceRange": "$$$",
           "address": {
             "@type": "PostalAddress",
+            "streetAddress": "ARC Property Solutions Pvt. Ltd., 2nd Floor, Plot no, 24 & 25, Lane, beside Kakatiya Hills, Kakatiya Hills, Guttala_Begumpet, Kamaan, Jubilee Hills",
+            "addressLocality": "Hyderabad",
+            "addressRegion": "Telangana",
+            "postalCode": "500081",
             "addressCountry": "IN"
           },
           "serviceArea": "Worldwide"
@@ -257,10 +262,10 @@ export const Home = () => {
             <span className="font-bold text-apple-blue">M</span> TECHNOLOGIES
           </span>
           <h1 className="mt-4 text-[32px] xs:text-[38px] sm:text-[48px] md:text-[56px] font-bold tracking-[-0.03em] leading-[1.15]">
-            Custom Web & Mobile App Development.
+            Website & Mobile App Development
           </h1>
           <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[16px] sm:text-[20px] text-apple-gray-500 leading-relaxed">
-            Enterprise-grade web applications, native & cross-platform mobile apps, and scalable digital software engineered for your business.
+            We build modern, fast websites and mobile apps that help your business grow and reach more customers online.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
             <Button 
@@ -279,6 +284,9 @@ export const Home = () => {
           </div>
         </motion.div>
       </section>
+
+      {/* Infinite Smooth Tech Stack Marquee */}
+      <TechStackMarquee />
 
       {/* Features Grid - What We Build */}
       <section id="process" className="w-full py-20 sm:py-24 bg-[#F5F5F7] relative">

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, Building, Home, Briefcase, Check } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -29,8 +30,6 @@ export const DeliveryAddressFormModal = React.memo<DeliveryAddressFormModalProps
     reset,
   } = useAddressForm(initialAddress);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const result = validateAndGet();
@@ -41,12 +40,25 @@ export const DeliveryAddressFormModal = React.memo<DeliveryAddressFormModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div
-        className="relative w-full max-w-lg bg-white dark:bg-[#1C1C1E] rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-2xl overflow-hidden animate-scale-up"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-5 border-b border-apple-gray-200 dark:border-[#38383A]">
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-xs"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-lg bg-white dark:bg-[#1C1C1E] rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-5 border-b border-apple-gray-200 dark:border-[#38383A]">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-apple-blue/10 flex items-center justify-center text-apple-blue">
               <MapPin className="h-5 w-5" />
@@ -253,8 +265,10 @@ export const DeliveryAddressFormModal = React.memo<DeliveryAddressFormModalProps
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 });
 

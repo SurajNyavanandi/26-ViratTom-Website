@@ -85,7 +85,8 @@ export const ClientLogin = () => {
             <div className="h-14 w-14 rounded-2xl bg-apple-blue/10 flex items-center justify-center text-apple-blue mx-auto mb-4">
               <ShieldCheck className="h-7 w-7" />
             </div>
-            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">Client Portal</h1>
+            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">Client Login</h1>
+            <p className="text-[13px] text-apple-gray-500 mt-1">Enter your registered mobile number to access your project workspace</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-5">
@@ -120,6 +121,13 @@ export const ClientLogin = () => {
             <Button type="submit" className="w-full rounded-xl h-12 text-[15px] font-semibold" isLoading={loading}>
               Continue
             </Button>
+
+            <div className="pt-2 text-center text-[13px] text-apple-gray-500">
+              <span>Admin or Team Member? </span>
+              <Link to="/login" className="text-apple-blue font-medium hover:underline">
+                Sign in with credentials
+              </Link>
+            </div>
           </form>
         </Card>
       </div>

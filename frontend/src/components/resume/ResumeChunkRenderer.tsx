@@ -10,6 +10,82 @@ interface ResumeChunkRendererProps {
   isDummyPreview?: boolean;
 }
 
+const normalizeUrl = (url?: string): string => {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^mailto:/i.test(trimmed)) return trimmed;
+  if (/^tel:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
+const normalizeEmail = (email?: string): string => {
+  if (!email) return '';
+  const trimmed = email.trim();
+  if (/^mailto:/i.test(trimmed)) return trimmed;
+  return `mailto:${trimmed}`;
+};
+
+const normalizePhone = (phone?: string): string => {
+  if (!phone) return '';
+  const trimmed = phone.trim();
+  if (/^tel:/i.test(trimmed)) return trimmed;
+  const digits = trimmed.replace(/[^\d+]/g, '');
+  return `tel:${digits || trimmed}`;
+};
+
+const normalizeGithub = (val?: string): string => {
+  if (!val) return '';
+  const trimmed = val.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^github\.com/i.test(trimmed)) return `https://${trimmed}`;
+  return `https://github.com/${trimmed.replace(/^@/, '')}`;
+};
+
+const normalizeLinkedin = (val?: string): string => {
+  if (!val) return '';
+  const trimmed = val.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (/^linkedin\.com/i.test(trimmed)) return `https://${trimmed}`;
+  return `https://linkedin.com/in/${trimmed.replace(/^@/, '')}`;
+};
+
+/**
+ * Parses a string to auto-detect and render active clickable hyperlinks for any embedded URLs.
+ */
+const renderTextWithLinks = (text: string, linkClassName = 'text-[#0000ee] hover:underline cursor-pointer') => {
+  if (!text) return null;
+  const urlRegex = /(https?:\/\/[^\s,)]+|www\.[^\s,)]+|[a-zA-Z0-9_-]+\.(?:com|org|net|io|dev|app|co|in|ai|tech|me)(?:\/[^\s,)]*)?)/gi;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = urlRegex.exec(text)) !== null) {
+    const rawUrl = match[0].replace(/[.,;:)]$/, '');
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    parts.push(
+      <a
+        key={match.index}
+        href={normalizeUrl(rawUrl)}
+        target="_blank"
+        rel="noreferrer"
+        className={linkClassName}
+      >
+        {rawUrl}
+      </a>
+    );
+    lastIndex = match.index + rawUrl.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : text;
+};
+
 export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
   chunk,
   pageChunks,
@@ -19,7 +95,10 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
 }) => {
   const txtCls = isDummyPreview ? 'text-[#555555] font-normal' : 'text-[#000000]';
   const boldCls = isDummyPreview ? 'font-semibold text-[#333333]' : 'font-bold text-[#000000]';
-  const linkCls = isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#0000ee] hover:underline';
+  const standardLinkCls = 'text-[#0000ee] hover:underline cursor-pointer font-medium';
+  const headerLinkCls = isDummyPreview
+    ? 'text-[#444444] hover:underline hover:text-black cursor-pointer'
+    : 'text-[#000000] hover:underline hover:text-apple-blue cursor-pointer';
 
   switch (chunk.type) {
     case 'header':
@@ -32,8 +111,9 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
           <div className={`text-[9.5pt] flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 mt-1 ${txtCls}`}>
             {d.header.phone && (
               <a
-                href={`tel:${d.header.phone}`}
-                className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}
+                href={normalizePhone(d.header.phone)}
+                className={`${headerLinkCls} whitespace-nowrap`}
+                title={`Call ${d.header.phone}`}
               >
                 {d.header.phone}
               </a>
@@ -41,8 +121,9 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
             {d.header.phone && d.header.email && <span className="select-none opacity-50">|</span>}
             {d.header.email && (
               <a
-                href={`mailto:${d.header.email}`}
-                className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}
+                href={normalizeEmail(d.header.email)}
+                className={`${headerLinkCls} whitespace-nowrap`}
+                title={`Send email to ${d.header.email}`}
               >
                 {d.header.email}
               </a>
@@ -50,10 +131,11 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
             {d.header.email && d.header.github && <span className="select-none opacity-50">|</span>}
             {d.header.github && (
               <a
-                href={`https://${d.header.github}`}
+                href={normalizeGithub(d.header.github)}
                 target="_blank"
                 rel="noreferrer"
-                className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}
+                className={`${headerLinkCls} whitespace-nowrap`}
+                title="View GitHub Profile"
               >
                 {d.header.github}
               </a>
@@ -61,10 +143,11 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
             {d.header.github && d.header.linkedin && <span className="select-none opacity-50">|</span>}
             {d.header.linkedin && (
               <a
-                href={`https://${d.header.linkedin}`}
+                href={normalizeLinkedin(d.header.linkedin)}
                 target="_blank"
                 rel="noreferrer"
-                className={`${isDummyPreview ? 'text-[#555555] pointer-events-none' : 'text-[#000000] hover:underline'} whitespace-nowrap`}
+                className={`${headerLinkCls} whitespace-nowrap`}
+                title="View LinkedIn Profile"
               >
                 {d.header.linkedin}
               </a>
@@ -73,7 +156,7 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
 
           {d.header.liveProjects && (
             <div className={`text-[9.2pt] mt-0.5 ${txtCls}`}>
-              Live Projects: {d.header.liveProjects}
+              Live Projects: {renderTextWithLinks(d.header.liveProjects)}
             </div>
           )}
 
@@ -81,10 +164,11 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
             <div className={`text-[9.2pt] mt-0.5 ${txtCls}`}>
               Portfolio:{' '}
               <a
-                href={d.header.portfolioLink || `https://${d.header.portfolio}`}
+                href={normalizeUrl(d.header.portfolioLink || d.header.portfolio)}
                 target="_blank"
                 rel="noreferrer"
-                className={linkCls}
+                className={standardLinkCls}
+                title="Visit Portfolio"
               >
                 {d.header.portfolio} Link &rarr;
               </a>
@@ -104,11 +188,11 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
                 return (
                   <div key={i}>
                     <span className={boldCls}>{parts[0].trim()}: </span>
-                    <span>{parts.slice(1).join(':').trim()}</span>
+                    <span>{renderTextWithLinks(parts.slice(1).join(':').trim())}</span>
                   </div>
                 );
               }
-              return <div key={i}>{line}</div>;
+              return <div key={i}>{renderTextWithLinks(line)}</div>;
             })}
           </div>
         </div>
@@ -133,7 +217,7 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
                   {exp.bullets.split('\n').filter(Boolean).map((bullet: string, i: number) => (
                     <div key={i} className="flex items-start">
                       <span className="mr-2 select-none">&ndash;</span>
-                      <span>{bullet.trim().replace(/^[-–•]\s*/, '')}</span>
+                      <span>{renderTextWithLinks(bullet.trim().replace(/^[-–•]\s*/, ''))}</span>
                     </div>
                   ))}
                 </div>
@@ -147,6 +231,10 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
       const proj = d.projects[chunk.index];
       if (!proj) return null;
       const isFirstProjectOnThisPage = !pageChunks.slice(0, chunkIndex).some((c: ResumeChunk) => c.type === 'project');
+      const hasLiveDemo = Boolean(proj.demoLink || proj.demoLabel);
+      const demoUrl = normalizeUrl(proj.demoLink || proj.demoLabel);
+      const demoLabel = proj.demoLabel || proj.demoLink || 'Live Demo';
+
       return (
         <div key={`project-${proj.id || chunk.index}`} className="mb-2.5">
           {isFirstProjectOnThisPage && (
@@ -156,7 +244,19 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
             />
           )}
           <div className={`text-[10pt] mb-0.5 ${txtCls}`}>
-            <span className={boldCls}>{proj.name}</span>
+            {proj.demoLink ? (
+              <a
+                href={normalizeUrl(proj.demoLink)}
+                target="_blank"
+                rel="noreferrer"
+                className={`${boldCls} hover:text-apple-blue hover:underline cursor-pointer`}
+                title={`Open ${proj.name}`}
+              >
+                {proj.name}
+              </a>
+            ) : (
+              <span className={boldCls}>{proj.name}</span>
+            )}
             {proj.tech && <span className="italic">{' | '}{proj.tech}</span>}
           </div>
           {proj.bullets && (
@@ -164,23 +264,24 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
               {proj.bullets.split('\n').filter(Boolean).map((bullet: string, i: number) => (
                 <div key={i} className="flex items-start">
                   <span className="mr-2 select-none">&ndash;</span>
-                  <span>{bullet.trim().replace(/^[-–•]\s*/, '')}</span>
+                  <span>{renderTextWithLinks(bullet.trim().replace(/^[-–•]\s*/, ''))}</span>
                 </div>
               ))}
             </div>
           )}
-          {proj.demoLabel && (
+          {hasLiveDemo && (
             <div className={`flex items-start text-[9.5pt] leading-[1.35] mt-0.5 ${txtCls}`}>
               <span className="mr-2 select-none">&ndash;</span>
               <span>
                 Live Demo:{' '}
                 <a
-                  href={proj.demoLink || `https://${proj.demoLabel}`}
+                  href={demoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className={linkCls}
+                  className={standardLinkCls}
+                  title={`Open ${proj.name || 'Project'} Demo`}
                 >
-                  {proj.demoLabel} Link &rarr;
+                  {demoLabel} Link &rarr;
                 </a>
               </span>
             </div>
@@ -221,7 +322,7 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
                     <span className="mr-2 select-none">•</span>
                     <span>
                       <span className={boldCls}>{parts[0].trim().replace(/^[-–•]\s*/, '')}: </span>
-                      <span>{parts.slice(1).join(':').trim()}</span>
+                      <span>{renderTextWithLinks(parts.slice(1).join(':').trim())}</span>
                     </span>
                   </div>
                 );
@@ -229,7 +330,7 @@ export const ResumeChunkRenderer: React.FC<ResumeChunkRendererProps> = ({
               return (
                 <div key={i} className="flex items-start">
                   <span className="mr-2 select-none">•</span>
-                  <span>{cert.trim().replace(/^[-–•]\s*/, '')}</span>
+                  <span>{renderTextWithLinks(cert.trim().replace(/^[-–•]\s*/, ''))}</span>
                 </div>
               );
             })}

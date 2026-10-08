@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Layers,
   User,
@@ -74,7 +75,7 @@ export const ResumeEditorPanel: React.FC<ResumeEditorPanelProps> = ({
       }`}
     >
       <div className="max-w-2xl mx-auto space-y-6 pb-24">
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs with Gliding layoutId */}
         <div className="flex items-center gap-1.5 p-1 bg-apple-gray-100 rounded-2xl border border-apple-gray-200 overflow-x-auto scrollbar-none">
           {SECTIONS_NAV.map((sec) => {
             const Icon = sec.icon;
@@ -83,12 +84,19 @@ export const ResumeEditorPanel: React.FC<ResumeEditorPanelProps> = ({
               <button
                 key={sec.id}
                 onClick={() => setActiveTab(sec.id)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium whitespace-nowrap cursor-pointer z-10 ${
                   isActive
-                    ? 'bg-apple-white text-apple-black shadow-sm'
+                    ? 'text-apple-black'
                     : 'text-apple-gray-500 hover:text-apple-black'
                 }`}
               >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeEditorTab"
+                    className="absolute inset-0 bg-white rounded-xl shadow-xs border border-apple-gray-200/50 -z-10"
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                  />
+                )}
                 <Icon size={14} className={isActive ? 'text-apple-blue' : 'opacity-70'} />
                 <span>{sec.label}</span>
               </button>
@@ -96,56 +104,69 @@ export const ResumeEditorPanel: React.FC<ResumeEditorPanelProps> = ({
           })}
         </div>
 
-        {/* PERSONAL */}
-        {(activeTab === 'all' || activeTab === 'header') && (
-          <PersonalEditor header={data.header} onChange={updateHeader} />
-        )}
+        {/* Section Contents with AnimatePresence */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="space-y-6"
+          >
+            {/* PERSONAL */}
+            {(activeTab === 'all' || activeTab === 'header') && (
+              <PersonalEditor header={data.header} onChange={updateHeader} />
+            )}
 
-        {/* SKILLS */}
-        {(activeTab === 'all' || activeTab === 'skills') && (
-          <SkillsEditor skills={data.skills} onChange={updateSkills} />
-        )}
+            {/* SKILLS */}
+            {(activeTab === 'all' || activeTab === 'skills') && (
+              <SkillsEditor skills={data.skills} onChange={updateSkills} />
+            )}
 
-        {/* EXPERIENCE */}
-        {(activeTab === 'all' || activeTab === 'experience') && (
-          <ExperienceEditor
-            experienceTitle={data.experienceTitle}
-            onTitleChange={updateExperienceTitle}
-            experience={data.experience}
-            onAdd={addExperience}
-            onUpdate={updateExperience}
-            onRemove={removeExperience}
-          />
-        )}
+            {/* EXPERIENCE */}
+            {(activeTab === 'all' || activeTab === 'experience') && (
+              <ExperienceEditor
+                experienceTitle={data.experienceTitle}
+                onTitleChange={updateExperienceTitle}
+                experience={data.experience}
+                onAdd={addExperience}
+                onUpdate={updateExperience}
+                onRemove={removeExperience}
+              />
+            )}
 
-        {/* PROJECTS */}
-        {(activeTab === 'all' || activeTab === 'projects') && (
-          <ProjectsEditor
-            projects={data.projects}
-            onAdd={addProject}
-            onUpdate={updateProject}
-            onRemove={removeProject}
-          />
-        )}
+            {/* PROJECTS */}
+            {(activeTab === 'all' || activeTab === 'projects') && (
+              <ProjectsEditor
+                projects={data.projects}
+                onAdd={addProject}
+                onUpdate={updateProject}
+                onRemove={removeProject}
+              />
+            )}
 
-        {/* EDUCATION */}
-        {(activeTab === 'all' || activeTab === 'education') && (
-          <EducationEditor
-            education={data.education}
-            onAdd={addEducation}
-            onUpdate={updateEducation}
-            onRemove={removeEducation}
-          />
-        )}
+            {/* EDUCATION */}
+            {(activeTab === 'all' || activeTab === 'education') && (
+              <EducationEditor
+                education={data.education}
+                onAdd={addEducation}
+                onUpdate={updateEducation}
+                onRemove={removeEducation}
+              />
+            )}
 
-        {/* CERTIFICATIONS */}
-        {(activeTab === 'all' || activeTab === 'certifications') && (
-          <CertificationsEditor
-            certifications={data.certifications}
-            onChange={updateCertifications}
-          />
-        )}
+            {/* CERTIFICATIONS */}
+            {(activeTab === 'all' || activeTab === 'certifications') && (
+              <CertificationsEditor
+                certifications={data.certifications}
+                onChange={updateCertifications}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </aside>
   );
 };
+

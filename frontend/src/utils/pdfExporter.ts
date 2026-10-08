@@ -132,15 +132,33 @@ export const rasterizePageElement = async (
 
         anchorElements.forEach((anchor) => {
           const href = anchor.getAttribute('href');
-          if (href && href !== '#') {
-            const r = anchor.getBoundingClientRect();
-            anchors.push({
-              href,
-              relLeft: r.left - pageRect.left,
-              relTop: r.top - pageRect.top,
-              relWidth: r.width,
-              relHeight: r.height,
-            });
+          if (href && href !== '#' && !href.startsWith('javascript:')) {
+            const rectList = anchor.getClientRects();
+            if (rectList && rectList.length > 0) {
+              for (let j = 0; j < rectList.length; j++) {
+                const r = rectList[j];
+                if (r.width > 0 && r.height > 0) {
+                  anchors.push({
+                    href,
+                    relLeft: r.left - pageRect.left,
+                    relTop: r.top - pageRect.top,
+                    relWidth: r.width,
+                    relHeight: r.height,
+                  });
+                }
+              }
+            } else {
+              const r = anchor.getBoundingClientRect();
+              if (r.width > 0 && r.height > 0) {
+                anchors.push({
+                  href,
+                  relLeft: r.left - pageRect.left,
+                  relTop: r.top - pageRect.top,
+                  relWidth: r.width,
+                  relHeight: r.height,
+                });
+              }
+            }
           }
         });
 

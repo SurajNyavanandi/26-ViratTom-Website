@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -51,21 +52,35 @@ export const ResumeVerificationModal: React.FC<ResumeVerificationModalProps> = (
   onResetOtp,
   hookError,
 }) => {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in no-print">
-      <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-apple-gray-200 transition-all">
-        <button
-          onClick={() => {
-            onClose();
-            setVerificationError('');
-          }}
-          className="absolute top-5 right-5 p-2 rounded-full text-apple-gray-400 hover:text-apple-black hover:bg-apple-gray-100 transition-all cursor-pointer"
-          title="Close"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md no-print"
+          onClick={onClose}
         >
-          <X size={18} />
-        </button>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-apple-gray-200"
+          >
+            <button
+              onClick={() => {
+                onClose();
+                setVerificationError('');
+              }}
+              className="absolute top-5 right-5 p-2 rounded-full text-apple-gray-400 hover:text-apple-black hover:bg-apple-gray-100 transition-all cursor-pointer"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
 
         {verificationStep === 'form' ? (
           <>
@@ -143,8 +158,10 @@ export const ResumeVerificationModal: React.FC<ResumeVerificationModalProps> = (
             canResend={canResendResumeOtp}
             error={verificationError || hookError}
           />
-        )}
-      </div>
-    </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -352,20 +353,36 @@ export const ClientDashboard: React.FC = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`pb-3 text-[14px] sm:text-[15px] font-medium whitespace-nowrap transition-colors border-b-2 cursor-pointer ${
+                  className={`relative pb-3 text-[14px] sm:text-[15px] font-medium whitespace-nowrap cursor-pointer transition-colors ${
                     activeTab === tab.id
-                      ? 'text-apple-blue border-apple-blue font-semibold'
-                      : 'text-apple-gray-500 hover:text-black dark:hover:text-white border-transparent'
+                      ? 'text-apple-blue font-semibold'
+                      : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
                   }`}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  {activeTab === tab.id && (
+                    <motion.div
+                      layoutId="clientDashboardTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-apple-blue"
+                      transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                    />
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Tab: Overview */}
-          {activeTab === 'overview' && (
+          {/* Animated Tab Panes */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {/* Tab: Overview */}
+              {activeTab === 'overview' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 <h2 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-apple-black dark:text-white">
@@ -649,6 +666,8 @@ export const ClientDashboard: React.FC = () => {
               </div>
             </div>
           )}
+          </motion.div>
+        </AnimatePresence>
         </div>
       </main>
 

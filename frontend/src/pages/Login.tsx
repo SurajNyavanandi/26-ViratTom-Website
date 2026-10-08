@@ -350,6 +350,13 @@ export const Login: React.FC = () => {
                   </>
                 )}
               </button>
+
+              <div className="pt-2 text-center text-[13px] text-apple-gray-500">
+                <span>Have an active project? </span>
+                <Link to="/client-login" className="text-apple-blue font-medium hover:underline">
+                  Client Login
+                </Link>
+              </div>
             </form>
           )}
 

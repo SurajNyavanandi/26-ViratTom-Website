@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Inbox, 
   RefreshCw, 
@@ -334,50 +335,36 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Primary Section Switcher */}
       <div className="flex rounded-2xl bg-apple-gray-100 dark:bg-[#1C1C1E] p-1.5 border border-apple-gray-200 dark:border-[#38383A] max-w-xl">
-        <button
-          onClick={() => setCurrentSection('leads')}
-          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            currentSection === 'leads'
-              ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
-              : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
-          }`}
-        >
-          <Inbox className="h-4 w-4 text-apple-blue" />
-          <span>Inquiries ({leads.length})</span>
-        </button>
-        <button
-          onClick={() => setCurrentSection('projects')}
-          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            currentSection === 'projects'
-              ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
-              : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
-          }`}
-        >
-          <FolderPlus className="h-4 w-4 text-apple-green" />
-          <span>Projects ({projects.length})</span>
-        </button>
-        <button
-          onClick={() => setCurrentSection('outreach')}
-          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            currentSection === 'outreach'
-              ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
-              : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
-          }`}
-        >
-          <Send className="h-4 w-4 text-purple-500" />
-          <span>Outreach</span>
-        </button>
-        <button
-          onClick={() => setCurrentSection('pricing')}
-          className={`flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            currentSection === 'pricing'
-              ? 'bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white shadow-xs'
-              : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
-          }`}
-        >
-          <DollarSign className="h-4 w-4 text-emerald-500" />
-          <span>Base Prices</span>
-        </button>
+        {[
+          { id: 'leads' as const, label: `Inquiries (${leads.length})`, icon: Inbox, iconColor: 'text-apple-blue' },
+          { id: 'projects' as const, label: `Projects (${projects.length})`, icon: FolderPlus, iconColor: 'text-apple-green' },
+          { id: 'outreach' as const, label: 'Outreach', icon: Send, iconColor: 'text-purple-500' },
+          { id: 'pricing' as const, label: 'Base Prices', icon: DollarSign, iconColor: 'text-emerald-500' },
+        ].map((sec) => {
+          const Icon = sec.icon;
+          const isActive = currentSection === sec.id;
+          return (
+            <button
+              key={sec.id}
+              onClick={() => setCurrentSection(sec.id)}
+              className={`relative flex-1 py-2.5 px-3 sm:px-4 rounded-xl text-[13px] sm:text-[14px] font-semibold cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                isActive
+                  ? 'text-apple-black dark:text-white'
+                  : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="adminSectionTab"
+                  className="absolute inset-0 bg-white dark:bg-[#2C2C2E] rounded-xl shadow-xs -z-10"
+                  transition={{ type: 'spring', stiffness: 450, damping: 35 }}
+                />
+              )}
+              <Icon className={`h-4 w-4 ${sec.iconColor}`} />
+              <span>{sec.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Metrics Cards */}
@@ -445,27 +432,33 @@ export const AdminDashboard: React.FC = () => {
               />
             </div>
             
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => setActiveTab('all')}
-                className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
-                  activeTab === 'all' 
-                    ? 'bg-apple-blue text-white' 
-                    : 'bg-apple-gray-100 dark:bg-[#1C1C1E] text-apple-gray-500 hover:text-black dark:hover:text-white'
-                }`}
-              >
-                All ({leads.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('verified')}
-                className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
-                  activeTab === 'verified' 
-                    ? 'bg-apple-blue text-white' 
-                    : 'bg-apple-gray-100 dark:bg-[#1C1C1E] text-apple-gray-500 hover:text-black dark:hover:text-white'
-                }`}
-              >
-                Verified ({verifiedCount})
-              </button>
+            <div className="flex items-center gap-1.5 p-1 bg-apple-gray-100 dark:bg-[#1C1C1E] rounded-xl border border-apple-gray-200 dark:border-[#38383A] w-full sm:w-auto">
+              {[
+                { id: 'all' as const, label: `All (${leads.length})` },
+                { id: 'verified' as const, label: `Verified (${verifiedCount})` },
+              ].map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`relative px-3.5 py-1.5 rounded-lg text-[13px] font-medium cursor-pointer transition-colors z-10 ${
+                      isActive
+                        ? 'text-white'
+                        : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
+                    }`}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="adminLeadFilterTab"
+                        className="absolute inset-0 bg-apple-blue rounded-lg shadow-xs -z-10"
+                        transition={{ type: 'spring', stiffness: 500, damping: 38 }}
+                      />
+                    )}
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

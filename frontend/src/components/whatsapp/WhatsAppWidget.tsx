@@ -1,50 +1,37 @@
-import React, { useState } from 'react';
-import { X, CheckCircle2, MessageCircle, ArrowRight, ExternalLink, AlertCircle } from 'lucide-react';
-import { getVerifiedWhatsAppUrl } from '@/lib/utils';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, MessageCircle, ArrowRight, AlertCircle, ChevronDown, Check } from 'lucide-react';
 
 interface ServiceOption {
   id: string;
   name: string;
-  shortName: string;
-  minPrice: number;
+  requiresBudget: boolean;
 }
 
 const SERVICE_OPTIONS: ServiceOption[] = [
   {
     id: 'website',
     name: 'Website (Business, Shop, Portfolio)',
-    shortName: 'Website',
-    minPrice: 4999,
+    requiresBudget: true,
   },
   {
-    id: 'store',
-    name: 'Online Store (E-Commerce)',
-    shortName: 'Online Store',
-    minPrice: 14999,
+    id: 'mobile',
+    name: 'Mobile App (iOS & Android)',
+    requiresBudget: true,
   },
   {
-    id: 'app',
-    name: 'Mobile App (Android & iOS)',
-    shortName: 'Mobile App',
-    minPrice: 25999,
-  },
-  {
-    id: 'software',
-    name: 'Custom Software / Web App',
-    shortName: 'Custom Software',
-    minPrice: 19999,
+    id: 'ecommerce',
+    name: 'E-Commerce Platform',
+    requiresBudget: true,
   },
   {
     id: 'fix',
     name: 'Fix or Update Existing Website',
-    shortName: 'Website Fix/Update',
-    minPrice: 2999,
+    requiresBudget: false,
   },
   {
-    id: 'other',
-    name: 'Other / Just have a question',
-    shortName: 'General Consultation',
-    minPrice: 1000,
+    id: 'question',
+    name: 'Just Have a Question',
+    requiresBudget: false,
   },
 ];
 
@@ -56,13 +43,16 @@ interface WhatsAppFormData {
   message: string;
 }
 
+const DEFAULT_WHATSAPP_NUMBER = '919666635009';
+
 export const WhatsAppWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [redirectUrl, setRedirectUrl] = useState('');
   const [nameError, setNameError] = useState(false);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const [form, setForm] = useState<WhatsAppFormData>(() => {
     try {
@@ -87,15 +77,40 @@ export const WhatsAppWidget: React.FC = () => {
     };
   });
 
+  const selectedService =
+    SERVICE_OPTIONS.find((s) => s.name === form.service) || SERVICE_OPTIONS[0];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDropdownOpen]);
+
   const handleOpenModal = () => {
     setIsOpen(true);
-    setSubmitted(false);
+    setIsDropdownOpen(false);
     setNameError(false);
     setBudgetError(null);
   };
 
   const handleCloseModal = () => {
     setIsOpen(false);
+    setIsDropdownOpen(false);
     setNameError(false);
     setBudgetError(null);
   };
@@ -103,14 +118,14 @@ export const WhatsAppWidget: React.FC = () => {
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
     setForm((prev) => ({ ...prev, budget: val }));
-    // Do NOT show any hint or error while user is actively typing
     if (budgetError) {
       setBudgetError(null);
     }
   };
 
-  const handleServiceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setForm((prev) => ({ ...prev, service: e.target.value }));
+  const handleSelectService = (serviceName: string) => {
+    setForm((prev) => ({ ...prev, service: serviceName }));
+    setIsDropdownOpen(false);
     if (budgetError) {
       setBudgetError(null);
     }
@@ -125,42 +140,53 @@ export const WhatsAppWidget: React.FC = () => {
     }
     setNameError(false);
 
-    // Validate budget only when submitting
     const rawNumber = parseInt(form.budget.replace(/\D/g, ''), 10);
-    const selectedService =
-      SERVICE_OPTIONS.find((s) => s.name === form.service) || SERVICE_OPTIONS[0];
 
-    if (!form.budget.trim() || isNaN(rawNumber) || rawNumber <= 0) {
-      setBudgetError(`Please enter your budget`);
-      return;
-    }
-
-    if (rawNumber < selectedService.minPrice) {
-      setBudgetError(
-        `Minimum budget for ${selectedService.shortName} is ₹${selectedService.minPrice.toLocaleString('en-IN')}`
-      );
-      return;
+    // Enforce budget only for services that require it (Fix/Update & Questions do NOT require budget and have no minimums)
+    if (selectedService.requiresBudget) {
+      if (!form.budget.trim() || isNaN(rawNumber) || rawNumber <= 0) {
+        setBudgetError('Please enter your estimated budget');
+        return;
+      }
     }
 
     setBudgetError(null);
 
-    const formattedBudget = `₹${rawNumber.toLocaleString('en-IN')}`;
+    // Format budget cleanly
+    const formattedBudget =
+      !isNaN(rawNumber) && rawNumber > 0
+        ? `₹${rawNumber.toLocaleString('en-IN')}`
+        : 'Not specified';
 
-    // Generate formatted WhatsApp message URL
-    const waUrl = getVerifiedWhatsAppUrl({
-      name: form.name.trim(),
-      phone: form.phone.trim(),
-      projectType: form.service,
-      budget: formattedBudget,
-      scope: form.message.trim(),
-    });
+    // Build the minimalist & professional WhatsApp template
+    const lines = [
+      'Hello ViratTom Team! 👋',
+      'I would like to discuss a project with you:',
+      `Name: ${form.name.trim()}`,
+      `Project Type: ${form.service}`,
+      `Estimated Budget: ${formattedBudget}`,
+      'Can we discuss the timeline and pricing?',
+    ];
+
+    if (form.message && form.message.trim()) {
+      lines.push(`Note: ${form.message.trim()}`);
+    }
+
+    const messageText = lines.join('\n');
+    const waUrl = `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}?text=${encodeURIComponent(messageText)}`;
 
     try {
       localStorage.setItem('virattom_wa_lead_data', JSON.stringify(form));
     } catch {}
 
-    setRedirectUrl(waUrl);
-    setSubmitted(true);
+    // Directly open WhatsApp without any intermediate confirmation popup
+    const opened = window.open(waUrl, '_blank', 'noopener,noreferrer');
+    if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+      window.location.href = waUrl;
+    }
+
+    // Immediately close modal on dispatch
+    handleCloseModal();
   };
 
   return (
@@ -198,7 +224,6 @@ export const WhatsAppWidget: React.FC = () => {
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="relative w-full max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl border border-[#E5E5EA] dark:border-[#2C2C2E] overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
-            
             {/* Close Button */}
             <button
               onClick={handleCloseModal}
@@ -210,152 +235,175 @@ export const WhatsAppWidget: React.FC = () => {
 
             {/* Modal Body */}
             <div className="p-6 pt-6">
-              {submitted ? (
-                <div className="py-6 text-center space-y-4">
-                  <div className="inline-flex p-3 rounded-full bg-emerald-100 text-[#25D366]">
-                    <CheckCircle2 size={36} />
-                  </div>
-                  <h4 className="text-[17px] font-semibold text-[#1C1C1E] dark:text-white">
-                    Opening WhatsApp...
-                  </h4>
-                  <p className="text-[13px] text-[#8E8E93] max-w-xs mx-auto">
-                    If WhatsApp didn't open automatically, click the button below to start chat:
+              <form id="whatsapp-form" onSubmit={handleSubmit} className="space-y-4">
+                {/* Header title */}
+                <div className="pr-8 pb-1">
+                  <h3 className="text-[17px] font-semibold text-[#1C1C1E] dark:text-white">
+                    Start a WhatsApp Chat
+                  </h3>
+                  <p className="text-[13px] text-[#8E8E93] mt-0.5">
+                    Connect directly with our engineering team
                   </p>
-
-                  <div className="pt-2 flex flex-col gap-2">
-                    <a
-                      href={redirectUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-98 text-white font-medium text-[14px] shadow-md transition-all"
-                    >
-                      <MessageCircle size={18} className="fill-white" />
-                      <span>Open WhatsApp</span>
-                      <ExternalLink size={15} />
-                    </a>
-
-                    <button
-                      type="button"
-                      onClick={() => setSubmitted(false)}
-                      className="text-[13px] text-[#8E8E93] hover:text-[#1C1C1E] dark:hover:text-white py-2 cursor-pointer transition-colors"
-                    >
-                      Edit details
-                    </button>
-                  </div>
                 </div>
-              ) : (
-                <form id="whatsapp-form" onSubmit={handleSubmit} className="space-y-4">
-                  {/* Name Input */}
-                  <div>
-                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                      Your Name <span className="text-red-500">*</span>
-                    </label>
+
+                {/* Name Input */}
+                <div>
+                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                    Your Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your name"
+                    value={form.name}
+                    onChange={(e) => {
+                      setForm({ ...form, name: e.target.value });
+                      if (nameError) setNameError(false);
+                    }}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
+                      nameError
+                        ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+                        : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
+                    }`}
+                  />
+                  {nameError && (
+                    <p className="text-[12px] text-red-500 mt-1">Please enter your name</p>
+                  )}
+                </div>
+
+                {/* Phone Number (Optional) */}
+                <div>
+                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                    Phone Number <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210 (Optional)"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value.replace(/[^\d+\s-]/g, '') })
+                    }
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[14px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all"
+                  />
+                </div>
+
+                {/* Custom Apple-Minimalist Dropdown ("What do you need help with?") */}
+                <div className="relative" ref={dropdownRef}>
+                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                    What do you need help with?
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen((prev) => !prev)}
+                    aria-haspopup="listbox"
+                    aria-expanded={isDropdownOpen}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] font-medium flex items-center justify-between text-left outline-none transition-all cursor-pointer ${
+                      isDropdownOpen
+                        ? 'border-[#25D366] ring-2 ring-[#25D366]/20 bg-white dark:bg-[#2C2C2E]'
+                        : 'border-[#E5E5EA] dark:border-[#3A3A3C] hover:border-[#D1D1D6] dark:hover:border-[#48484A]'
+                    }`}
+                  >
+                    <span className="truncate pr-2">{form.service}</span>
+                    <ChevronDown
+                      size={16}
+                      className={`text-[#8E8E93] transition-transform duration-200 shrink-0 ml-1 ${
+                        isDropdownOpen ? 'rotate-180 text-[#25D366]' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Custom Dropdown Options Menu */}
+                  {isDropdownOpen && (
+                    <div
+                      role="listbox"
+                      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#242426] rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.16)] border border-[#E5E5EA] dark:border-[#38383A] p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
+                    >
+                      {SERVICE_OPTIONS.map((opt) => {
+                        const isSelected = form.service === opt.name;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => handleSelectService(opt.name)}
+                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13.5px] transition-all flex items-center justify-between cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#E8F8EE] dark:bg-[#1C3627] text-[#0d7838] dark:text-[#25D366] font-semibold shadow-xs'
+                                : 'text-[#1C1C1E] dark:text-[#E5E5EA] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]'
+                            }`}
+                          >
+                            <span className="truncate pr-2">{opt.name}</span>
+                            {isSelected && <Check size={16} className="text-[#25D366] shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Numeric Budget Input (₹) */}
+                <div>
+                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                    Estimated Budget (₹){' '}
+                    {selectedService.requiresBudget ? (
+                      <span className="text-red-500">*</span>
+                    ) : (
+                      <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93] font-medium text-[14px] pointer-events-none">
+                      ₹
+                    </span>
                     <input
                       type="text"
-                      placeholder="Enter your name"
-                      value={form.name}
-                      onChange={(e) => {
-                        setForm({ ...form, name: e.target.value });
-                        if (nameError) setNameError(false);
-                      }}
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
-                        nameError
-                          ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+                      inputMode="numeric"
+                      placeholder={
+                        selectedService.requiresBudget
+                          ? 'Enter your budget'
+                          : 'Optional (or discuss on chat)'
+                      }
+                      value={form.budget}
+                      onChange={handleBudgetChange}
+                      className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
+                        budgetError
+                          ? 'border-red-500 focus:ring-2 focus:ring-red-500/20 bg-red-50/10'
                           : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
                       }`}
                     />
-                    {nameError && (
-                      <p className="text-[12px] text-red-500 mt-1">Please enter your name</p>
-                    )}
                   </div>
-
-                  {/* Phone Number (Optional) */}
-                  <div>
-                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                      Phone Number <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="e.g. +91 98765 43210 (Optional)"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/[^\d+\s-]/g, '') })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[14px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all"
-                    />
-                  </div>
-
-                  {/* Clear Service Dropdown */}
-                  <div>
-                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                      What do you need help with?
-                    </label>
-                    <select
-                      value={form.service}
-                      onChange={handleServiceChange}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all cursor-pointer"
-                    >
-                      {SERVICE_OPTIONS.map((opt) => (
-                        <option key={opt.id} value={opt.name} className="text-[#1C1C1E] bg-white dark:bg-[#2C2C2E] dark:text-white">
-                          {opt.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Numeric Budget Input (₹) with clean state and submit-only threshold validation */}
-                  <div>
-                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                      Estimated Budget (₹) <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93] font-medium text-[14px] pointer-events-none">
-                        ₹
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="Enter your budget"
-                        value={form.budget}
-                        onChange={handleBudgetChange}
-                        className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
-                          budgetError
-                            ? 'border-red-500 focus:ring-2 focus:ring-red-500/20 bg-red-50/10'
-                            : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
-                        }`}
-                      />
+                  {budgetError && (
+                    <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-red-500 font-medium">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{budgetError}</span>
                     </div>
-                    {budgetError && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-red-500 font-medium">
-                        <AlertCircle size={14} className="shrink-0" />
-                        <span>{budgetError}</span>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                </div>
 
-                  {/* Optional Short Message */}
-                  <div>
-                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                      Note / Description <span className="text-[#8E8E93] font-normal">(Optional)</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Brief details (or discuss directly on WhatsApp)..."
-                      value={form.message}
-                      onChange={(e) => setForm({ ...form, message: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all resize-none"
-                    />
-                  </div>
+                {/* Optional Short Message */}
+                <div>
+                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                    Note / Description <span className="text-[#8E8E93] font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Brief details (or discuss directly on WhatsApp)..."
+                    value={form.message}
+                    onChange={(e) => setForm({ ...form, message: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all resize-none"
+                  />
+                </div>
 
-                  {/* Clean WhatsApp Submit Button */}
-                  <button
-                    type="submit"
-                    className="w-full mt-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-98 text-white font-semibold text-[14.5px] flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-                  >
-                    <MessageCircle size={18} className="fill-white" />
-                    <span>Start Chat</span>
-                    <ArrowRight size={16} />
-                  </button>
-                </form>
-              )}
+                {/* Direct WhatsApp Submit Button */}
+                <button
+                  type="submit"
+                  className="w-full mt-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-98 text-white font-semibold text-[14.5px] flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                >
+                  <MessageCircle size={18} className="fill-white" />
+                  <span>Start Chat</span>
+                  <ArrowRight size={16} />
+                </button>
+              </form>
             </div>
           </div>
         </div>

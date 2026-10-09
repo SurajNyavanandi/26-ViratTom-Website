@@ -225,17 +225,35 @@ async function setupServer() {
   function serveStaticFiles() {
     app.use(express.static(distDir));
     app.use((req, res, next) => {
-      if (req.method !== 'GET' || req.originalUrl.startsWith('/api')) {
+      if (req.method !== 'GET' || req.originalUrl.startsWith('/api') || req.path.startsWith('/api')) {
         return next();
       }
       const indexFile = path.resolve(distDir, 'index.html');
+      const rootIndex = path.resolve(frontendDir, 'index.html');
       if (fs.existsSync(indexFile)) {
-        res.sendFile(indexFile);
-      } else {
-        next();
+        return res.sendFile(indexFile);
+      } else if (fs.existsSync(rootIndex)) {
+        return res.sendFile(rootIndex);
       }
+      next();
     });
   }
+
+  // SPA Route Fallback: Ensure deep links and sub-route refreshes serve index.html (Express 5 compatible)
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api') || req.originalUrl.startsWith('/api')) {
+      return next();
+    }
+    const indexFile = path.resolve(distDir, 'index.html');
+    const rootIndex = path.resolve(frontendDir, 'index.html');
+    if (fs.existsSync(indexFile)) {
+      return res.sendFile(indexFile);
+    }
+    if (fs.existsSync(rootIndex)) {
+      return res.sendFile(rootIndex);
+    }
+    next();
+  });
 
   // 404 and Global Error Handling for unhandled routes
   app.use(notFoundHandler);

@@ -121,13 +121,6 @@ export const ClientLogin = () => {
             <Button type="submit" className="w-full rounded-xl h-12 text-[15px] font-semibold" isLoading={loading}>
               Continue
             </Button>
-
-            <div className="pt-2 text-center text-[13px] text-apple-gray-500">
-              <span>Admin or Team Member? </span>
-              <Link to="/login" className="text-apple-blue font-medium hover:underline">
-                Sign in with credentials
-              </Link>
-            </div>
           </form>
         </Card>
       </div>

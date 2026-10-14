@@ -111,26 +111,34 @@ export interface PortfolioProject {
 export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
   {
     _id: '1',
-    title: 'Inisio',
-    type: 'Web Application',
-    url: 'https://inisio.vercel.app/',
-    imageUrl: '/projects/inisio.png',
-    description: 'Modern full-stack productivity & workflow management web application.'
+    title: 'Mana Drivers',
+    type: 'Dynamic Website',
+    url: 'https://manadrivers.com',
+    imageUrl: '',
+    description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
   },
   {
     _id: '2',
-    title: 'Urbanico',
-    type: 'Mobile App',
-    url: 'https://urbanico.vercel.app/',
-    imageUrl: '/projects/urbanico.png',
-    description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
-  },
-  {
-    _id: '3',
     title: 'RVM Carry Bags',
     type: 'Static Website',
     url: 'https://rvmcarrybags.com/',
-    imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80',
-    description: 'High-speed business website showcasing custom eco-friendly packaging and non-woven carry bags with fast WhatsApp inquiry.'
+    imageUrl: '',
+    description: 'High-speed corporate catalog website for eco-friendly carry bags, non-woven packaging, and instant business WhatsApp inquiries.'
+  },
+  {
+    _id: '3',
+    title: 'Inisio',
+    type: 'Web Application',
+    url: 'https://inisio.vercel.app/',
+    imageUrl: '',
+    description: 'Modern full-stack productivity & workflow management web application.'
+  },
+  {
+    _id: '4',
+    title: 'Urbanico',
+    type: 'Mobile App',
+    url: 'https://urbanico.vercel.app/',
+    imageUrl: '',
+    description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
   }
 ];

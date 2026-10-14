@@ -56,7 +56,7 @@ process.on('uncaughtException', (err) => {
 });
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = 3000;
 
 // Trust reverse proxy (Google Cloud Run / Nginx)
 app.set('trust proxy', 1);

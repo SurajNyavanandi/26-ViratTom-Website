@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { ArrowRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle, AlertCircle } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES } from '@/lib/utils';
 import { Validation } from '@/lib/validation';
@@ -11,6 +11,7 @@ import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
 import { SEO } from '@/components/seo/SEO';
 import { TechStackMarquee } from '@/components/common/TechStackMarquee';
+import { LiveWebsitePreview } from '@/components/common/LiveWebsitePreview';
 import { DEFAULT_PORTFOLIO_PROJECTS, type PortfolioProject } from '@/types';
 
 export const Home = () => {
@@ -390,38 +391,58 @@ export const Home = () => {
       </section>
 
       {/* Selected Works */}
-      <section id="work" className="w-full max-w-360 px-4 sm:px-8 py-24 mx-auto relative">
+      <section id="work" className="w-full max-w-360 px-4 sm:px-8 py-20 sm:py-24 mx-auto relative">
         <div id="projects" className="absolute -top-16 left-0" />
+        
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center mb-16"
+          className="text-center max-w-2xl mx-auto mb-12 sm:mb-16"
         >
-          <h2 className="text-[34px] font-semibold tracking-[-0.02em]">Selected Projects</h2>
+          <span className="inline-block text-[11px] font-semibold tracking-wider uppercase text-apple-blue mb-2">
+            Selected Work
+          </span>
+          <h2 className="text-[28px] sm:text-[36px] font-bold tracking-tight text-apple-black">
+            Featured Deployments
+          </h2>
+          <p className="mt-2 text-[14px] sm:text-[15px] text-apple-gray-500">
+            Real-world web platforms and mobile solutions engineered for performance, clarity, and scale.
+          </p>
         </motion.div>
         
         {loading ? (
-          <div className="flex justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-apple-blue border-t-transparent" /></div>
+          <div className="flex justify-center py-12">
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-apple-blue border-t-transparent" />
+          </div>
         ) : (
           <motion.div 
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
+            viewport={{ once: true, margin: "-40px" }}
             variants={{
               hidden: { opacity: 0 },
               visible: {
                 opacity: 1,
-                transition: {
-                  staggerChildren: 0.1,
-                },
+                transition: { staggerChildren: 0.08 },
               },
             }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-10"
+            className="grid grid-cols-1 md:grid-cols-2 gap-7 sm:gap-8"
           >
             {projects.map((project: any) => {
-              const projectUrl = project.url || (project.title === 'Inisio' ? 'https://inisio.vercel.app/' : 'https://urbanico.vercel.app/');
+              const projectUrl =
+                project.url ||
+                (project.title === 'Mana Drivers'
+                  ? 'https://manadrivers.com'
+                  : project.title === 'RVM Carry Bags'
+                  ? 'https://rvmcarrybags.com/'
+                  : project.title === 'Inisio'
+                  ? 'https://inisio.vercel.app/'
+                  : 'https://urbanico.vercel.app/');
+
+              const displayDomain = projectUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
               return (
                 <motion.a 
                   key={project._id} 
@@ -429,51 +450,48 @@ export const Home = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   variants={{
-                    hidden: { opacity: 0, y: 24 },
+                    hidden: { opacity: 0, y: 20 },
                     visible: {
                       opacity: 1,
                       y: 0,
-                      transition: {
-                        duration: 0.5,
-                        ease: [0.16, 1, 0.3, 1],
-                      },
+                      transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
                     },
                   }}
-                  whileHover={{ 
-                    y: -6, 
-                    transition: { duration: 0.22, ease: "easeOut" } 
-                  }}
-                  className="group relative block overflow-hidden rounded-2xl bg-white border border-apple-gray-200 shadow-sm hover:shadow-xl transition-shadow duration-300 text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
+                  whileHover={{ y: -4, transition: { duration: 0.2, ease: "easeOut" } }}
+                  className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-apple-gray-200/80 transition-all duration-300 hover:border-apple-gray-300 hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
                 >
-                  <div className="aspect-16/10 overflow-hidden bg-apple-gray-100 relative">
-                    <img 
-                      src={project.imageUrl} 
-                      alt={project.title} 
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                    />
-                    <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[12px] font-medium text-apple-black flex items-center gap-1.5 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
-                      <span>Visit Live</span>
-                      <ExternalLink className="h-3.5 w-3.5 text-apple-blue" />
+                  <div>
+                    {/* Live Website Iframe Preview Frame */}
+                    <LiveWebsitePreview url={projectUrl} title={project.title} />
+
+                    {/* Metadata & Description */}
+                    <div className="p-5 sm:p-6">
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-apple-gray-100 text-apple-gray-600">
+                          {project.type}
+                        </span>
+                        <span className="text-[12px] text-apple-gray-400 font-mono truncate">
+                          {displayDomain}
+                        </span>
+                      </div>
+
+                      <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between gap-1 mt-1">
+                        <span>{project.title}</span>
+                        <ArrowUpRight className="h-4 w-4 text-apple-gray-400 group-hover:text-apple-blue transition-colors shrink-0" />
+                      </h3>
+
+                      {project.description && (
+                        <p className="mt-2 text-[13px] text-apple-gray-500 leading-relaxed line-clamp-2">
+                          {project.description}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div className="p-7">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-blue/10 text-apple-blue">
-                        {project.type}
-                      </span>
-                      <span className="text-[13px] text-apple-gray-400 font-mono flex items-center gap-1">
-                        {projectUrl.replace('https://', '').replace('/', '')}
-                      </span>
-                    </div>
-                    <h3 className="text-[22px] font-bold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between">
-                      <span>{project.title}</span>
-                      <ArrowRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-all transform -translate-x-2 group-hover:translate-x-0 text-apple-blue" />
-                    </h3>
-                    {project.description && (
-                      <p className="mt-2 text-[14px] text-apple-gray-500">
-                        {project.description}
-                      </p>
-                    )}
+
+                  {/* Clean Footer Link */}
+                  <div className="px-5 sm:px-6 pb-5 pt-3 mt-auto flex items-center justify-between text-[12px] font-medium text-apple-blue border-t border-apple-gray-100/60">
+                    <span className="group-hover:underline">Explore Website</span>
+                    <ArrowRight className="h-3.5 w-3.5 transform transition-transform group-hover:translate-x-1" />
                   </div>
                 </motion.a>
               );

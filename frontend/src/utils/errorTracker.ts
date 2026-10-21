@@ -78,7 +78,7 @@ export function initClientErrorTracker(): void {
     if (!reason) return;
     const msg = reason instanceof Error ? reason.message : String(reason);
 
-    // Ignore harmless Vite/HMR, WebSocket, extension, or network abort events
+    // Ignore harmless Vite/HMR, WebSocket, extension, or third-party project notices
     if (
       !msg ||
       msg.includes('WebSocket') ||
@@ -88,7 +88,14 @@ export function initClientErrorTracker(): void {
       msg.includes('ResizeObserver') ||
       msg.includes('Script error') ||
       msg.includes('Failed to fetch') ||
-      msg.includes('Load failed')
+      msg.includes('Load failed') ||
+      msg.includes('useNativeDriver') ||
+      msg.includes('ApiService') ||
+      msg.includes('getMaterials') ||
+      msg.includes('manadrivers') ||
+      msg.includes('urbanico') ||
+      msg.includes('cloudinary') ||
+      msg.includes('Unexpected token')
     ) {
       return;
     }
@@ -99,13 +106,20 @@ export function initClientErrorTracker(): void {
   // 2. Global Runtime Script Errors (e.g. null pointer, syntax, DOM errors)
   window.addEventListener('error', (event: ErrorEvent) => {
     const msg = event.message || '';
-    // Ignore harmless cross-origin resize observer, WebSocket, or extension errors
+    // Ignore harmless cross-origin resize observer, WebSocket, extension, or external script errors
     if (
       !msg ||
       msg.includes('ResizeObserver') ||
       msg.includes('Script error') ||
       msg.includes('WebSocket') ||
-      msg.includes('vite')
+      msg.includes('vite') ||
+      msg.includes('useNativeDriver') ||
+      msg.includes('ApiService') ||
+      msg.includes('getMaterials') ||
+      msg.includes('manadrivers') ||
+      msg.includes('urbanico') ||
+      msg.includes('cloudinary') ||
+      msg.includes('Unexpected token')
     ) {
       return;
     }

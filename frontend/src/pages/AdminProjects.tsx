@@ -186,7 +186,7 @@ export const AdminProjects: React.FC = () => {
       {/* ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
+          <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
             Active Projects
           </h1>
         </div>
@@ -212,7 +212,7 @@ export const AdminProjects: React.FC = () => {
       {showAddProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-apple-black dark:text-white">Create New Client Project</h3>
+            <h3 className="text-lg font-semibold text-apple-black dark:text-white">Create New Client Project</h3>
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-apple-gray-500 mb-1">Project Title</label>
@@ -283,7 +283,7 @@ export const AdminProjects: React.FC = () => {
       {!currentProject ? (
         <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-12 text-center space-y-4">
           <FolderKanban className="h-12 w-12 text-apple-blue mx-auto opacity-70" />
-          <h2 className="text-[20px] font-bold text-[#000000] dark:text-white">No Active Client Projects</h2>
+          <h2 className="text-[20px] font-semibold text-[#000000] dark:text-white">No Active Client Projects</h2>
           <p className="text-[14px] text-apple-gray-500 max-w-md mx-auto">
             You haven't registered any client projects yet. Create a project to assign deliverables, milestones, and client access.
           </p>
@@ -305,7 +305,7 @@ export const AdminProjects: React.FC = () => {
         <div className="p-5 sm:p-7 border-b border-[#E5E5EA] dark:border-[#38383A] bg-[#F5F5F7]/60 dark:bg-[#2C2C2E]/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-[20px] sm:text-[24px] font-bold text-[#000000] dark:text-white">
+              <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-[#000000] dark:text-white">
                 {currentProject.title}
               </h2>
               <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#34C759]/10 text-[#34C759]">
@@ -391,7 +391,7 @@ export const AdminProjects: React.FC = () => {
           {/* Left Column: Interactive Milestone Engine */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-[17px] font-bold text-[#000000] dark:text-white flex items-center gap-2">
+              <h3 className="text-[17px] font-semibold text-[#000000] dark:text-white flex items-center gap-2">
                 <FolderKanban className="h-4.5 w-4.5 text-[#0071E3]" />
                 <span>Milestone Engine</span>
               </h3>
@@ -469,7 +469,7 @@ export const AdminProjects: React.FC = () => {
             
             {/* Feedback Inspector */}
             <div>
-              <h3 className="text-[17px] font-bold text-[#000000] dark:text-white mb-3 flex items-center gap-2">
+              <h3 className="text-[17px] font-semibold text-[#000000] dark:text-white mb-3 flex items-center gap-2">
                 <MessageSquare className="h-4.5 w-4.5 text-[#0071E3]" />
                 <span>Client Feedback & Requests</span>
               </h3>
@@ -590,7 +590,7 @@ export const AdminHub: React.FC = () => {
       
       {/* Page Header */}
       <div>
-        <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
+        <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
           Command Hub
         </h1>
       </div>
@@ -601,7 +601,7 @@ export const AdminHub: React.FC = () => {
         {/* Template Library */}
         <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-5 sm:p-7 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-[19px] sm:text-[21px] font-bold text-[#000000] dark:text-white flex items-center gap-2.5">
+            <h2 className="text-[19px] sm:text-[21px] font-semibold text-[#000000] dark:text-white flex items-center gap-2.5">
               <FileText className="h-5 w-5 text-[#0071E3]" />
               <span>Agency Templates</span>
             </h2>
@@ -653,7 +653,7 @@ export const AdminHub: React.FC = () => {
         {/* Agency Security Vault */}
         <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-5 sm:p-7 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-[19px] sm:text-[21px] font-bold text-[#000000] dark:text-white flex items-center gap-2.5">
+            <h2 className="text-[19px] sm:text-[21px] font-semibold text-[#000000] dark:text-white flex items-center gap-2.5">
               <Shield className="h-5 w-5 text-[#0071E3]" />
               <span>Agency Business Vault</span>
             </h2>

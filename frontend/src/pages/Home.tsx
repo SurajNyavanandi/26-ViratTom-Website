@@ -92,7 +92,13 @@ export const Home = () => {
       if (!isMounted) return;
 
       if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
-        setProjects(res.data);
+        const fetched = [...res.data];
+        const hasProsync = fetched.some(p => p.title === 'Prosync Consulting');
+        if (!hasProsync) {
+          const prosync = DEFAULT_PORTFOLIO_PROJECTS.find(p => p.title === 'Prosync Consulting');
+          if (prosync) fetched.unshift(prosync);
+        }
+        setProjects(fetched);
       } else if (retry) {
         // Retry once after cold-start delay
         setTimeout(() => {
@@ -257,27 +263,27 @@ export const Home = () => {
             </Link>
           </div>
           <br />
-          <span className="text-[13px] sm:text-[14px] font-bold tracking-widest text-apple-gray-600 uppercase">
-            VI<span className="font-extrabold text-apple-blue">R</span>
-            <span className="font-extrabold text-apple-blue">A</span>T TO
-            <span className="font-extrabold text-apple-blue">M</span> TECHNOLOGIES
+          <span className="text-[13px] sm:text-[14px] font-medium tracking-widest text-apple-gray-500 uppercase">
+            VI<span className="font-semibold text-apple-blue">R</span>
+            <span className="font-semibold text-apple-blue">A</span>T TO
+            <span className="font-semibold text-apple-blue">M</span> TECHNOLOGIES
           </span>
-          <h1 className="mt-4 text-[36px] xs:text-[42px] sm:text-[52px] md:text-[62px] font-extrabold tracking-[-0.035em] leading-[1.12] text-apple-black">
+          <h1 className="mt-4 text-[34px] xs:text-[40px] sm:text-[48px] md:text-[56px] font-semibold tracking-tight leading-[1.15] text-apple-black">
             Website &amp; Mobile App Development
           </h1>
-          <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[17px] sm:text-[20px] font-medium text-apple-gray-600 leading-relaxed">
+          <p className="mt-4 sm:mt-5 mx-auto max-w-2xl text-[16px] sm:text-[19px] font-normal text-apple-gray-600 leading-relaxed">
             We build modern, fast websites and mobile apps that help your business grow and reach more customers online.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
             <Button 
-              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-bold" 
+              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-medium" 
               onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Start a project <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button 
               variant="secondary" 
-              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-semibold"
+              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-medium"
               onClick={() => (document.getElementById('projects') || document.getElementById('work'))?.scrollIntoView({ behavior: 'smooth' })}
             >
               View work
@@ -300,10 +306,10 @@ export const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-14 sm:mb-16"
           >
-            <h2 className="text-[32px] sm:text-[42px] font-extrabold tracking-[-0.03em] text-apple-black">
+            <h2 className="text-[28px] sm:text-[38px] font-semibold tracking-tight text-apple-black">
               What We Build
             </h2>
-            <p className="mt-3 text-[15px] sm:text-[16px] font-medium text-apple-gray-600">
+            <p className="mt-2 text-[15px] sm:text-[16px] font-normal text-apple-gray-600">
               Clear, simple solutions tailored for every business need.
             </p>
           </motion.div>
@@ -376,11 +382,11 @@ export const Home = () => {
                   }}
                   className="group rounded-2xl bg-white p-7 border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col justify-start text-left cursor-default"
                 >
-                  <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.4] transition-transform duration-300 group-hover:scale-110" />
-                  <h3 className="text-[19px] sm:text-[20px] font-bold text-apple-black mb-2 tracking-tight">
+                  <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.2] transition-transform duration-300 group-hover:scale-110" />
+                  <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black mb-2 tracking-normal">
                     {service.title}
                   </h3>
-                  <p className="text-[14px] font-medium text-apple-gray-600 leading-relaxed">
+                  <p className="text-[14px] font-normal text-apple-gray-600 leading-relaxed">
                     {service.desc}
                   </p>
                 </motion.div>
@@ -395,19 +401,19 @@ export const Home = () => {
         <div id="projects" className="absolute -top-16 left-0" />
         
         <motion.div 
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="text-center max-w-2xl mx-auto mb-12 sm:mb-16"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="text-center max-w-2xl mx-auto mb-12 sm:mb-16"
         >
-          <span className="inline-block text-[12px] font-bold tracking-wider uppercase text-apple-blue mb-2">
+          <span className="inline-block text-[12px] font-medium tracking-wider uppercase text-apple-blue mb-2">
             Selected Work
           </span>
-          <h2 className="text-[32px] sm:text-[42px] font-extrabold tracking-[-0.03em] text-apple-black">
+          <h2 className="text-[28px] sm:text-[38px] font-semibold tracking-tight text-apple-black">
             Featured Deployments
           </h2>
-          <p className="mt-2 text-[15px] sm:text-[16px] font-medium text-apple-gray-600">
+          <p className="mt-2 text-[15px] sm:text-[16px] font-normal text-apple-gray-600">
             Real-world web platforms and mobile solutions engineered for performance, clarity, and scale.
           </p>
         </motion.div>
@@ -469,21 +475,21 @@ export const Home = () => {
                     {/* Metadata & Description */}
                     <div className="p-5 sm:p-6">
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-apple-gray-100 text-apple-gray-700">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-apple-gray-100 text-apple-gray-700">
                           {project.type}
                         </span>
-                        <span className="text-[12px] text-apple-gray-500 font-mono font-medium truncate">
+                        <span className="text-[12px] text-apple-gray-500 font-mono font-normal truncate">
                           {displayDomain}
                         </span>
                       </div>
 
-                      <h3 className="text-[19px] sm:text-[21px] font-bold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between gap-1 mt-1">
+                      <h3 className="text-[18px] sm:text-[20px] font-semibold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between gap-1 mt-1">
                         <span>{project.title}</span>
                         <ArrowUpRight className="h-4 w-4 text-apple-gray-400 group-hover:text-apple-blue transition-colors shrink-0" />
                       </h3>
 
                       {project.description && (
-                        <p className="mt-2 text-[13.5px] font-medium text-apple-gray-600 leading-relaxed line-clamp-2">
+                        <p className="mt-2 text-[13.5px] font-normal text-apple-gray-600 leading-relaxed line-clamp-2">
                           {project.description}
                         </p>
                       )}
@@ -491,7 +497,7 @@ export const Home = () => {
                   </div>
 
                   {/* Clean Footer Link */}
-                  <div className="px-5 sm:px-6 pb-5 pt-3 mt-auto flex items-center justify-between text-[12.5px] font-bold text-apple-blue border-t border-apple-gray-100/60">
+                  <div className="px-5 sm:px-6 pb-5 pt-3 mt-auto flex items-center justify-between text-[12.5px] font-medium text-apple-blue border-t border-apple-gray-100/60">
                     <span className="group-hover:underline">Explore Website</span>
                     <ArrowRight className="h-3.5 w-3.5 transform transition-transform group-hover:translate-x-1" />
                   </div>
@@ -514,21 +520,21 @@ export const Home = () => {
           {/* Subtle Stylized Quotation Mark */}
           <span
             aria-hidden="true"
-            className="block select-none text-[72px] sm:text-[96px] leading-none font-serif text-apple-gray-300/60 -mb-6 sm:-mb-10 font-black"
+            className="block select-none text-[56px] sm:text-[72px] leading-none font-serif text-apple-gray-300/50 -mb-4 sm:-mb-7 font-light"
           >
             “
           </span>
 
-          {/* The Quote Statement - Thick, crisp & sharp */}
+          {/* The Quote Statement - Simple, sleek & clean */}
           <blockquote className="relative z-10 max-w-2xl mx-auto">
-            <p className="text-[22px] sm:text-[28px] md:text-[31px] font-extrabold tracking-[-0.03em] text-apple-black leading-[1.3] text-balance">
+            <p className="text-[19px] sm:text-[24px] md:text-[26px] font-medium tracking-normal text-apple-black leading-[1.38] text-balance">
               The only way to do great work is to love what you do.
             </p>
           </blockquote>
 
           {/* Attribution & Steve Jobs Photo Avatar */}
-          <div className="mt-8 sm:mt-9 flex items-center justify-center gap-3.5 pt-6 border-t border-apple-gray-200/70 max-w-xs mx-auto">
-            <div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-apple-gray-300 shadow-md ring-2 ring-white/90 shrink-0 bg-apple-gray-100">
+          <div className="mt-7 sm:mt-8 flex items-center justify-center gap-3.5 pt-5 border-t border-apple-gray-200/70 max-w-xs mx-auto">
+            <div className="relative h-13 w-13 rounded-full overflow-hidden border-2 border-apple-gray-300 shadow-sm ring-2 ring-white/90 shrink-0 bg-apple-gray-100">
               <img
                 src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRulqeXqeMGnWwu4nQYub6_8RwF7cFK_-725lb_K9fsiVZSmQ1MTmIbwoik&amp;s=10"
                 alt="Steve Jobs"
@@ -540,10 +546,10 @@ export const Home = () => {
               />
             </div>
             <div className="text-left">
-              <div className="text-[16px] font-bold text-apple-black tracking-tight leading-tight">
+              <div className="text-[15px] font-semibold text-apple-black tracking-normal leading-tight">
                 Steve Jobs
               </div>
-              <div className="text-[12.5px] text-apple-gray-500 font-semibold leading-tight mt-0.5">
+              <div className="text-[12px] text-apple-gray-500 font-normal leading-tight mt-0.5">
                 Co-founder, Apple Inc.
               </div>
             </div>
@@ -561,10 +567,10 @@ export const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-14 sm:mb-16"
           >
-            <h2 className="text-[32px] sm:text-[40px] font-extrabold tracking-[-0.03em] text-apple-black">
+            <h2 className="text-[28px] sm:text-[38px] font-semibold tracking-tight text-apple-black">
               Pricing & Services
             </h2>
-            <p className="mt-3 text-[15px] sm:text-[17px] font-medium text-apple-gray-600 max-w-xl mx-auto">
+            <p className="mt-2 text-[15px] sm:text-[16px] font-normal text-apple-gray-600 max-w-xl mx-auto">
               Every project is unique. Pick the plan that fits your business to request a customized quote.
             </p>
           </motion.div>
@@ -606,9 +612,9 @@ export const Home = () => {
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 Easiest to Start
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Static Website</h3>
+              <h3 className="text-[19px] sm:text-[21px] font-semibold mb-1 text-apple-black">Static Website</h3>
               <p className="text-[14px] text-apple-gray-500 mb-6">Simple 1 to 5 Page Website with WhatsApp Chat</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <div className="text-[22px] font-semibold mb-2 text-apple-black">Custom Quote</div>
               <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Direct collaboration</p>
               <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Simple business brochure / visiting card</li>
@@ -645,9 +651,9 @@ export const Home = () => {
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 For Portals & Logins
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Dynamic Website</h3>
+              <h3 className="text-[19px] sm:text-[21px] font-semibold mb-1 text-apple-black">Dynamic Website</h3>
               <p className="text-[14px] text-apple-gray-500 mb-6">Interactive Website with User Logins & Database</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <div className="text-[22px] font-semibold mb-2 text-apple-black">Custom Quote</div>
               <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Database included</p>
               <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> User accounts & password login</li>
@@ -684,9 +690,9 @@ export const Home = () => {
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 Sell Products Online
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Online Store</h3>
+              <h3 className="text-[19px] sm:text-[21px] font-semibold mb-1 text-apple-black">Online Store</h3>
               <p className="text-[14px] text-apple-gray-500 mb-6">Website to Sell Products with Shopping Cart</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <div className="text-[22px] font-semibold mb-2 text-apple-black">Custom Quote</div>
               <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • Orders & Payments</p>
               <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Product catalog with photos & prices</li>
@@ -723,9 +729,9 @@ export const Home = () => {
               <div className="inline-block mx-auto mb-3 px-3 py-1 rounded-full text-[12px] font-medium bg-apple-blue/10 text-apple-blue">
                 For Smartphones
               </div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-apple-black">Mobile App</h3>
+              <h3 className="text-[19px] sm:text-[21px] font-semibold mb-1 text-apple-black">Mobile App</h3>
               <p className="text-[14px] text-apple-gray-500 mb-6">Smartphone App for Android & iPhone</p>
-              <div className="text-[24px] font-bold mb-2 text-apple-black">Custom Quote</div>
+              <div className="text-[22px] font-semibold mb-2 text-apple-black">Custom Quote</div>
               <p className="text-[12px] text-apple-gray-500 mb-6">Tailored to your needs • App Stores ready</p>
               <ul className="space-y-3.5 mb-8 text-left text-[14px] flex-1 text-apple-black">
                 <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-apple-blue shrink-0" /> Installable app for Android & iPhone</li>
@@ -759,10 +765,10 @@ export const Home = () => {
               }}
               className="bg-apple-black text-white p-7 sm:p-8 rounded-2xl text-center flex flex-col h-full md:col-span-2 lg:col-span-2 border border-[#38383A] shadow-xl hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)] transition-shadow duration-300 relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 bg-apple-blue text-[11px] font-bold px-3 py-1 rounded-bl-lg">POPULAR ALL-IN-ONE</div>
-              <h3 className="text-[20px] sm:text-[22px] font-bold mb-1 text-white">Website + Mobile App</h3>
+              <div className="absolute top-0 right-0 bg-apple-blue text-[11px] font-semibold px-3 py-1 rounded-bl-lg">POPULAR ALL-IN-ONE</div>
+              <h3 className="text-[19px] sm:text-[21px] font-semibold mb-1 text-white">Website + Mobile App</h3>
               <p className="text-[14px] text-gray-400 mb-6">Complete Digital Presence: Website & Phone App Combined</p>
-              <div className="text-[24px] font-bold mb-2 text-white">Custom Quote</div>
+              <div className="text-[22px] font-semibold mb-2 text-white">Custom Quote</div>
               <p className="text-[12px] text-gray-400 mb-6">Tailored to your needs • All-in-one package</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-left text-[14px]">
                 <ul className="space-y-3.5">
@@ -777,7 +783,7 @@ export const Home = () => {
               <Button onClick={() => {
                 setFormState({...formState, projectType: 'Website + Mobile App'});
                 document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
-              }} className="w-full mt-auto bg-apple-blue text-white hover:bg-blue-600 border-none">
+              }} className="w-full mt-auto bg-apple-blue text-white hover:bg-blue-600 border-none font-medium">
                 Start Complete Combo Project
               </Button>
             </motion.div>
@@ -789,8 +795,8 @@ export const Home = () => {
       <section id="contact" className="w-full py-16 sm:py-24 border-t border-apple-gray-200">
         <div className="mx-auto max-w-150 px-4">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-[28px] sm:text-[36px] font-extrabold tracking-[-0.03em] text-apple-black">Start a Project</h2>
-            <p className="mt-2 sm:mt-3 text-[15px] sm:text-[16px] font-medium text-apple-gray-600">
+            <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-apple-black">Start a Project</h2>
+            <p className="mt-2 sm:mt-3 text-[14px] sm:text-[15px] font-normal text-apple-gray-600">
               Tell us about your requirements to get started.
             </p>
           </div>

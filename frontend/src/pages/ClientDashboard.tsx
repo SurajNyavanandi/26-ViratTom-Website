@@ -226,7 +226,7 @@ export const ClientDashboard: React.FC = () => {
             <div className="h-12 w-12 rounded-full bg-apple-gray-100 dark:bg-[#2C2C2E] flex items-center justify-center mx-auto text-apple-gray-400">
               <AlertCircle className="h-6 w-6" />
             </div>
-            <h2 className="text-[20px] font-bold text-apple-black dark:text-white">No Project Found</h2>
+            <h2 className="text-[20px] font-semibold text-apple-black dark:text-white">No Project Found</h2>
             <p className="text-[14px] text-apple-gray-500">
               No active project is linked to this mobile number.
             </p>
@@ -263,10 +263,10 @@ export const ClientDashboard: React.FC = () => {
 
           {/* Header */}
           <div className="text-center space-y-2">
-            <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-apple-black dark:text-white">
+            <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-apple-black dark:text-white">
               {project.title}
             </h1>
-            <p className="text-[15px] text-apple-gray-500 dark:text-apple-gray-400">
+            <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
               20% advance booking required to activate workspace.
             </p>
           </div>
@@ -278,15 +278,15 @@ export const ClientDashboard: React.FC = () => {
                 <span className="text-[12px] text-apple-gray-400 font-medium uppercase tracking-wider block mb-1">
                   Total
                 </span>
-                <span className="text-[20px] font-bold text-apple-black dark:text-white">
+                <span className="text-[19px] font-semibold text-apple-black dark:text-white">
                   {Validation.formatCurrency(totalBudget)}
                 </span>
               </div>
               <div className="sm:border-l sm:border-r border-apple-gray-200 dark:border-[#38383A] sm:px-4">
-                <span className="text-[12px] text-apple-blue font-semibold uppercase tracking-wider block mb-1">
+                <span className="text-[12px] text-apple-blue font-medium uppercase tracking-wider block mb-1">
                   20% Advance
                 </span>
-                <span className="text-[22px] font-extrabold text-apple-blue">
+                <span className="text-[20px] font-semibold text-apple-blue">
                   {Validation.formatCurrency(advanceAmount)}
                 </span>
               </div>
@@ -294,7 +294,7 @@ export const ClientDashboard: React.FC = () => {
                 <span className="text-[12px] text-apple-gray-400 font-medium uppercase tracking-wider block mb-1">
                   On Delivery
                 </span>
-                <span className="text-[20px] font-bold text-apple-gray-600 dark:text-apple-gray-300">
+                <span className="text-[19px] font-semibold text-apple-gray-600 dark:text-apple-gray-300">
                   {Validation.formatCurrency(remainingAmount)}
                 </span>
               </div>
@@ -303,7 +303,7 @@ export const ClientDashboard: React.FC = () => {
             <div className="flex flex-col gap-3">
               <Button
                 onClick={handlePayAdvance}
-                className="w-full h-12 rounded-2xl text-[15px] font-bold gap-2 shadow-md shadow-apple-blue/20"
+                className="w-full h-12 rounded-2xl text-[15px] font-medium gap-2 shadow-md shadow-apple-blue/20"
                 isLoading={paymentProcessing}
                 disabled={paymentProcessing}
               >
@@ -327,7 +327,7 @@ export const ClientDashboard: React.FC = () => {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h1 className="text-[24px] sm:text-[34px] font-bold tracking-tight text-apple-black dark:text-white">
+              <h1 className="text-[24px] sm:text-[30px] font-semibold tracking-tight text-apple-black dark:text-white">
                 {project.title}
               </h1>
               <p className="text-[13px] text-apple-gray-500 mt-1">
@@ -385,7 +385,7 @@ export const ClientDashboard: React.FC = () => {
               {activeTab === 'overview' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
               <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                <h2 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-apple-black dark:text-white">
+                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
                   Project Milestones
                 </h2>
                 <Card className="p-0 overflow-hidden border border-apple-gray-200 dark:border-[#38383A]">
@@ -409,15 +409,15 @@ export const ClientDashboard: React.FC = () => {
                               <p className="text-[13px] text-apple-gray-500">
                                 Target:{' '}
                                 {new Date(m.date).toLocaleDateString(undefined, {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
                                 })}
                               </p>
                             </div>
                           </div>
                           <span
-                            className={`text-[12px] sm:text-[13px] font-semibold px-2.5 py-1 rounded-full self-start sm:self-auto ${
+                            className={`text-[12px] sm:text-[13px] font-medium px-2.5 py-1 rounded-full self-start sm:self-auto ${
                               m.completed
                                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                                 : 'bg-apple-gray-100 dark:bg-[#2C2C2E] text-apple-gray-500 dark:text-apple-gray-400'
@@ -437,7 +437,7 @@ export const ClientDashboard: React.FC = () => {
               </div>
 
               <div>
-                <h2 className="text-[20px] sm:text-[24px] font-bold tracking-tight mb-4 sm:mb-6 text-apple-black dark:text-white">
+                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight mb-4 sm:mb-6 text-apple-black dark:text-white">
                   Quick Actions
                 </h2>
                 <Card className="space-y-3 p-5 sm:p-6 border border-apple-gray-200 dark:border-[#38383A] rounded-2xl">
@@ -462,7 +462,7 @@ export const ClientDashboard: React.FC = () => {
               <Card className="max-w-3xl p-5 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-apple-gray-200 dark:border-[#38383A] pb-4">
                   <div>
-                    <h2 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-apple-black dark:text-white">
+                    <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
                       Billing & Invoices
                     </h2>
                     <p className="text-[13px] text-apple-gray-500 mt-0.5">
@@ -539,7 +539,7 @@ export const ClientDashboard: React.FC = () => {
                 {/* Saved Payment Methods List */}
                 <div className="pt-4 border-t border-apple-gray-200 dark:border-[#38383A]">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[15px] font-bold text-apple-black dark:text-white">
+                    <h3 className="text-[15px] font-semibold text-apple-black dark:text-white">
                       Accepted Payment Channels
                     </h3>
                   </div>
@@ -564,7 +564,7 @@ export const ClientDashboard: React.FC = () => {
           {/* Tab: Feedback */}
           {activeTab === 'feedback' && (
             <Card className="max-w-2xl p-5 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A]">
-              <h2 className="text-[20px] sm:text-[24px] font-bold tracking-tight mb-6 text-apple-black dark:text-white">
+              <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight mb-6 text-apple-black dark:text-white">
                 Change Request & Feedback
               </h2>
 
@@ -620,7 +620,7 @@ export const ClientDashboard: React.FC = () => {
           {activeTab === 'vault' && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-apple-black dark:text-white">
+                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
                   Deliverables
                 </h2>
               </div>

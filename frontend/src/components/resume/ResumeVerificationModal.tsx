@@ -88,7 +88,7 @@ export const ResumeVerificationModal: React.FC<ResumeVerificationModalProps> = (
               <div className="h-12 w-12 rounded-2xl bg-apple-blue/10 text-apple-blue flex items-center justify-center mx-auto mb-3">
                 <Mail size={24} />
               </div>
-              <h3 className="text-[20px] font-bold text-apple-black">
+              <h3 className="text-[20px] font-semibold text-apple-black">
                 Save & Download Resume
               </h3>
               <p className="text-[13px] text-apple-gray-500 mt-1.5 leading-relaxed">

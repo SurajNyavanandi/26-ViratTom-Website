@@ -306,7 +306,7 @@ export const AdminDashboard: React.FC = () => {
       {/* 🏷️ PAGE HEADER & METRICS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[28px] sm:text-[34px] font-bold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
+          <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
             Admin Dashboard
           </h1>
         </div>
@@ -466,7 +466,7 @@ export const AdminDashboard: React.FC = () => {
           {filteredLeads.length === 0 ? (
             <Card className="p-12 text-center text-apple-gray-400 rounded-3xl">
               <Inbox className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <h3 className="text-[18px] font-bold text-apple-black dark:text-white mb-1">No Leads Found</h3>
+              <h3 className="text-[18px] font-semibold text-apple-black dark:text-white mb-1">No Leads Found</h3>
               <p className="text-[14px]">Inquiries submitted on the homepage will appear here instantly.</p>
             </Card>
           ) : (
@@ -482,7 +482,7 @@ export const AdminDashboard: React.FC = () => {
                       {/* Lead Details */}
                       <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center gap-2.5 flex-wrap">
-                          <h3 className="text-[18px] sm:text-[20px] font-bold text-[#000000] dark:text-white truncate">
+                          <h3 className="text-[18px] sm:text-[20px] font-semibold text-[#000000] dark:text-white truncate">
                             {lead.name}
                           </h3>
                           
@@ -588,7 +588,7 @@ export const AdminDashboard: React.FC = () => {
           {projects.length === 0 ? (
             <Card className="p-12 text-center text-apple-gray-400 rounded-3xl">
               <FolderPlus className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <h3 className="text-[18px] font-bold text-apple-black dark:text-white mb-1">No Client Projects Yet</h3>
+              <h3 className="text-[18px] font-semibold text-apple-black dark:text-white mb-1">No Client Projects Yet</h3>
               <p className="text-[14px] mb-4">Click "Create Project" or convert an incoming lead to get started.</p>
               <Button onClick={() => setShowNewProjectModal(true)} className="rounded-xl">
                 Create First Project
@@ -607,7 +607,7 @@ export const AdminDashboard: React.FC = () => {
                       {/* Left Project Info */}
                       <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-[20px] font-bold text-apple-black dark:text-white">
+                          <h3 className="text-[19px] font-semibold text-apple-black dark:text-white">
                             {project.title}
                           </h3>
                           <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-gray-100 dark:bg-[#2C2C2E] text-apple-gray-600 dark:text-apple-gray-300">
@@ -714,7 +714,7 @@ export const AdminDashboard: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <h2 className="text-[20px] sm:text-[22px] font-bold text-apple-black dark:text-white">
+                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
                   Base Project Prices & Thresholds
                 </h2>
               </div>
@@ -820,7 +820,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <Card className="w-full max-w-lg p-6 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-2xl space-y-5 bg-white dark:bg-[#1C1C1E] max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-[20px] font-bold text-apple-black dark:text-white">
+              <h2 className="text-[20px] font-semibold text-apple-black dark:text-white">
                 Create Client Project
               </h2>
               <button

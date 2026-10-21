@@ -85,7 +85,7 @@ export const ClientLogin = () => {
             <div className="h-14 w-14 rounded-2xl bg-apple-blue/10 flex items-center justify-center text-apple-blue mx-auto mb-4">
               <ShieldCheck className="h-7 w-7" />
             </div>
-            <h1 className="text-[22px] sm:text-[26px] font-bold tracking-tight">Client Login</h1>
+            <h1 className="text-[22px] sm:text-[26px] font-semibold tracking-tight">Client Login</h1>
             <p className="text-[13px] text-apple-gray-500 mt-1">Enter your registered mobile number to access your project workspace</p>
           </div>
           

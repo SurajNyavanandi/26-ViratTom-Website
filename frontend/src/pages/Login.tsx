@@ -252,7 +252,7 @@ export const Login: React.FC = () => {
                 <KeyRound className="h-7 w-7" />
               )}
             </div>
-            <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight text-apple-black dark:text-white leading-tight">
+            <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-apple-black dark:text-white leading-tight">
               {mode === 'login' && 'Admin Sign In'}
               {mode === 'forgot_email' && 'Reset Admin Password'}
               {mode === 'forgot_otp' && 'Enter Reset Code'}

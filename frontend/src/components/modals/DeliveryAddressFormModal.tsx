@@ -64,7 +64,7 @@ export const DeliveryAddressFormModal = React.memo<DeliveryAddressFormModalProps
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="text-[18px] font-bold text-apple-black dark:text-white leading-tight">
+              <h3 className="text-[18px] font-semibold text-apple-black dark:text-white leading-tight">
                 {title}
               </h3>
               <p className="text-[12.5px] text-apple-gray-500 dark:text-apple-gray-400">

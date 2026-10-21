@@ -49,7 +49,7 @@ export const OtpVerificationView = React.memo<OtpVerificationViewProps>(({
         <div className="h-13 w-13 rounded-2xl bg-apple-blue/10 dark:bg-apple-blue/20 flex items-center justify-center text-apple-blue mx-auto mb-3 shadow-2xs">
           {type === 'email' ? <Mail className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
         </div>
-        <h3 className="text-[20px] sm:text-[22px] font-bold text-apple-black dark:text-white tracking-tight">
+        <h3 className="text-[20px] sm:text-[22px] font-semibold text-apple-black dark:text-white tracking-tight">
           {title}
         </h3>
         <p className="text-[13.5px] sm:text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mt-1 max-w-sm mx-auto leading-relaxed">

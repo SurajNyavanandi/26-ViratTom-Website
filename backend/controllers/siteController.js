@@ -16,6 +16,7 @@ const EmailOtp = require('../models/EmailOtp');
 const ResumeDraft = require('../models/ResumeDraft');
 const User = require('../models/User');
 const SiteStat = require('../models/SiteStat');
+const PortfolioProject = require('../models/PortfolioProject');
 
 // Services
 const {
@@ -74,9 +75,27 @@ const syncFallbackData = async () => {
   console.log('[Database Sync] In-memory lead synchronization complete.');
 };
 
+const seedPortfolioProjects = async () => {
+  if (!isDbReady()) return;
+  try {
+    for (let i = 0; i < portfolioProjects.length; i++) {
+      const proj = portfolioProjects[i];
+      await PortfolioProject.findOneAndUpdate(
+        { title: proj.title },
+        { ...proj, order: i },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+    console.log('[Database Sync] Portfolio projects seeded successfully into MongoDB (including Prosync Consulting).');
+  } catch (err) {
+    console.warn('[Database Sync] Portfolio projects seed notice:', err.message);
+  }
+};
+
 if (mongoose.connection) {
   mongoose.connection.on('connected', () => {
     syncFallbackData().catch(() => {});
+    seedPortfolioProjects().catch(() => {});
   });
 }
 
@@ -86,7 +105,7 @@ const portfolioProjects = [
     title: 'Prosync Consulting',
     type: 'Financial Advisory & Web Platform',
     url: 'https://prosyncindia.vercel.app/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
   },
   {
@@ -94,7 +113,7 @@ const portfolioProjects = [
     title: 'Mana Drivers',
     type: 'Dynamic Website',
     url: 'https://manadrivers.com',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fmanadrivers.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
   },
   {
@@ -102,7 +121,7 @@ const portfolioProjects = [
     title: 'RVM Carry Bags',
     type: 'Static Website',
     url: 'https://rvmcarrybags.com/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Frvmcarrybags.com%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'High-speed corporate catalog website for eco-friendly carry bags, non-woven packaging, and instant business WhatsApp inquiries.'
   },
   {
@@ -110,7 +129,7 @@ const portfolioProjects = [
     title: 'Inisio',
     type: 'Web Application',
     url: 'https://inisio.vercel.app/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Finisio.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Modern full-stack productivity & workflow management web application.'
   },
   {
@@ -118,7 +137,7 @@ const portfolioProjects = [
     title: 'Urbanico',
     type: 'Mobile App',
     url: 'https://urbanico.vercel.app/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Furbanico.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
   }
 ];
@@ -196,8 +215,41 @@ function getRazorpayInstance() {
 // Public Projects
 // -------------------------------------------------------------
 const getProjects = async (req, res) => {
-  res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
-  res.json(portfolioProjects);
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+  if (isDbReady()) {
+    try {
+      let dbProjects = await PortfolioProject.find().sort({ order: 1, createdAt: 1 }).lean();
+      
+      // If DB has no projects yet, auto-seed them immediately
+      if (!dbProjects || dbProjects.length === 0) {
+        await seedPortfolioProjects();
+        dbProjects = await PortfolioProject.find().sort({ order: 1, createdAt: 1 }).lean();
+      }
+
+      // Guarantee Prosync Consulting is present even if an older database had partial records
+      const hasProsync = dbProjects && dbProjects.some((p) => p.title === 'Prosync Consulting');
+      if (!hasProsync) {
+        const prosync = portfolioProjects[0];
+        try {
+          await PortfolioProject.findOneAndUpdate(
+            { title: prosync.title },
+            { ...prosync, order: 0 },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+        } catch {}
+        if (dbProjects) dbProjects.unshift(prosync);
+      }
+
+      if (dbProjects && dbProjects.length > 0) {
+        return res.json(dbProjects);
+      }
+    } catch (err) {
+      console.warn('[Projects Query Notice]:', err.message);
+    }
+  }
+
+  return res.json(portfolioProjects);
 };
 
 // -------------------------------------------------------------

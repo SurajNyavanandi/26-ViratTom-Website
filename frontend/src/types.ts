@@ -114,7 +114,7 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     title: 'Prosync Consulting',
     type: 'Financial Advisory & Web Platform',
     url: 'https://prosyncindia.vercel.app/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
   },
   {
@@ -122,7 +122,7 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     title: 'Mana Drivers',
     type: 'Dynamic Website',
     url: 'https://manadrivers.com',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fmanadrivers.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
   },
   {
@@ -130,7 +130,7 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     title: 'RVM Carry Bags',
     type: 'Static Website',
     url: 'https://rvmcarrybags.com/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Frvmcarrybags.com%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'High-speed corporate catalog website for eco-friendly carry bags, non-woven packaging, and instant business WhatsApp inquiries.'
   },
   {
@@ -138,7 +138,7 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     title: 'Inisio',
     type: 'Web Application',
     url: 'https://inisio.vercel.app/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Finisio.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Modern full-stack productivity & workflow management web application.'
   },
   {
@@ -146,7 +146,7 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     title: 'Urbanico',
     type: 'Mobile App',
     url: 'https://urbanico.vercel.app/',
-    imageUrl: '',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Furbanico.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'High-performance mobile commerce apparel app with instant checkout & fluid native-feel interactions.'
   }
 ];

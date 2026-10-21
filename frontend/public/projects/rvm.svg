@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" fill="none">
+  <defs>
+    <linearGradient id="rvm-green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#15803d"/>
+      <stop offset="100%" stop-color="#22c55e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Editorial Warm Off-White Canvas -->
+  <rect width="1200" height="750" fill="#faf9f5"/>
+
+  <!-- Top Real Navigation Header -->
+  <rect width="1200" height="74" fill="#faf9f5"/>
+  <line x1="0" y1="74" x2="1200" y2="74" stroke="#e8e6de"/>
+
+  <!-- Brand Wordmark -->
+  <g transform="translate(60, 24)">
+    <text x="0" y="24" font-family="Georgia, serif" font-size="26" font-weight="600" fill="#141414" letter-spacing="-0.02em">RVM Carry Bags</text>
+    <text x="210" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#22c55e" letter-spacing="0.08em">· HYDERABAD FACTORY</text>
+  </g>
+
+  <!-- Nav Links -->
+  <g transform="translate(560, 44)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="400" fill="#424240">
+    <text x="0" y="0" fill="#141414" font-weight="600">All Bags</text>
+    <text x="95" y="0">D-Cut</text>
+    <text x="170" y="0">W-Cut</text>
+    <text x="250" y="0">Stitched Bags</text>
+    <text x="375" y="0">Box Bags</text>
+  </g>
+
+  <!-- Header CTA & Phone -->
+  <g transform="translate(1005, 20)">
+    <rect width="135" height="36" rx="18" fill="#141414"/>
+    <text x="67" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="500" fill="#ffffff" text-anchor="middle">Check Price</text>
+  </g>
+
+  <!-- Left Actual Hero Content -->
+  <g transform="translate(60, 130)">
+    <rect width="260" height="28" rx="14" fill="#ecfdf5" stroke="#bbf7d0"/>
+    <text x="130" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#16a34a" text-anchor="middle" letter-spacing="0.06em">DIRECT FACTORY PRICING · EST. 2018</text>
+
+    <!-- Actual Live Headline -->
+    <text x="0" y="74" font-family="Georgia, serif" font-size="44" font-weight="700" fill="#141414" letter-spacing="-0.02em">
+      <tspan x="0" dy="0">Eco-Friendly Carry Bags.</tspan>
+      <tspan x="0" dy="54" fill="#15803d">Direct From Hyderabad</tspan>
+      <tspan dy="0" fill="#141414"> Factory</tspan>
+    </text>
+
+    <!-- Actual Subtitle -->
+    <text x="0" y="270" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="400" fill="#525250">
+      <tspan x="0" dy="0">Heavy-duty D-Cut, W-Cut, Stitched, and Box bags with custom multi-color printing.</tspan>
+      <tspan x="0" dy="26">Supplying retail supermarkets, cloth showrooms, and jewelers across Telangana.</tspan>
+    </text>
+
+    <!-- CTAs -->
+    <g transform="translate(0, 335)">
+      <rect width="210" height="48" rx="24" fill="#15803d"/>
+      <text x="105" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.5" font-weight="600" fill="#ffffff" text-anchor="middle">Instant Price Calculator →</text>
+
+      <rect x="225" width="165" height="48" rx="24" fill="#ffffff" stroke="#d6d3c7" stroke-width="1.5"/>
+      <text x="307" y="30" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="500" fill="#262626" text-anchor="middle">Call +91 9100777396</text>
+    </g>
+
+    <!-- Factory Specs Strip -->
+    <g transform="translate(0, 420)">
+      <rect width="490" height="70" rx="14" fill="#ffffff" stroke="#e8e6de"/>
+      <g transform="translate(24, 22)">
+        <text x="0" y="16" font-family="Georgia, serif" font-size="20" font-weight="700" fill="#141414">40–120 GSM</text>
+        <text x="0" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#737373">Heavy Non-Woven Fabric</text>
+      </g>
+      <line x1="160" y1="14" x2="160" y2="56" stroke="#e8e6de"/>
+      <g transform="translate(184, 22)">
+        <text x="0" y="16" font-family="Georgia, serif" font-size="20" font-weight="700" fill="#141414">500 pcs</text>
+        <text x="0" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#737373">Low Minimum Order</text>
+      </g>
+      <line x1="290" y1="14" x2="290" y2="56" stroke="#e8e6de"/>
+      <g transform="translate(314, 22)">
+        <text x="0" y="16" font-family="Georgia, serif" font-size="20" font-weight="700" fill="#15803d">100% Recyclable</text>
+        <text x="0" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#737373">Govt Compliant PP</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right Actual Live Products Catalog Showcase -->
+  <g transform="translate(620, 115)">
+    <rect width="520" height="500" rx="20" fill="#ffffff" stroke="#e8e6de" stroke-width="1.5" filter="drop-shadow(0 8px 24px rgba(0,0,0,0.03))"/>
+    <rect width="520" height="54" rx="20" fill="#f5f5f0"/>
+    <text x="24" y="34" font-family="Georgia, serif" font-size="16" font-weight="700" fill="#141414">Manufactured Collections · Ramoji Film City Factory</text>
+
+    <!-- Product 1: Stitched Bags with Actual Cloudinary Image -->
+    <g transform="translate(24, 76)">
+      <rect width="472" height="195" rx="16" fill="#faf9f5" stroke="#e8e6de"/>
+      
+      <!-- Product photo -->
+      <g transform="translate(16, 16)">
+        <rect width="140" height="163" rx="10" fill="#e5e5e5"/>
+        <image href="https://res.cloudinary.com/demo/image/fetch/w_600,h_600,c_fill,q_auto,f_auto/https://images.unsplash.com/photo-1598532163257-ae3c6b2524b6?w=600&amp;auto=format&amp;fit=crop&amp;q=80" width="140" height="163" preserveAspectRatio="xMidYMid slice"/>
+      </g>
+
+      <!-- Details -->
+      <g transform="translate(172, 22)">
+        <rect width="120" height="22" rx="11" fill="#ecfdf5"/>
+        <text x="60" y="15" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700" fill="#16a34a" text-anchor="middle">TOP SELLER · RETAIL</text>
+
+        <text x="0" y="44" font-family="Georgia, serif" font-size="20" font-weight="700" fill="#141414">Stitched Bags (Loop Handle)</text>
+        <text x="0" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" fill="#525250">Premium Reusable Tote Bags • Can reuse 100+ times.</text>
+        <text x="0" y="84" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" fill="#737373">Saree showrooms, jewelry shops, luxury garments.</text>
+
+        <text x="0" y="118" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700" fill="#15803d">₹18.50 <tspan font-size="12" font-weight="400" fill="#737373">/ piece</tspan></text>
+        <text x="0" y="136" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#737373">Available in 14×17 in • 70 to 100 GSM</text>
+
+        <rect x="0" y="148" width="160" height="30" rx="15" fill="#141414"/>
+        <text x="80" y="168" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">Order Stitched Sample</text>
+      </g>
+    </g>
+
+    <!-- Product 2 & 3 Mini Cards -->
+    <g transform="translate(24, 290)">
+      <!-- D-Cut & W-Cut Bags -->
+      <g transform="translate(0, 0)">
+        <rect width="226" height="185" rx="14" fill="#faf9f5" stroke="#e8e6de"/>
+        <text x="16" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#737373">GROCERY &amp; SUPERMARKETS</text>
+        <text x="16" y="48" font-family="Georgia, serif" font-size="17" font-weight="700" fill="#141414">W-Cut &amp; D-Cut Bags</text>
+        <text x="16" y="70" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#525250">Vest-type handle &amp; punch-hole bags with double bottom seal.</text>
+        <text x="16" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#15803d">₹145 <tspan font-size="11" font-weight="400" fill="#737373">/ kg</tspan></text>
+        <text x="16" y="130" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#737373">Approx 60–80 bags/kg</text>
+        <rect x="16" y="142" width="130" height="28" rx="14" fill="#ffffff" stroke="#d6d3c7"/>
+        <text x="81" y="160" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#141414" text-anchor="middle">Calculate Quantity</text>
+      </g>
+
+      <!-- Box Bags -->
+      <g transform="translate(246, 0)">
+        <rect width="226" height="185" rx="14" fill="#faf9f5" stroke="#e8e6de"/>
+        <text x="16" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#737373">SWEET BOXES &amp; CAKES</text>
+        <text x="16" y="48" font-family="Georgia, serif" font-size="17" font-weight="700" fill="#141414">Standing Box Bags</text>
+        <text x="16" y="70" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#525250">Rigid 3D box bags that stand straight on tables without sliding.</text>
+        <text x="16" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#15803d">Custom Sizing</text>
+        <text x="16" y="130" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#737373">Sweet hampers &amp; bakery</text>
+        <rect x="16" y="142" width="130" height="28" rx="14" fill="#ffffff" stroke="#d6d3c7"/>
+        <text x="81" y="160" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#141414" text-anchor="middle">Custom Quote</text>
+      </g>
+    </g>
+  </g>
+</svg>

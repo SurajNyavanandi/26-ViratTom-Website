@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="none">
+  <defs>
+    <radialGradient id="sj-bg" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="70%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </radialGradient>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f1f5f9"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <linearGradient id="glasses" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Circular Base -->
+  <circle cx="100" cy="100" r="98" fill="url(#sj-bg)" stroke="#475569" stroke-width="2"/>
+
+  <!-- Turtleneck Top & Shoulders -->
+  <path d="M35 198 C38 152 68 140 100 140 C132 140 162 152 165 198 Z" fill="#090d16"/>
+  <!-- Turtleneck collar -->
+  <path d="M78 144 C78 132 88 128 100 128 C112 128 122 132 122 144 C122 154 112 158 100 158 C88 158 78 154 78 144 Z" fill="#020617" stroke="#1e293b" stroke-width="1.5"/>
+
+  <!-- Neck -->
+  <path d="M85 110 L85 136 C90 139 110 139 115 136 L115 110 Z" fill="#e2e8f0"/>
+
+  <!-- Head / Face Silhouette -->
+  <path d="M72 82 C70 50 82 34 100 34 C118 34 130 50 128 82 C127 106 118 120 100 120 C82 120 73 106 72 82 Z" fill="url(#skin)"/>
+
+  <!-- Short hair & subtle receding hairline -->
+  <path d="M74 65 C76 44 86 36 100 36 C114 36 124 44 126 65 C124 50 114 42 100 42 C86 42 76 50 74 65 Z" fill="#94a3b8"/>
+
+  <!-- Iconic Round Glasses -->
+  <!-- Left Lens -->
+  <circle cx="88" cy="74" r="11" fill="none" stroke="url(#glasses)" stroke-width="2.5"/>
+  <circle cx="88" cy="74" r="10" fill="#ffffff" fill-opacity="0.15"/>
+  <!-- Right Lens -->
+  <circle cx="112" cy="74" r="11" fill="none" stroke="url(#glasses)" stroke-width="2.5"/>
+  <circle cx="112" cy="74" r="10" fill="#ffffff" fill-opacity="0.15"/>
+  <!-- Bridge -->
+  <path d="M99 73 Q100 71 101 73" stroke="#94a3b8" stroke-width="2.5" fill="none"/>
+  <!-- Temples -->
+  <line x1="77" y1="73" x2="71" y2="70" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="123" y1="73" x2="129" y2="70" stroke="#94a3b8" stroke-width="2"/>
+
+  <!-- Eyes behind glasses -->
+  <circle cx="88" cy="74" r="2.2" fill="#334155"/>
+  <circle cx="112" cy="74" r="2.2" fill="#334155"/>
+
+  <!-- Nose -->
+  <path d="M100 74 L99 87 L103 87" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Mustache & Trimmed Beard Stubble -->
+  <path d="M85 94 Q100 97 115 94 Q118 116 100 118 Q82 116 85 94 Z" fill="#94a3b8" fill-opacity="0.35"/>
+  
+  <!-- Mouth / Thoughtful Smile -->
+  <path d="M93 98 Q100 101 107 98" stroke="#475569" stroke-width="2" stroke-linecap="round" fill="none"/>
+
+  <!-- Soft Vignette Rim -->
+  <circle cx="100" cy="100" r="97" fill="none" stroke="#ffffff" stroke-opacity="0.1" stroke-width="1.5"/>
+</svg>

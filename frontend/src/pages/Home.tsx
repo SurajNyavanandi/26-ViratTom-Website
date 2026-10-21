@@ -257,27 +257,27 @@ export const Home = () => {
             </Link>
           </div>
           <br />
-          <span className="text-[12px] sm:text-[14px] font-semibold tracking-widest text-apple-gray-500 uppercase">
-            VI<span className="font-bold text-apple-blue">R</span>
-            <span className="font-bold text-apple-blue">A</span>T TO
-            <span className="font-bold text-apple-blue">M</span> TECHNOLOGIES
+          <span className="text-[13px] sm:text-[14px] font-bold tracking-widest text-apple-gray-600 uppercase">
+            VI<span className="font-extrabold text-apple-blue">R</span>
+            <span className="font-extrabold text-apple-blue">A</span>T TO
+            <span className="font-extrabold text-apple-blue">M</span> TECHNOLOGIES
           </span>
-          <h1 className="mt-4 text-[32px] xs:text-[38px] sm:text-[48px] md:text-[56px] font-bold tracking-[-0.03em] leading-[1.15]">
-            Website & Mobile App Development
+          <h1 className="mt-4 text-[36px] xs:text-[42px] sm:text-[52px] md:text-[62px] font-extrabold tracking-[-0.035em] leading-[1.12] text-apple-black">
+            Website &amp; Mobile App Development
           </h1>
-          <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[16px] sm:text-[20px] text-apple-gray-500 leading-relaxed">
+          <p className="mt-4 sm:mt-6 mx-auto max-w-2xl text-[17px] sm:text-[20px] font-medium text-apple-gray-600 leading-relaxed">
             We build modern, fast websites and mobile apps that help your business grow and reach more customers online.
           </p>
           <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
             <Button 
-              className="w-full sm:w-auto h-12 rounded-xl text-[15px]" 
+              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-bold" 
               onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
             >
               Start a project <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
             <Button 
               variant="secondary" 
-              className="w-full sm:w-auto h-12 rounded-xl text-[15px]"
+              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-semibold"
               onClick={() => (document.getElementById('projects') || document.getElementById('work'))?.scrollIntoView({ behavior: 'smooth' })}
             >
               View work
@@ -300,10 +300,10 @@ export const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-14 sm:mb-16"
           >
-            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black">
+            <h2 className="text-[32px] sm:text-[42px] font-extrabold tracking-[-0.03em] text-apple-black">
               What We Build
             </h2>
-            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500">
+            <p className="mt-3 text-[15px] sm:text-[16px] font-medium text-apple-gray-600">
               Clear, simple solutions tailored for every business need.
             </p>
           </motion.div>
@@ -376,11 +376,11 @@ export const Home = () => {
                   }}
                   className="group rounded-2xl bg-white p-7 border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col justify-start text-left cursor-default"
                 >
-                  <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.2] transition-transform duration-300 group-hover:scale-110" />
-                  <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black mb-2 tracking-tight">
+                  <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.4] transition-transform duration-300 group-hover:scale-110" />
+                  <h3 className="text-[19px] sm:text-[20px] font-bold text-apple-black mb-2 tracking-tight">
                     {service.title}
                   </h3>
-                  <p className="text-[14px] text-apple-gray-500 leading-relaxed">
+                  <p className="text-[14px] font-medium text-apple-gray-600 leading-relaxed">
                     {service.desc}
                   </p>
                 </motion.div>
@@ -401,13 +401,13 @@ export const Home = () => {
           transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="text-center max-w-2xl mx-auto mb-12 sm:mb-16"
         >
-          <span className="inline-block text-[11px] font-semibold tracking-wider uppercase text-apple-blue mb-2">
+          <span className="inline-block text-[12px] font-bold tracking-wider uppercase text-apple-blue mb-2">
             Selected Work
           </span>
-          <h2 className="text-[28px] sm:text-[36px] font-bold tracking-tight text-apple-black">
+          <h2 className="text-[32px] sm:text-[42px] font-extrabold tracking-[-0.03em] text-apple-black">
             Featured Deployments
           </h2>
-          <p className="mt-2 text-[14px] sm:text-[15px] text-apple-gray-500">
+          <p className="mt-2 text-[15px] sm:text-[16px] font-medium text-apple-gray-600">
             Real-world web platforms and mobile solutions engineered for performance, clarity, and scale.
           </p>
         </motion.div>
@@ -433,7 +433,9 @@ export const Home = () => {
             {projects.map((project: any) => {
               const projectUrl =
                 project.url ||
-                (project.title === 'Mana Drivers'
+                (project.title === 'Prosync Consulting'
+                  ? 'https://prosyncindia.vercel.app/'
+                  : project.title === 'Mana Drivers'
                   ? 'https://manadrivers.com'
                   : project.title === 'RVM Carry Bags'
                   ? 'https://rvmcarrybags.com/'
@@ -461,27 +463,27 @@ export const Home = () => {
                   className="group flex flex-col justify-between overflow-hidden rounded-2xl bg-white border border-apple-gray-200/80 transition-all duration-300 hover:border-apple-gray-300 hover:shadow-[0_12px_28px_rgba(0,0,0,0.06)] text-left focus:outline-none focus:ring-2 focus:ring-apple-blue"
                 >
                   <div>
-                    {/* Live Website Iframe Preview Frame */}
+                    {/* Live Interactive Sandbox Desktop iFrame (Micro-Viewport CSS Scaling) */}
                     <LiveWebsitePreview url={projectUrl} title={project.title} />
 
                     {/* Metadata & Description */}
                     <div className="p-5 sm:p-6">
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-apple-gray-100 text-apple-gray-600">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-apple-gray-100 text-apple-gray-700">
                           {project.type}
                         </span>
-                        <span className="text-[12px] text-apple-gray-400 font-mono truncate">
+                        <span className="text-[12px] text-apple-gray-500 font-mono font-medium truncate">
                           {displayDomain}
                         </span>
                       </div>
 
-                      <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between gap-1 mt-1">
+                      <h3 className="text-[19px] sm:text-[21px] font-bold text-apple-black group-hover:text-apple-blue transition-colors flex items-center justify-between gap-1 mt-1">
                         <span>{project.title}</span>
                         <ArrowUpRight className="h-4 w-4 text-apple-gray-400 group-hover:text-apple-blue transition-colors shrink-0" />
                       </h3>
 
                       {project.description && (
-                        <p className="mt-2 text-[13px] text-apple-gray-500 leading-relaxed line-clamp-2">
+                        <p className="mt-2 text-[13.5px] font-medium text-apple-gray-600 leading-relaxed line-clamp-2">
                           {project.description}
                         </p>
                       )}
@@ -489,7 +491,7 @@ export const Home = () => {
                   </div>
 
                   {/* Clean Footer Link */}
-                  <div className="px-5 sm:px-6 pb-5 pt-3 mt-auto flex items-center justify-between text-[12px] font-medium text-apple-blue border-t border-apple-gray-100/60">
+                  <div className="px-5 sm:px-6 pb-5 pt-3 mt-auto flex items-center justify-between text-[12.5px] font-bold text-apple-blue border-t border-apple-gray-100/60">
                     <span className="group-hover:underline">Explore Website</span>
                     <ArrowRight className="h-3.5 w-3.5 transform transition-transform group-hover:translate-x-1" />
                   </div>
@@ -498,6 +500,55 @@ export const Home = () => {
             })}
           </motion.div>
         )}
+      </section>
+
+      {/* Editorial Philosophy Quote - Steve Jobs */}
+      <section className="w-full max-w-4xl px-4 sm:px-8 py-8 sm:py-14 mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-white to-apple-gray-50/80 border border-apple-gray-200/90 p-8 sm:p-12 text-center shadow-[0_4px_24px_rgba(0,0,0,0.03)]"
+        >
+          {/* Subtle Stylized Quotation Mark */}
+          <span
+            aria-hidden="true"
+            className="block select-none text-[72px] sm:text-[96px] leading-none font-serif text-apple-gray-300/60 -mb-6 sm:-mb-10 font-black"
+          >
+            “
+          </span>
+
+          {/* The Quote Statement - Thick, crisp & sharp */}
+          <blockquote className="relative z-10 max-w-2xl mx-auto">
+            <p className="text-[22px] sm:text-[28px] md:text-[31px] font-extrabold tracking-[-0.03em] text-apple-black leading-[1.3] text-balance">
+              The only way to do great work is to love what you do.
+            </p>
+          </blockquote>
+
+          {/* Attribution & Steve Jobs Photo Avatar */}
+          <div className="mt-8 sm:mt-9 flex items-center justify-center gap-3.5 pt-6 border-t border-apple-gray-200/70 max-w-xs mx-auto">
+            <div className="relative h-14 w-14 rounded-full overflow-hidden border-2 border-apple-gray-300 shadow-md ring-2 ring-white/90 shrink-0 bg-apple-gray-100">
+              <img
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRulqeXqeMGnWwu4nQYub6_8RwF7cFK_-725lb_K9fsiVZSmQ1MTmIbwoik&amp;s=10"
+                alt="Steve Jobs"
+                loading="lazy"
+                className="h-full w-full object-cover object-center"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/steve-jobs.svg';
+                }}
+              />
+            </div>
+            <div className="text-left">
+              <div className="text-[16px] font-bold text-apple-black tracking-tight leading-tight">
+                Steve Jobs
+              </div>
+              <div className="text-[12.5px] text-apple-gray-500 font-semibold leading-tight mt-0.5">
+                Co-founder, Apple Inc.
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </section>
 
       {/* Pricing Section */}
@@ -510,10 +561,10 @@ export const Home = () => {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="text-center mb-14 sm:mb-16"
           >
-            <h2 className="text-[30px] sm:text-[36px] font-semibold tracking-[-0.02em] text-apple-black">
+            <h2 className="text-[32px] sm:text-[40px] font-extrabold tracking-[-0.03em] text-apple-black">
               Pricing & Services
             </h2>
-            <p className="mt-3 text-[15px] sm:text-[16px] text-apple-gray-500">
+            <p className="mt-3 text-[15px] sm:text-[17px] font-medium text-apple-gray-600 max-w-xl mx-auto">
               Every project is unique. Pick the plan that fits your business to request a customized quote.
             </p>
           </motion.div>
@@ -738,8 +789,8 @@ export const Home = () => {
       <section id="contact" className="w-full py-16 sm:py-24 border-t border-apple-gray-200">
         <div className="mx-auto max-w-150 px-4">
           <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-[26px] sm:text-[34px] font-semibold tracking-[-0.02em]">Start a Project</h2>
-            <p className="mt-2 sm:mt-4 text-[14px] sm:text-[16px] text-apple-gray-500">
+            <h2 className="text-[28px] sm:text-[36px] font-extrabold tracking-[-0.03em] text-apple-black">Start a Project</h2>
+            <p className="mt-2 sm:mt-3 text-[15px] sm:text-[16px] font-medium text-apple-gray-600">
               Tell us about your requirements to get started.
             </p>
           </div>

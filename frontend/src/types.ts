@@ -110,6 +110,14 @@ export interface PortfolioProject {
 
 export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
   {
+    _id: '0',
+    title: 'Prosync Consulting',
+    type: 'Financial Advisory & Web Platform',
+    url: 'https://prosyncindia.vercel.app/',
+    imageUrl: '',
+    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
+  },
+  {
     _id: '1',
     title: 'Mana Drivers',
     type: 'Dynamic Website',

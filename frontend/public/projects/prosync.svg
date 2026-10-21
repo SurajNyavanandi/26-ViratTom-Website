@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 750" width="1200" height="750" fill="none">
+  <defs>
+    <linearGradient id="ps-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a1226"/>
+      <stop offset="40%" stop-color="#0e1b38"/>
+      <stop offset="100%" stop-color="#070c1a"/>
+    </linearGradient>
+    <linearGradient id="ps-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="ps-card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="750" fill="url(#ps-bg)"/>
+
+  <!-- Subtle Ambient Glow -->
+  <circle cx="850" cy="220" r="320" fill="#1d4ed8" fill-opacity="0.12"/>
+  <circle cx="200" cy="600" r="250" fill="#2563eb" fill-opacity="0.08"/>
+
+  <!-- Real Navigation Bar -->
+  <rect width="1200" height="74" fill="#0b1329" fill-opacity="0.85"/>
+  <line x1="0" y1="74" x2="1200" y2="74" stroke="#1e293b"/>
+
+  <!-- Real Brand Logo -->
+  <g transform="translate(60, 22)">
+    <rect width="30" height="30" rx="7" fill="url(#ps-blue)"/>
+    <path d="M8 15 L13 20 L22 10" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="42" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="800" fill="#ffffff" letter-spacing="-0.02em">PROSYNC</text>
+    <text x="135" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="300" fill="#93c5fd">CONSULTING</text>
+  </g>
+
+  <!-- Nav Links -->
+  <g transform="translate(540, 44)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="500" fill="#94a3b8">
+    <text x="0" y="0" fill="#60a5fa" font-weight="600">Home</text>
+    <text x="75" y="0">Bank Loans</text>
+    <text x="180" y="0">Debt Syndication</text>
+    <text x="325" y="0">M&amp;A Advisory</text>
+    <text x="445" y="0">Track Record</text>
+  </g>
+
+  <!-- Real Header CTA -->
+  <g transform="translate(1015, 20)">
+    <rect width="125" height="36" rx="8" fill="url(#ps-blue)"/>
+    <text x="62" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">Apply for Loan</text>
+  </g>
+
+  <!-- Left Real Hero Section -->
+  <g transform="translate(60, 130)">
+    <!-- Location Badge -->
+    <rect width="250" height="28" rx="14" fill="#1e3a8a" fill-opacity="0.4" stroke="#3b82f6" stroke-opacity="0.5"/>
+    <circle cx="16" cy="14" r="4" fill="#38bdf8"/>
+    <text x="28" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="600" fill="#bfdbfe" letter-spacing="0.04em">HYDERABAD &amp; TELANGANA ADVISORY</text>
+
+    <!-- Real Headline -->
+    <text x="0" y="74" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="800" fill="#ffffff" letter-spacing="-0.03em" leading="1.15">
+      <tspan x="0" dy="0">We Help Your Business</tspan>
+      <tspan x="0" dy="54" fill="#60a5fa">Get Big Loans &amp;</tspan>
+      <tspan dy="0" fill="#ffffff"> Growth Funding.</tspan>
+    </text>
+
+    <!-- Real Subtitle -->
+    <text x="0" y="215" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="400" fill="#94a3b8">
+      <tspan x="0" dy="0">Need capital to expand? We help companies secure ₹10 Cr to ₹500 Cr</tspan>
+      <tspan x="0" dy="26">structured bank loans, private equity, and investor debt in 48–72 hours.</tspan>
+    </text>
+
+    <!-- CTAs -->
+    <g transform="translate(0, 275)">
+      <rect width="200" height="50" rx="10" fill="url(#ps-blue)"/>
+      <text x="100" y="31" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="600" fill="#ffffff" text-anchor="middle">Check Loan Eligibility →</text>
+
+      <rect x="215" width="165" height="50" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1.5"/>
+      <text x="297" y="31" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14.5" font-weight="500" fill="#e2e8f0" text-anchor="middle">Call +91 9951445544</text>
+    </g>
+
+    <!-- Quantitative Metrics Strip -->
+    <g transform="translate(0, 360)">
+      <rect width="510" height="84" rx="14" fill="#0b1329" stroke="#1e293b" stroke-width="1.5"/>
+      <g transform="translate(30, 26)">
+        <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="700" fill="#38bdf8">100+ Deals</text>
+        <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="500" fill="#64748b">Successfully Closed</text>
+      </g>
+      <line x1="160" y1="18" x2="160" y2="66" stroke="#1e293b"/>
+      <g transform="translate(190, 26)">
+        <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="700" fill="#38bdf8">10+ Years</text>
+        <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="500" fill="#64748b">Advisory Leadership</text>
+      </g>
+      <line x1="325" y1="18" x2="325" y2="66" stroke="#1e293b"/>
+      <g transform="translate(355, 26)">
+        <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="700" fill="#38bdf8">₹500 Cr</text>
+        <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="500" fill="#64748b">Max Single Facility</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right Visual Real Hero Service Cards -->
+  <g transform="translate(620, 115)">
+    <rect width="520" height="500" rx="20" fill="url(#ps-card)" stroke="#1e3a8a" stroke-width="1.5"/>
+    <rect width="520" height="54" rx="20" fill="#0f172a" fill-opacity="0.8"/>
+    <text x="24" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#ffffff">Featured Advisory Mandates (Hyderabad)</text>
+    <rect x="420" y="15" width="76" height="24" rx="6" fill="#10b981" fill-opacity="0.2"/>
+    <text x="458" y="31" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#34d399" text-anchor="middle">VERIFIED</text>
+
+    <!-- Mandate Card 1: Bank Loans -->
+    <g transform="translate(24, 76)">
+      <rect width="472" height="120" rx="14" fill="#0b1329" stroke="#1e293b"/>
+      <rect x="18" y="16" width="30" height="24" rx="6" fill="#1e3a8a"/>
+      <text x="33" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#60a5fa" text-anchor="middle">01</text>
+      <text x="58" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#ffffff">Large Bank Loans &amp; Working Capital</text>
+      <text x="18" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" fill="#94a3b8">Get low-interest loans from SBI, HDFC, ICICI, and Canara Bank with complete DPR preparation.</text>
+      <text x="18" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#38bdf8">₹10 Cr to ₹250 Cr • 10.5%–12.5% ROI</text>
+      <rect x="360" y="80" width="94" height="26" rx="6" fill="#2563eb" fill-opacity="0.2"/>
+      <text x="407" y="97" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#60a5fa" text-anchor="middle">Fast Sanction</text>
+    </g>
+
+    <!-- Mandate Card 2: HAM Infrastructure -->
+    <g transform="translate(24, 210)">
+      <rect width="472" height="120" rx="14" fill="#0b1329" stroke="#1e293b"/>
+      <rect x="18" y="16" width="30" height="24" rx="6" fill="#1e3a8a"/>
+      <text x="33" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#60a5fa" text-anchor="middle">02</text>
+      <text x="58" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#ffffff">HAM Road &amp; Infra Project Financing</text>
+      <text x="18" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" fill="#94a3b8">Hybrid Annuity Model financial closure, NHAI concession tie-ups, and construction debt.</text>
+      <text x="18" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#38bdf8">₹50 Cr to ₹500 Cr • 15+ Yrs Tenor</text>
+      <rect x="360" y="80" width="94" height="26" rx="6" fill="#10b981" fill-opacity="0.2"/>
+      <text x="407" y="97" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#34d399" text-anchor="middle">100% Closure</text>
+    </g>
+
+    <!-- Mandate Card 3: Debt Syndication & M&A -->
+    <g transform="translate(24, 344)">
+      <rect width="472" height="120" rx="14" fill="#0b1329" stroke="#1e293b"/>
+      <rect x="18" y="16" width="30" height="24" rx="6" fill="#1e3a8a"/>
+      <text x="33" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="800" fill="#60a5fa" text-anchor="middle">03</text>
+      <text x="58" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#ffffff">Private Equity &amp; Debt Syndication</text>
+      <text x="18" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" fill="#94a3b8">Connecting high-growth Telangana businesses with verified angel networks and family offices.</text>
+      <text x="18" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#38bdf8">High Equity Value • Zero Collateral</text>
+      <rect x="360" y="80" width="94" height="26" rx="6" fill="#8b5cf6" fill-opacity="0.2"/>
+      <text x="407" y="97" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#c084fc" text-anchor="middle">Growth Equity</text>
+    </g>
+  </g>
+</svg>

@@ -101,9 +101,17 @@ if (mongoose.connection) {
 
 const portfolioProjects = [
   {
+    _id: 'prosync_web',
+    title: 'ProSync Web',
+    type: 'Full-Stack / Financial Advisory Platform',
+    url: 'https://prosyncweb.vercel.app/',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncweb.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Executive business advisory, debt syndication, and financial platform engineered for high-growth enterprises.'
+  },
+  {
     _id: '0',
     title: 'Prosync Consulting',
-    type: 'Financial Advisory & Web Platform',
+    type: 'Corporate Advisory Portal',
     url: 'https://prosyncindia.vercel.app/',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
@@ -227,18 +235,31 @@ const getProjects = async (req, res) => {
         dbProjects = await PortfolioProject.find().sort({ order: 1, createdAt: 1 }).lean();
       }
 
-      // Guarantee Prosync Consulting is present even if an older database had partial records
-      const hasProsync = dbProjects && dbProjects.some((p) => p.title === 'Prosync Consulting');
-      if (!hasProsync) {
-        const prosync = portfolioProjects[0];
+      // Guarantee ProSync Web & Prosync Consulting are present even if an older database had partial records
+      const hasProsyncWeb = dbProjects && dbProjects.some((p) => p.title === 'ProSync Web' || (p.url && p.url.includes('prosyncweb.vercel.app')));
+      if (!hasProsyncWeb) {
+        const prosyncWeb = portfolioProjects[0];
         try {
           await PortfolioProject.findOneAndUpdate(
-            { title: prosync.title },
-            { ...prosync, order: 0 },
+            { title: prosyncWeb.title },
+            { ...prosyncWeb, order: 0 },
             { upsert: true, new: true, setDefaultsOnInsert: true }
           );
         } catch {}
-        if (dbProjects) dbProjects.unshift(prosync);
+        if (dbProjects) dbProjects.unshift(prosyncWeb);
+      }
+
+      const hasProsyncConsulting = dbProjects && dbProjects.some((p) => p.title === 'Prosync Consulting');
+      if (!hasProsyncConsulting) {
+        const prosync = portfolioProjects[1];
+        try {
+          await PortfolioProject.findOneAndUpdate(
+            { title: prosync.title },
+            { ...prosync, order: 1 },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+        } catch {}
+        if (dbProjects) dbProjects.push(prosync);
       }
 
       if (dbProjects && dbProjects.length > 0) {

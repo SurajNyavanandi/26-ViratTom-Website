@@ -93,10 +93,10 @@ export const Home = () => {
 
       if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
         const fetched = [...res.data];
-        const hasProsync = fetched.some(p => p.title === 'Prosync Consulting');
-        if (!hasProsync) {
-          const prosync = DEFAULT_PORTFOLIO_PROJECTS.find(p => p.title === 'Prosync Consulting');
-          if (prosync) fetched.unshift(prosync);
+        const hasProsyncWeb = fetched.some(p => p.title === 'ProSync Web' || (p.url && p.url.includes('prosyncweb.vercel.app')));
+        if (!hasProsyncWeb) {
+          const prosyncWeb = DEFAULT_PORTFOLIO_PROJECTS.find(p => p.url?.includes('prosyncweb.vercel.app'));
+          if (prosyncWeb) fetched.unshift(prosyncWeb);
         }
         setProjects(fetched);
       } else if (retry) {
@@ -439,7 +439,9 @@ export const Home = () => {
             {projects.map((project: any) => {
               const projectUrl =
                 project.url ||
-                (project.title === 'Prosync Consulting'
+                (project.title === 'ProSync Web'
+                  ? 'https://prosyncweb.vercel.app/'
+                  : project.title === 'Prosync Consulting'
                   ? 'https://prosyncindia.vercel.app/'
                   : project.title === 'Mana Drivers'
                   ? 'https://manadrivers.com'

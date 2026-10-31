@@ -113,17 +113,9 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     _id: 'prosync_web',
     title: 'ProSync Web',
     type: 'Full-Stack / Financial Advisory Platform',
-    url: 'https://prosyncweb.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncweb.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
+    url: 'https://prosyncindia.com',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business advisory, debt syndication, and financial platform engineered for high-growth enterprises.'
-  },
-  {
-    _id: '0',
-    title: 'Prosync Consulting',
-    type: 'Corporate Advisory Portal',
-    url: 'https://prosyncindia.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
   },
   {
     _id: '1',
@@ -132,6 +124,14 @@ export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
     url: 'https://manadrivers.com',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fmanadrivers.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
+  },
+  {
+    _id: '0',
+    title: 'Prosync Consulting',
+    type: 'Corporate Advisory Portal',
+    url: 'https://prosyncindia.vercel.app/',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
   },
   {
     _id: '2',

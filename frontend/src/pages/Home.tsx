@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -6,7 +6,7 @@ import { Input } from '../components/ui/Input';
 import { ArrowRight, ArrowUpRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES } from '@/lib/utils';
-import { Validation } from '@/lib/validation';
+import { Validation, type LeadFormValues, type LeadFormErrors } from '@/lib/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
 import { SEO } from '@/components/seo/SEO';
@@ -19,7 +19,7 @@ export const Home = () => {
   const [projects, setProjects] = useState<PortfolioProject[]>(DEFAULT_PORTFOLIO_PROJECTS);
   const [loading, setLoading] = useState(false);
   const [projectPrices, setProjectPrices] = useState<Record<string, number>>(PROJECT_MIN_PRICES);
-  const [formState, setFormState] = useState({ 
+  const [formState, setFormState] = useState<LeadFormValues>({ 
     name: '', 
     email: '', 
     phone: '', 
@@ -27,6 +27,17 @@ export const Home = () => {
     scope: '', 
     projectType: 'Static Website' 
   });
+  const [fieldErrors, setFieldErrors] = useState<LeadFormErrors>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+
+  // Field DOM refs for auto-focusing on validation failure
+  const projectTypeRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const budgetInputRef = useRef<HTMLInputElement>(null);
+  const scopeTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [submittedLead, setSubmittedLead] = useState<{
     name: string;
     email: string;
@@ -93,12 +104,32 @@ export const Home = () => {
 
       if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
         const fetched = [...res.data];
-        const hasProsyncWeb = fetched.some(p => p.title === 'ProSync Web' || (p.url && p.url.includes('prosyncweb.vercel.app')));
-        if (!hasProsyncWeb) {
-          const prosyncWeb = DEFAULT_PORTFOLIO_PROJECTS.find(p => p.url?.includes('prosyncweb.vercel.app'));
-          if (prosyncWeb) fetched.unshift(prosyncWeb);
-        }
-        setProjects(fetched);
+        const normalized = fetched.map(p => {
+          if (p.url && p.url.includes('prosyncweb.vercel.app')) {
+            return {
+              ...p,
+              url: 'https://prosyncindia.com',
+              imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.com&screenshot=true&meta=false&embed=screenshot.url',
+            };
+          }
+          return p;
+        });
+
+        // 1st: prosyncindia.com, 2nd: manadrivers.com, 3rd: prosyncindia.vercel.app, 4th: rvmcarrybags.com, 5th: inisio, 6th: urbanico
+        const getOrder = (p: PortfolioProject) => {
+          const u = (p.url || '').toLowerCase();
+          const t = (p.title || '').toLowerCase();
+          if (u.includes('prosyncindia.com') || (t.includes('prosync') && !u.includes('vercel.app'))) return 1;
+          if (u.includes('manadrivers.com') || t.includes('mana drivers')) return 2;
+          if (u.includes('prosyncindia.vercel.app') || t.includes('consulting')) return 3;
+          if (u.includes('rvmcarrybags.com') || t.includes('rvm')) return 4;
+          if (u.includes('inisio') || t.includes('inisio')) return 5;
+          if (u.includes('urbanico') || t.includes('urbanico')) return 6;
+          return 99;
+        };
+
+        normalized.sort((a, b) => getOrder(a) - getOrder(b));
+        setProjects(normalized);
       } else if (retry) {
         // Retry once after cold-start delay
         setTimeout(() => {
@@ -150,43 +181,81 @@ export const Home = () => {
     }
   }, [location.hash, loading]);
 
+  const handleFieldChange = (field: keyof LeadFormValues, val: string) => {
+    const updated = { ...formState, [field]: val };
+    setFormState(updated);
+    if (error) setError('');
+    if (touchedFields[field]) {
+      const minThreshold = getProjectThreshold(updated.projectType);
+      const res = Validation.validateLeadForm(updated, minThreshold);
+      setFieldErrors(prev => ({ ...prev, [field]: res.errors[field] || '' }));
+    }
+  };
+
+  const handleFieldBlur = (field: keyof LeadFormValues) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }));
+    const minThreshold = getProjectThreshold(formState.projectType);
+    const res = Validation.validateLeadForm(formState, minThreshold);
+    setFieldErrors(prev => ({ ...prev, [field]: res.errors[field] || '' }));
+  };
+
   const handleApply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formStatus === 'submitting') return; // Prevent duplicate submissions
     setError('');
 
-    const cleanEmail = formState.email.trim().toLowerCase();
-    if (!Validation.isValidEmail(cleanEmail)) {
-      setError('Please enter a valid email address to receive your verification code.');
-      return;
-    }
-
-    const cleanPhone = Validation.sanitizePhone(formState.phone);
-    if (!Validation.isValidPhone(cleanPhone)) {
-      setError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    
-    const rawBudget = parseInt(formState.budget, 10);
     const minThreshold = getProjectThreshold(formState.projectType);
-    if (isNaN(rawBudget) || rawBudget <= 0) {
-      setError('Please enter your estimated budget.');
+    const validationResult = Validation.validateLeadForm(formState, minThreshold);
+
+    if (!validationResult.isValid) {
+      setFieldErrors(validationResult.errors);
+      setTouchedFields({
+        projectType: true,
+        name: true,
+        email: true,
+        phone: true,
+        budget: true,
+        scope: true,
+      });
+
+      // Auto-focus and scroll to first invalid field
+      const field = validationResult.firstErrorField;
+      if (field === 'projectType' && projectTypeRef.current) {
+        projectTypeRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (field === 'name' && nameInputRef.current) {
+        nameInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nameInputRef.current.focus();
+      } else if (field === 'email' && emailInputRef.current) {
+        emailInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        emailInputRef.current.focus();
+      } else if (field === 'phone' && phoneInputRef.current) {
+        phoneInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        phoneInputRef.current.focus();
+      } else if (field === 'budget' && budgetInputRef.current) {
+        budgetInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        budgetInputRef.current.focus();
+      } else if (field === 'scope' && scopeTextareaRef.current) {
+        scopeTextareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        scopeTextareaRef.current.focus();
+      }
+
+      const firstErrMsg = Object.values(validationResult.errors)[0];
+      setError(firstErrMsg || 'Please fill in all mandatory fields with valid details.');
       return;
     }
 
-    if (rawBudget < minThreshold) {
-      setError(`Minimum budget is ₹${minThreshold.toLocaleString('en-IN')}`);
-      return;
-    }
-
-    const budget = Math.min(300000, rawBudget);
-
+    setFieldErrors({});
     setFormStatus('submitting');
+    const cleanEmail = formState.email.trim().toLowerCase();
+    const cleanPhone = Validation.sanitizePhone(formState.phone);
+    const budget = Math.min(300000, Number(formState.budget));
+
     const sent = await requestOtp({
       email: cleanEmail,
       name: formState.name.trim(),
       phone: cleanPhone,
       budget: String(budget),
-      scope: formState.scope,
+      scope: formState.scope.trim(),
       projectType: formState.projectType,
     });
 
@@ -195,7 +264,7 @@ export const Home = () => {
     } else {
       setFormStatus('idle');
     }
-  }, [formState, requestOtp]);
+  }, [formState, formStatus, getProjectThreshold, requestOtp]);
 
   const handleVerifyOtp = useCallback(async () => {
     setError('');
@@ -210,93 +279,212 @@ export const Home = () => {
       phone: cleanPhone,
       budget: String(budget),
       projectType: formState.projectType,
-      scope: formState.scope,
+      scope: formState.scope.trim(),
     });
   }, [formState, verifyOtp]);
 
   return (
     <div className="flex flex-col items-center">
       <SEO
-        title="ViratTom Technologies | Custom Web & Mobile App Development Company | Enterprise Software Solutions"
-        description="ViratTom Technologies is an IT software engineering company delivering scalable web applications, mobile apps (iOS & Android), custom SaaS platforms, and free ATS career tools."
-        keywords="Custom Software Development Company, Full Stack Web Development Services, Hire Mobile App Developers, React Node.js Agency India, Enterprise SaaS Engineering, Web App Development Company, ViratTom Technologies"
-        jsonLd={{
-          "@context": "https://schema.org",
-          "@type": "ProfessionalService",
-          "name": "ViratTom Technologies",
-          "url": "https://virattom.com",
-          "logo": "https://res.cloudinary.com/dfr0zghtc/image/upload/v1790404330/logo26_uyogzp.jpg",
-          "image": "https://virattom.com/projects/inisio.png",
-          "description": "Enterprise IT software engineering company delivering full-stack web applications, iOS and Android mobile software, and digital cloud platforms.",
-          "telephone": "+91-96666-35009",
-          "email": "contact@virattom.com",
-          "priceRange": "$$$",
-          "address": {
-            "@type": "PostalAddress",
-            "streetAddress": "ARC Property Solutions Pvt. Ltd., 2nd Floor, Plot no, 24 & 25, Lane, beside Kakatiya Hills, Kakatiya Hills, Guttala_Begumpet, Kamaan, Jubilee Hills",
-            "addressLocality": "Hyderabad",
-            "addressRegion": "Telangana",
-            "postalCode": "500081",
-            "addressCountry": "IN"
+        title="VIRAT TOM Technologies | Custom Web & Mobile App Development Company in Hyderabad | ViratTom"
+        description="VIRAT TOM Technologies (also known as Virat Tom, ViratTom) is a premier IT software development company in Hyderabad delivering custom web applications, scalable iOS & Android mobile apps, e-commerce platforms, and free ATS developer tools."
+        keywords="VIRAT TOM Technologies, Virat Tom Technologies, Virat Tom, ViratTom, ViratTom Technologies, VIRATTOM, Virat Tom Website Development, Virat Tom App Development, Website Development Company in Hyderabad, Mobile App Development in Hyderabad, E-commerce Website Development, Custom Web Application Development, React Node.js Agency Hyderabad, Full Stack Developers India, Free ATS Resume Builder"
+        canonical="https://virattom.com/"
+        jsonLd={[
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": "https://virattom.com/#organization",
+            "name": "VIRAT TOM Technologies",
+            "alternateName": [
+              "Virat Tom",
+              "ViratTom",
+              "Virat Tom Technologies",
+              "ViratTom Technologies",
+              "VIRATTOM",
+              "Virat Tom Software Solutions"
+            ],
+            "legalName": "VIRAT TOM Technologies",
+            "url": "https://virattom.com",
+            "logo": "https://res.cloudinary.com/dfr0zghtc/image/upload/v1790404330/logo26_uyogzp.jpg",
+            "image": "https://virattom.com/projects/inisio.png",
+            "description": "VIRAT TOM Technologies is an enterprise IT software development company delivering custom web applications, cross-platform mobile solutions, and scalable developer tools in Hyderabad, Telangana, India.",
+            "email": "contact@virattom.com",
+            "telephone": "+91-96666-35009",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "ARC Property Solutions Pvt. Ltd., 2nd Floor, Plot no. 24 & 25, beside Kakatiya Hills, Guttala Begumpet, Jubilee Hills",
+              "addressLocality": "Hyderabad",
+              "addressRegion": "Telangana",
+              "postalCode": "500081",
+              "addressCountry": "IN"
+            },
+            "areaServed": ["Hyderabad", "Telangana", "India", "Worldwide"],
+            "sameAs": [
+              "https://github.com/SurajNyavanandi",
+              "https://www.linkedin.com/in/suraj-nyavanandi-305962286",
+              "https://www.instagram.com/virat.tom/",
+              "https://twitter.com/virattom"
+            ]
           },
-          "serviceArea": "Worldwide"
-        }}
+          {
+            "@context": "https://schema.org",
+            "@type": "ProfessionalService",
+            "@id": "https://virattom.com/#service",
+            "name": "VIRAT TOM Technologies",
+            "alternateName": [
+              "Virat Tom Technologies",
+              "Virat Tom Website Development",
+              "Virat Tom App Development",
+              "ViratTom Technologies"
+            ],
+            "url": "https://virattom.com",
+            "logo": "https://res.cloudinary.com/dfr0zghtc/image/upload/v1790404330/logo26_uyogzp.jpg",
+            "image": "https://virattom.com/projects/inisio.png",
+            "description": "High-impact custom software engineering, scalable web application development, iOS & Android mobile applications, and full-stack cloud systems in Hyderabad, India.",
+            "priceRange": "₹₹ - ₹₹₹₹",
+            "telephone": "+91-96666-35009",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "ARC Property Solutions Pvt. Ltd., 2nd Floor, Plot no. 24 & 25, beside Kakatiya Hills, Guttala Begumpet, Jubilee Hills",
+              "addressLocality": "Hyderabad",
+              "addressRegion": "Telangana",
+              "postalCode": "500081",
+              "addressCountry": "IN"
+            },
+            "geo": {
+              "@type": "GeoCoordinates",
+              "latitude": "17.4399",
+              "longitude": "78.3908"
+            },
+            "openingHoursSpecification": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+              "opens": "09:00",
+              "closes": "20:00"
+            }
+          }
+        ]}
       />
-      {/* Hero Section */}
-      <section className="w-full max-w-360 px-4 sm:px-8 py-16 sm:py-24 text-center md:py-32">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="mb-4 inline-flex items-center">
-            <Link
-              to="/resume"
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-apple-gray-200 text-apple-gray-600 hover:text-apple-black text-[13px] font-medium transition-all hover:scale-[1.01] shadow-xs cursor-pointer"
+      {/* Hero Section with 21st.dev motion effects & distinct ambient backdrop */}
+      <section className="w-full relative overflow-hidden bg-gradient-to-b from-[#F3F7FD] via-[#F9FBFE] to-white pt-16 pb-20 sm:pt-24 sm:pb-28 md:pt-32 md:pb-36 border-b border-apple-gray-200/50">
+        {/* Ambient Top Glow & Radial Mesh */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] max-w-full h-[380px] bg-gradient-to-b from-blue-400/12 via-indigo-400/5 to-transparent blur-3xl pointer-events-none rounded-full" />
+        <div className="w-full max-w-360 px-4 sm:px-8 mx-auto text-center relative z-10">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: {
+                  staggerChildren: 0.12,
+                  delayChildren: 0.05,
+                },
+              },
+            }}
+          >
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: -12, scale: 0.96 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="mb-4 inline-flex items-center"
             >
-              <FileText className="h-3.5 w-3.5 text-apple-blue" />
-              <span>Free ATS Resume Builder</span>
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md bg-apple-blue/10 text-apple-blue">
-                Free
-              </span>
-              <ArrowRight className="h-3 w-3 text-apple-blue" />
-            </Link>
-          </div>
-          <br />
-          <span className="text-[13px] sm:text-[14px] font-medium tracking-widest text-apple-gray-500 uppercase">
-            VI<span className="font-semibold text-apple-blue">R</span>
-            <span className="font-semibold text-apple-blue">A</span>T TO
-            <span className="font-semibold text-apple-blue">M</span> TECHNOLOGIES
-          </span>
-          <h1 className="mt-4 text-[34px] xs:text-[40px] sm:text-[48px] md:text-[56px] font-semibold tracking-tight leading-[1.15] text-apple-black">
-            Website &amp; Mobile App Development
-          </h1>
-          <p className="mt-4 sm:mt-5 mx-auto max-w-2xl text-[16px] sm:text-[19px] font-normal text-apple-gray-600 leading-relaxed">
-            We build modern, fast websites and mobile apps that help your business grow and reach more customers online.
-          </p>
-          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
-            <Button 
-              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-medium" 
-              onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
+              <Link
+                to="/resume"
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-apple-gray-200 text-apple-gray-600 hover:text-apple-black text-[13px] font-medium transition-all hover:scale-[1.02] hover:shadow-sm shadow-xs cursor-pointer group"
+              >
+                <FileText className="h-3.5 w-3.5 text-apple-blue transition-transform group-hover:scale-110" />
+                <span>Free ATS Resume Builder</span>
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-md bg-apple-blue/10 text-apple-blue">
+                  Free
+                </span>
+                <ArrowRight className="h-3 w-3 text-apple-blue transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </motion.div>
+            <br />
+            <motion.span
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="inline-block text-[13px] sm:text-[14px] font-medium tracking-widest text-apple-gray-500 uppercase"
             >
-              Start a project <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button 
-              variant="secondary" 
-              className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-medium"
-              onClick={() => (document.getElementById('projects') || document.getElementById('work'))?.scrollIntoView({ behavior: 'smooth' })}
+              VI<span className="font-semibold text-apple-blue">R</span>
+              <span className="font-semibold text-apple-blue">A</span>T TO
+              <span className="font-semibold text-apple-blue">M</span> TECHNOLOGIES
+            </motion.span>
+            <motion.h1
+              variants={{
+                hidden: { opacity: 0, y: 18 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="mt-4 text-[34px] xs:text-[40px] sm:text-[48px] md:text-[56px] font-semibold tracking-tight leading-[1.15] text-apple-black"
             >
-              View work
-            </Button>
-          </div>
-        </motion.div>
+              Website &amp; Mobile App Development
+            </motion.h1>
+            <motion.p
+              variants={{
+                hidden: { opacity: 0, y: 18 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="mt-4 sm:mt-5 mx-auto max-w-2xl text-[16px] sm:text-[19px] font-normal text-apple-gray-600 leading-relaxed"
+            >
+              We build modern, fast websites and mobile apps that help your business grow and reach more customers online.
+            </motion.p>
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
+                },
+              }}
+              className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto"
+            >
+              <Button 
+                className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-medium transition-transform hover:scale-[1.02] active:scale-[0.98]" 
+                onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Start a project <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button 
+                variant="secondary" 
+                className="w-full sm:w-auto h-12 rounded-xl text-[15px] font-medium transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => (document.getElementById('projects') || document.getElementById('work'))?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                View work
+              </Button>
+            </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       {/* Infinite Smooth Tech Stack Marquee */}
       <TechStackMarquee />
 
-      {/* Features Grid - What We Build */}
-      <section id="process" className="w-full py-20 sm:py-24 bg-[#F5F5F7] relative">
+      {/* Features Grid - What We Build (Distinct soft backdrop & zig-zag motion) */}
+      <section id="process" className="w-full py-20 sm:py-28 bg-[#F4F4F7] border-b border-apple-gray-200/80 relative">
         <div id="services" className="absolute -top-16 left-0" />
         <div className="mx-auto max-w-360 px-4 sm:px-8">
           <motion.div 
@@ -323,7 +511,7 @@ export const Home = () => {
               visible: {
                 opacity: 1,
                 transition: {
-                  staggerChildren: 0.08,
+                  staggerChildren: 0.09,
                 },
               },
             }}
@@ -366,12 +554,17 @@ export const Home = () => {
                 <motion.div
                   key={index}
                   variants={{
-                    hidden: { opacity: 0, y: 24 },
+                    hidden: { 
+                      opacity: 0, 
+                      y: index % 2 === 0 ? 26 : 34, 
+                      x: index % 3 === 0 ? -6 : index % 3 === 2 ? 6 : 0 
+                    },
                     visible: {
                       opacity: 1,
                       y: 0,
+                      x: 0,
                       transition: {
-                        duration: 0.5,
+                        duration: 0.52,
                         ease: [0.16, 1, 0.3, 1],
                       },
                     },
@@ -380,7 +573,7 @@ export const Home = () => {
                     y: -6, 
                     transition: { duration: 0.22, ease: "easeOut" } 
                   }}
-                  className="group rounded-2xl bg-white p-7 border border-apple-gray-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-shadow duration-300 flex flex-col justify-start text-left cursor-default"
+                  className="group rounded-2xl bg-white p-7 border border-apple-gray-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.08)] transition-all duration-300 flex flex-col justify-start text-left cursor-default"
                 >
                   <Icon className="h-6 w-6 text-apple-blue mb-4 stroke-[2.2] transition-transform duration-300 group-hover:scale-110" />
                   <h3 className="text-[18px] sm:text-[19px] font-semibold text-apple-black mb-2 tracking-normal">
@@ -396,9 +589,10 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* Selected Works */}
-      <section id="work" className="w-full max-w-360 px-4 sm:px-8 py-20 sm:py-24 mx-auto relative">
+      {/* Selected Works (Distinct clean white canvas with crisp borders) */}
+      <section id="work" className="w-full py-20 sm:py-28 bg-[#FFFFFF] border-b border-apple-gray-200/60 relative">
         <div id="projects" className="absolute -top-16 left-0" />
+        <div className="w-full max-w-360 px-4 sm:px-8 mx-auto">
         
         <motion.div 
             initial={{ opacity: 0, y: 16 }}
@@ -438,13 +632,15 @@ export const Home = () => {
           >
             {projects.map((project: any) => {
               const projectUrl =
-                project.url ||
-                (project.title === 'ProSync Web'
-                  ? 'https://prosyncweb.vercel.app/'
-                  : project.title === 'Prosync Consulting'
-                  ? 'https://prosyncindia.vercel.app/'
+                (project.url && project.url.includes('prosyncweb.vercel.app')
+                  ? 'https://prosyncindia.com'
+                  : project.url) ||
+                (project.title === 'ProSync Web' || project.title === 'ProSync'
+                  ? 'https://prosyncindia.com'
                   : project.title === 'Mana Drivers'
                   ? 'https://manadrivers.com'
+                  : project.title === 'Prosync Consulting'
+                  ? 'https://prosyncindia.vercel.app/'
                   : project.title === 'RVM Carry Bags'
                   ? 'https://rvmcarrybags.com/'
                   : project.title === 'Inisio'
@@ -508,59 +704,62 @@ export const Home = () => {
             })}
           </motion.div>
         )}
+        </div>
       </section>
 
-      {/* Editorial Philosophy Quote - Steve Jobs */}
-      <section className="w-full max-w-4xl px-4 sm:px-8 py-8 sm:py-14 mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-white to-apple-gray-50/80 border border-apple-gray-200/90 p-8 sm:p-12 text-center shadow-[0_4px_24px_rgba(0,0,0,0.03)]"
-        >
-          {/* Subtle Stylized Quotation Mark */}
-          <span
-            aria-hidden="true"
-            className="block select-none text-[56px] sm:text-[72px] leading-none font-serif text-apple-gray-300/50 -mb-4 sm:-mb-7 font-light"
+      {/* Editorial Philosophy Quote - Steve Jobs (Distinct serene backdrop) */}
+      <section className="w-full py-16 sm:py-24 bg-[#F8F9FB] border-b border-apple-gray-200/70 relative">
+        <div className="w-full max-w-4xl px-4 sm:px-8 mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="relative overflow-hidden rounded-3xl bg-white border border-apple-gray-200/90 p-8 sm:p-12 text-center shadow-[0_4px_24px_rgba(0,0,0,0.03)]"
           >
-            “
-          </span>
+            {/* Subtle Stylized Quotation Mark */}
+            <span
+              aria-hidden="true"
+              className="block select-none text-[56px] sm:text-[72px] leading-none font-serif text-apple-gray-300/50 -mb-4 sm:-mb-7 font-light"
+            >
+              “
+            </span>
 
-          {/* The Quote Statement - Simple, sleek & clean */}
-          <blockquote className="relative z-10 max-w-2xl mx-auto">
-            <p className="text-[19px] sm:text-[24px] md:text-[26px] font-medium tracking-normal text-apple-black leading-[1.38] text-balance">
-              The only way to do great work is to love what you do.
-            </p>
-          </blockquote>
+            {/* The Quote Statement - Simple, sleek & clean */}
+            <blockquote className="relative z-10 max-w-2xl mx-auto">
+              <p className="text-[19px] sm:text-[24px] md:text-[26px] font-medium tracking-normal text-apple-black leading-[1.38] text-balance">
+                The only way to do great work is to love what you do.
+              </p>
+            </blockquote>
 
-          {/* Attribution & Steve Jobs Photo Avatar */}
-          <div className="mt-7 sm:mt-8 flex items-center justify-center gap-3.5 pt-5 border-t border-apple-gray-200/70 max-w-xs mx-auto">
-            <div className="relative h-13 w-13 rounded-full overflow-hidden border-2 border-apple-gray-300 shadow-sm ring-2 ring-white/90 shrink-0 bg-apple-gray-100">
-              <img
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRulqeXqeMGnWwu4nQYub6_8RwF7cFK_-725lb_K9fsiVZSmQ1MTmIbwoik&amp;s=10"
-                alt="Steve Jobs"
-                loading="lazy"
-                className="h-full w-full object-cover object-center"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/steve-jobs.svg';
-                }}
-              />
-            </div>
-            <div className="text-left">
-              <div className="text-[15px] font-semibold text-apple-black tracking-normal leading-tight">
-                Steve Jobs
+            {/* Attribution & Steve Jobs Photo Avatar */}
+            <div className="mt-7 sm:mt-8 flex items-center justify-center gap-3.5 pt-5 border-t border-apple-gray-200/70 max-w-xs mx-auto">
+              <div className="relative h-13 w-13 rounded-full overflow-hidden border-2 border-apple-gray-300 shadow-sm ring-2 ring-white/90 shrink-0 bg-apple-gray-100">
+                <img
+                  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRulqeXqeMGnWwu4nQYub6_8RwF7cFK_-725lb_K9fsiVZSmQ1MTmIbwoik&amp;s=10"
+                  alt="Steve Jobs"
+                  loading="lazy"
+                  className="h-full w-full object-cover object-center"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/steve-jobs.svg';
+                  }}
+                />
               </div>
-              <div className="text-[12px] text-apple-gray-500 font-normal leading-tight mt-0.5">
-                Co-founder, Apple Inc.
+              <div className="text-left">
+                <div className="text-[15px] font-semibold text-apple-black tracking-normal leading-tight">
+                  Steve Jobs
+                </div>
+                <div className="text-[12px] text-apple-gray-500 font-normal leading-tight mt-0.5">
+                  Co-founder, Apple Inc.
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="w-full py-20 sm:py-24 bg-[#F5F5F7]">
+      {/* Pricing Section (Distinct soft gray backdrop) */}
+      <section id="pricing" className="w-full py-20 sm:py-28 bg-[#EFF1F5] border-b border-apple-gray-200/80 relative">
         <div className="mx-auto max-w-360 px-4 sm:px-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -793,8 +992,8 @@ export const Home = () => {
         </div>
       </section>
 
-      {/* Application Gate */}
-      <section id="contact" className="w-full py-16 sm:py-24 border-t border-apple-gray-200">
+      {/* Application Gate (Distinct radiant background) */}
+      <section id="contact" className="w-full py-20 sm:py-28 bg-gradient-to-b from-[#FFFFFF] via-[#F8F9FA] to-white border-t border-apple-gray-200/80 relative">
         <div className="mx-auto max-w-150 px-4">
           <div className="text-center mb-8 sm:mb-12">
             <h2 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-apple-black">Start a Project</h2>
@@ -926,9 +1125,20 @@ export const Home = () => {
                 error={error || otpHookError}
               />
             ) : (
-              <form onSubmit={handleApply} className="space-y-5">
-                <div>
-                  <label className="block text-[14px] font-semibold mb-3">Project Type</label>
+              <form onSubmit={handleApply} className="space-y-5" noValidate>
+                {/* 1. Project Type (Mandatory) */}
+                <div ref={projectTypeRef}>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-[14px] font-semibold text-apple-black">
+                      Project Type <span className="text-apple-red">*</span>
+                    </label>
+                    {formState.projectType && (
+                      <span className="text-[12px] font-medium text-apple-blue flex items-center gap-1">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Selected
+                      </span>
+                    )}
+                  </div>
                   <div className="space-y-2.5">
                     {[
                       { id: 'Static Website', label: 'Static Website', desc: 'Simple informational site with WhatsApp button' },
@@ -942,12 +1152,13 @@ export const Home = () => {
                         <div 
                           key={type.id}
                           onClick={() => {
-                            setFormState({...formState, projectType: type.id});
-                            if (error) setError('');
+                            handleFieldChange('projectType', type.id);
                           }}
                           className={`cursor-pointer rounded-xl p-3.5 border transition-all flex items-start gap-3.5 ${
                             isSelected 
-                              ? 'border-apple-blue bg-apple-blue/5 shadow-sm' 
+                              ? 'border-apple-blue bg-apple-blue/5 shadow-sm ring-1 ring-apple-blue/20' 
+                              : fieldErrors.projectType
+                              ? 'border-apple-red/60 bg-white hover:border-apple-red'
                               : 'border-apple-gray-200 bg-white hover:border-apple-gray-400'
                           }`}
                         >
@@ -968,42 +1179,94 @@ export const Home = () => {
                       );
                     })}
                   </div>
+                  {fieldErrors.projectType && (
+                    <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {fieldErrors.projectType}
+                    </p>
+                  )}
                 </div>
 
+                {/* 2. Full Name (Mandatory) */}
                 <div>
-                  <label className="block text-[14px] font-medium mb-1.5">Full Name</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[14px] font-medium text-apple-black">
+                      Full Name <span className="text-apple-red">*</span>
+                    </label>
+                    {touchedFields.name && !fieldErrors.name && formState.name.trim().length >= 2 && (
+                      <span className="text-[12px] font-medium text-emerald-600 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Valid
+                      </span>
+                    )}
+                  </div>
                   <Input 
+                    ref={nameInputRef}
                     type="text" 
                     required 
                     placeholder="e.g. Shree Rama"
                     value={formState.name} 
-                    onChange={e => setFormState({...formState, name: e.target.value})} 
-                    className="rounded-xl"
+                    onChange={e => handleFieldChange('name', e.target.value)} 
+                    onBlur={() => handleFieldBlur('name')}
+                    className={`rounded-xl transition-all ${
+                      fieldErrors.name 
+                        ? 'border-apple-red focus:border-apple-red focus:ring-apple-red/20 ring-1 ring-apple-red/20' 
+                        : ''
+                    }`}
                   />
+                  {fieldErrors.name && (
+                    <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {fieldErrors.name}
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <label className="block text-[14px] font-medium mb-1.5">Email Address</label>
-                  <Input 
-                    type="email" 
-                    required 
-                    placeholder="e.g. yourname@gmail.com"
-                    value={formState.email} 
-                    onChange={e => {
-                      setFormState({...formState, email: e.target.value});
-                      if (error) setError('');
-                    }} 
-                    className="rounded-xl"
-                  />
-                </div>
-
+                {/* 3. Email Address (Mandatory) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[14px] font-medium">Mobile Number</label>
+                    <label className="block text-[14px] font-medium text-apple-black">
+                      Email Address <span className="text-apple-red">*</span>
+                    </label>
+                    {touchedFields.email && !fieldErrors.email && Validation.isValidEmail(formState.email) && (
+                      <span className="text-[12px] font-medium text-emerald-600 flex items-center gap-1 animate-in fade-in">
+                        <CheckCircle className="h-3.5 w-3.5" />
+                        Valid Email
+                      </span>
+                    )}
+                  </div>
+                  <Input 
+                    ref={emailInputRef}
+                    type="email" 
+                    required 
+                    placeholder="e.g. yourname@company.com"
+                    value={formState.email} 
+                    onChange={e => handleFieldChange('email', e.target.value)} 
+                    onBlur={() => handleFieldBlur('email')}
+                    className={`rounded-xl transition-all ${
+                      fieldErrors.email 
+                        ? 'border-apple-red focus:border-apple-red focus:ring-apple-red/20 ring-1 ring-apple-red/20' 
+                        : ''
+                    }`}
+                  />
+                  {fieldErrors.email && (
+                    <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {fieldErrors.email}
+                    </p>
+                  )}
+                </div>
+
+                {/* 4. Mobile Number (Mandatory, 10-digit Indian) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[14px] font-medium text-apple-black">
+                      Mobile Number <span className="text-apple-red">*</span>
+                    </label>
                     {isPhoneValid && (
                       <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
                         <CheckCircle className="h-3.5 w-3.5" />
-                        Valid Mobile Number
+                        Valid 10-Digit Mobile
                       </span>
                     )}
                   </div>
@@ -1012,21 +1275,24 @@ export const Home = () => {
                       +91
                     </span>
                     <Input 
+                      ref={phoneInputRef}
                       type="tel" 
                       required 
                       maxLength={10}
                       placeholder="10-digit mobile number"
                       className={`pl-12 pr-10 rounded-xl transition-all ${
-                        isPhoneValid
+                        fieldErrors.phone
+                          ? 'border-apple-red focus:border-apple-red focus:ring-apple-red/20 ring-1 ring-apple-red/20'
+                          : isPhoneValid
                           ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/20 bg-emerald-50/15 dark:bg-emerald-950/10'
                           : ''
                       }`}
                       value={formState.phone} 
                       onChange={e => {
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setFormState({...formState, phone: val});
-                        if (error) setError('');
+                        handleFieldChange('phone', val);
                       }} 
+                      onBlur={() => handleFieldBlur('phone')}
                     />
                     {isPhoneValid && (
                       <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-500 animate-in zoom-in-75">
@@ -1034,53 +1300,119 @@ export const Home = () => {
                       </div>
                     )}
                   </div>
+                  {fieldErrors.phone ? (
+                    <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {fieldErrors.phone}
+                    </p>
+                  ) : (
+                    <p className="text-[11.5px] text-apple-gray-400 mt-1">
+                      Enter your 10-digit Indian WhatsApp or calling number.
+                    </p>
+                  )}
                 </div>
 
+                {/* 5. Estimated Budget (Mandatory, positive number) */}
                 <div>
-                  <label className="block text-[14px] font-medium mb-1.5">Estimated Budget (INR)</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[14px] font-medium text-apple-black">
+                      Estimated Budget (INR) <span className="text-apple-red">*</span>
+                    </label>
+                    <span className="text-[11.5px] text-apple-gray-400">
+                      Min: ₹{getProjectThreshold(formState.projectType).toLocaleString('en-IN')}
+                    </span>
+                  </div>
                   <Input 
+                    ref={budgetInputRef}
                     type="number" 
                     required 
-                    min="1"
+                    min={getProjectThreshold(formState.projectType)}
                     max="300000"
-                    placeholder="Enter estimated budget"
+                    placeholder={`e.g. ${getProjectThreshold(formState.projectType)}`}
                     value={formState.budget} 
                     onChange={e => {
                       const val = e.target.value;
                       if (val === '') {
-                        setFormState({...formState, budget: ''});
+                        handleFieldChange('budget', '');
                       } else {
                         const num = Number(val);
                         if (!isNaN(num) && num > 300000) {
-                          setFormState({...formState, budget: '300000'});
+                          handleFieldChange('budget', '300000');
                         } else {
-                          setFormState({...formState, budget: val});
+                          handleFieldChange('budget', val);
                         }
                       }
-                      if (error) setError('');
                     }} 
-                    className="rounded-xl"
+                    onBlur={() => handleFieldBlur('budget')}
+                    className={`rounded-xl transition-all ${
+                      fieldErrors.budget 
+                        ? 'border-apple-red focus:border-apple-red focus:ring-apple-red/20 ring-1 ring-apple-red/20' 
+                        : ''
+                    }`}
                   />
+                  {fieldErrors.budget ? (
+                    <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {fieldErrors.budget}
+                    </p>
+                  ) : (
+                    <p className="text-[11.5px] text-apple-gray-400 mt-1">
+                      Minimum ₹{getProjectThreshold(formState.projectType).toLocaleString('en-IN')} for {formState.projectType}.
+                    </p>
+                  )}
                 </div>
 
+                {/* 6. Project Scope / Requirements (Mandatory, min 15 chars) */}
                 <div>
-                  <label className="block text-[14px] font-medium mb-1.5">Project Scope / Requirements (Optional)</label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[14px] font-medium text-apple-black">
+                      Project Scope / Requirements <span className="text-apple-red">*</span>
+                    </label>
+                    <span className={`text-[12px] font-medium transition-colors ${
+                      formState.scope.trim().length >= 15 ? 'text-emerald-600' : 'text-apple-gray-400'
+                    }`}>
+                      {formState.scope.trim().length}/15 chars min
+                    </span>
+                  </div>
                   <textarea 
-                    className="flex min-h-25 w-full rounded-xl border border-apple-gray-300 bg-white px-3.5 py-2.5 text-[15px] placeholder:text-apple-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue leading-relaxed"
-                    placeholder="Describe what features you need or your business goals..."
+                    ref={scopeTextareaRef}
+                    required
+                    className={`flex min-h-28 w-full rounded-xl border bg-white px-3.5 py-2.5 text-[15px] placeholder:text-apple-gray-400 focus-visible:outline-none focus-visible:ring-2 leading-relaxed transition-all ${
+                      fieldErrors.scope 
+                        ? 'border-apple-red focus-visible:ring-apple-red/20 ring-1 ring-apple-red/20' 
+                        : 'border-apple-gray-300 focus-visible:ring-apple-blue'
+                    }`}
+                    placeholder="Describe what features you need, pages, timeline, or business goals (at least 15 characters)..."
                     value={formState.scope}
-                    onChange={e => setFormState({...formState, scope: e.target.value})}
+                    onChange={e => handleFieldChange('scope', e.target.value)}
+                    onBlur={() => handleFieldBlur('scope')}
                   />
+                  {fieldErrors.scope ? (
+                    <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {fieldErrors.scope}
+                    </p>
+                  ) : (
+                    <p className="text-[11.5px] text-apple-gray-400 mt-1">
+                      Please provide at least 15 characters describing what you would like to build.
+                    </p>
+                  )}
                 </div>
 
                 {(error || otpHookError) && (
-                  <p className="text-[13px] text-apple-red text-center bg-apple-red/10 p-3 rounded-xl border border-apple-red/20">
-                    {error || otpHookError}
+                  <p className="text-[13px] text-apple-red text-center bg-apple-red/10 p-3 rounded-xl border border-apple-red/20 font-medium flex items-center justify-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{error || otpHookError}</span>
                   </p>
                 )}
 
-                <Button type="submit" className="w-full h-11 rounded-xl text-[14px]" isLoading={formStatus === 'submitting'}>
-                  Continue
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 rounded-xl text-[14px] font-medium shadow-sm transition-all" 
+                  isLoading={formStatus === 'submitting'}
+                  disabled={formStatus === 'submitting'}
+                >
+                  {formStatus === 'submitting' ? 'Validating & Verifying...' : 'Verify Email & Send Requirements'}
                 </Button>
               </form>
             )}

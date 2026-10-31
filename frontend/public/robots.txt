@@ -1,4 +1,4 @@
-# Robots.txt for ViratTom (https://virattom.com)
+# Robots.txt for VIRAT TOM Technologies (https://virattom.com)
 User-agent: *
 Allow: /
 Allow: /resume

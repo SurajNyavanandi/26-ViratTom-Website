@@ -11,9 +11,9 @@ export interface SEOProps {
   jsonLd?: Record<string, any> | Array<Record<string, any>>;
 }
 
-const DEFAULT_TITLE = 'ViratTom Technologies | Custom Web & Mobile App Development Company | Free ATS Resume Builder';
-const DEFAULT_DESCRIPTION = 'ViratTom Technologies is an IT software engineering company delivering high-performance web applications, scalable mobile apps (iOS & Android), custom SaaS solutions, and free developer tools.';
-const DEFAULT_KEYWORDS = 'IT Software Company, Custom Software Development Company, Web Application Development, Mobile App Development Services, React Node.js Agency, Full Stack Developers India, Free ATS Resume Builder, Developer CV Maker Online, ViratTom Technologies, Enterprise Software Solutions';
+const DEFAULT_TITLE = 'VIRAT TOM Technologies | Custom Web & Mobile App Development Company in Hyderabad | ViratTom';
+const DEFAULT_DESCRIPTION = 'VIRAT TOM Technologies (also known as Virat Tom, ViratTom) is a premier IT software development company in Hyderabad delivering custom web applications, scalable iOS & Android mobile apps, e-commerce platforms, and free ATS developer tools.';
+const DEFAULT_KEYWORDS = 'VIRAT TOM Technologies, Virat Tom Technologies, Virat Tom, ViratTom, ViratTom Technologies, VIRATTOM, Virat Tom Website Development, Virat Tom App Development, Website Development Company in Hyderabad, Mobile App Development in Hyderabad, E-commerce Website Development, Custom Web Application Development, React Node.js Agency Hyderabad, Full Stack Developers India, Free ATS Resume Builder';
 const SITE_URL = (typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://virattom.com').replace(/\/+$/, '');
 const DEFAULT_OG_IMAGE = `${SITE_URL}/projects/inisio.png`;
 
@@ -46,7 +46,7 @@ export const SEO: React.FC<SEOProps> = ({
     // 2. Standard Meta Tags
     setMetaTag('name', 'description', description);
     setMetaTag('name', 'keywords', keywords);
-    setMetaTag('name', 'author', 'ViratTom Technologies');
+    setMetaTag('name', 'author', 'VIRAT TOM Technologies');
     setMetaTag('name', 'robots', 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1');
 
     // 3. Canonical Link
@@ -60,7 +60,7 @@ export const SEO: React.FC<SEOProps> = ({
     canonicalLink.setAttribute('href', targetCanonical);
 
     // 4. OpenGraph Tags
-    setMetaTag('property', 'og:site_name', 'ViratTom Technologies');
+    setMetaTag('property', 'og:site_name', 'VIRAT TOM Technologies');
     setMetaTag('property', 'og:locale', 'en_US');
     setMetaTag('property', 'og:type', ogType);
     setMetaTag('property', 'og:title', title);

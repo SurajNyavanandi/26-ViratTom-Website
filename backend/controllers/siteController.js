@@ -104,17 +104,9 @@ const portfolioProjects = [
     _id: 'prosync_web',
     title: 'ProSync Web',
     type: 'Full-Stack / Financial Advisory Platform',
-    url: 'https://prosyncweb.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncweb.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
+    url: 'https://prosyncindia.com',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business advisory, debt syndication, and financial platform engineered for high-growth enterprises.'
-  },
-  {
-    _id: '0',
-    title: 'Prosync Consulting',
-    type: 'Corporate Advisory Portal',
-    url: 'https://prosyncindia.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
   },
   {
     _id: '1',
@@ -123,6 +115,14 @@ const portfolioProjects = [
     url: 'https://manadrivers.com',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fmanadrivers.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
+  },
+  {
+    _id: '0',
+    title: 'Prosync Consulting',
+    type: 'Corporate Advisory Portal',
+    url: 'https://prosyncindia.vercel.app/',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
   },
   {
     _id: '2',
@@ -236,7 +236,7 @@ const getProjects = async (req, res) => {
       }
 
       // Guarantee ProSync Web & Prosync Consulting are present even if an older database had partial records
-      const hasProsyncWeb = dbProjects && dbProjects.some((p) => p.title === 'ProSync Web' || (p.url && p.url.includes('prosyncweb.vercel.app')));
+      const hasProsyncWeb = dbProjects && dbProjects.some((p) => p.title === 'ProSync Web' || (p.url && (p.url.includes('prosyncindia.com') || p.url.includes('prosyncweb.vercel.app'))));
       if (!hasProsyncWeb) {
         const prosyncWeb = portfolioProjects[0];
         try {
@@ -317,21 +317,51 @@ const requestEmailOtpHandler = async (req, res) => {
   const { name = '', email = '', phone = '', budget = '', scope = '', projectType = '', company = '' } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase().slice(0, 100);
   const rawPhone = String(phone || '').replace(/\D/g, '');
-  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : (rawPhone || 'N/A');
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : '';
+  const trimmedName = String(name || '').trim();
+  const trimmedScope = String(scope || '').trim();
+  const trimmedType = String(projectType || '').trim();
+  const numBudget = Number(budget) || 0;
 
-  if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
-    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  const isResumeRequest = trimmedType === 'Resume User' || trimmedScope.toLowerCase().includes('resume');
+
+  // Strict backend validation for project inquiries
+  if (!isResumeRequest) {
+    if (!trimmedType) {
+      return res.status(400).json({ success: false, error: 'Project type is required.' });
+    }
+    if (!trimmedName || trimmedName.length < 2) {
+      return res.status(400).json({ success: false, error: 'Full name is required (minimum 2 characters).' });
+    }
+    if (trimmedName.length > 60) {
+      return res.status(400).json({ success: false, error: 'Full name must not exceed 60 characters.' });
+    }
+    if (!cleanEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanEmail)) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
+    if (!cleanPhone || cleanPhone.length !== 10 || !['6', '7', '8', '9'].includes(cleanPhone[0])) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian mobile number.' });
+    }
+    if (!numBudget || numBudget <= 0) {
+      return res.status(400).json({ success: false, error: 'A positive estimated budget amount is required.' });
+    }
+    if (!trimmedScope || trimmedScope.length < 15) {
+      return res.status(400).json({ success: false, error: 'Project scope / requirements description is required (at least 15 characters).' });
+    }
+  } else {
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+    }
   }
 
   try {
-    const isResumeRequest = projectType === 'Resume User' || String(scope || '').toLowerCase().includes('resume');
-
     // Silent background WhatsApp presence verification with 2s strict timeout
     let waResult = { isValid: true };
-    if (!isResumeRequest && cleanPhone && cleanPhone !== 'N/A') {
+    if (!isResumeRequest && cleanPhone) {
       waResult = await checkWhatsAppWithTimeout(cleanPhone);
       if (!waResult.isValid) {
         return res.status(400).json({
+          success: false,
           error: waResult.error || 'Please enter a valid mobile number with an active WhatsApp account.',
         });
       }
@@ -568,18 +598,42 @@ const verifyEmailOtpHandler = async (req, res) => {
 // Phone OTP & Lead Submission
 // -------------------------------------------------------------
 const submitLead = async (req, res) => {
-  const { name, email, phone, service, budget, message, company } = req.body || {};
+  const { name, email, phone, service, budget, message, company, scope, projectType } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase();
-  const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+  const rawPhone = String(phone || '').replace(/\D/g, '');
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : '';
+  const trimmedName = String(name || '').trim();
+  const trimmedScope = String(scope || message || '').trim();
+  const trimmedType = String(projectType || service || '').trim();
+  const numBudget = Number(budget) || 0;
 
-  if (!cleanEmail || !cleanPhone) {
-    return res.status(400).json({ error: 'Email and phone number are required.' });
+  if (!trimmedType) {
+    return res.status(400).json({ success: false, error: 'Project type is required.' });
+  }
+  if (!trimmedName || trimmedName.length < 2) {
+    return res.status(400).json({ success: false, error: 'Full name is required (minimum 2 characters).' });
+  }
+  if (trimmedName.length > 60) {
+    return res.status(400).json({ success: false, error: 'Full name must not exceed 60 characters.' });
+  }
+  if (!cleanEmail || !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanEmail)) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid email address.' });
+  }
+  if (!cleanPhone || cleanPhone.length !== 10 || !['6', '7', '8', '9'].includes(cleanPhone[0])) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid 10-digit Indian mobile number.' });
+  }
+  if (!numBudget || numBudget <= 0) {
+    return res.status(400).json({ success: false, error: 'A positive estimated budget amount is required.' });
+  }
+  if (!trimmedScope || trimmedScope.length < 15) {
+    return res.status(400).json({ success: false, error: 'Project scope / requirements description is required (at least 15 characters).' });
   }
 
   // Silent WhatsApp presence & valid mobile number check with 2s strict timeout
   const waCheck = await checkWhatsAppWithTimeout(cleanPhone);
   if (!waCheck.isValid) {
     return res.status(400).json({
+      success: false,
       error: waCheck.error || 'Please enter a valid mobile number with an active WhatsApp account.',
     });
   }

@@ -1,4 +1,5 @@
 import React from 'react';
+import { InfiniteSlider } from '@/components/ui/infinite-slider';
 
 interface TechItem {
   name: string;
@@ -112,7 +113,7 @@ export const TechStackMarquee: React.FC = () => {
         </div>
       </div>
 
-      {/* Infinite scrolling track with fade edge masks */}
+      {/* Infinite scrolling track with fade edge masks powered by InfiniteSlider */}
       <div
         className="w-full relative overflow-hidden"
         style={{
@@ -120,11 +121,11 @@ export const TechStackMarquee: React.FC = () => {
           WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
         }}
       >
-        <div className="animate-marquee flex items-center gap-3 sm:gap-4 py-2 hover:[animation-play-state:paused]">
+        <InfiniteSlider gap={16} duration={35} durationOnHover={65} className="w-full py-2">
           {duplicatedList.map((tech, index) => (
             <div
               key={`${tech.name}-${index}`}
-              className="group flex items-center gap-3 px-4.5 py-2.5 rounded-2xl bg-white/90 backdrop-blur-sm border border-apple-gray-200/80 shadow-2xs hover:shadow-md hover:border-apple-gray-300 hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer shrink-0"
+              className="group flex items-center gap-3 px-4.5 py-2.5 rounded-2xl bg-white/95 backdrop-blur-sm border border-apple-gray-200/80 shadow-2xs hover:shadow-md hover:border-apple-gray-300 hover:scale-105 hover:-translate-y-0.5 transition-all duration-300 ease-out cursor-pointer shrink-0"
             >
               <div
                 className={`p-2 rounded-xl bg-apple-gray-100/80 group-hover:bg-white text-apple-gray-500 ${tech.hoverColor} group-hover:scale-110 transition-all duration-300 shadow-2xs shrink-0`}
@@ -141,7 +142,7 @@ export const TechStackMarquee: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
+        </InfiniteSlider>
       </div>
     </div>
   );

@@ -203,7 +203,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-[13.5px]">
               <li>
                 <Link to="/" className="hover:text-apple-blue transition-colors">
-                  About ViratTom
+                  About VIRAT TOM Technologies
                 </Link>
               </li>
               <li>

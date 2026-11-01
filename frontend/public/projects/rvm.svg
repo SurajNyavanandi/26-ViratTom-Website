@@ -87,14 +87,14 @@
     <rect width="520" height="54" rx="20" fill="#f5f5f0"/>
     <text x="24" y="34" font-family="Georgia, serif" font-size="16" font-weight="700" fill="#141414">Manufactured Collections · Ramoji Film City Factory</text>
 
-    <!-- Product 1: Stitched Bags with Actual Cloudinary Image -->
+    <!-- Product 1: Stitched Bags with Actual Image -->
     <g transform="translate(24, 76)">
       <rect width="472" height="195" rx="16" fill="#faf9f5" stroke="#e8e6de"/>
       
       <!-- Product photo -->
       <g transform="translate(16, 16)">
         <rect width="140" height="163" rx="10" fill="#e5e5e5"/>
-        <image href="https://res.cloudinary.com/demo/image/fetch/w_600,h_600,c_fill,q_auto,f_auto/https://images.unsplash.com/photo-1598532163257-ae3c6b2524b6?w=600&amp;auto=format&amp;fit=crop&amp;q=80" width="140" height="163" preserveAspectRatio="xMidYMid slice"/>
+        <image href="https://images.unsplash.com/photo-1598532163257-ae3c6b2524b6?w=600&amp;auto=format&amp;fit=crop&amp;q=80" width="140" height="163" preserveAspectRatio="xMidYMid slice"/>
       </g>
 
       <!-- Details -->

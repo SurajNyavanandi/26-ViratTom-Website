@@ -23,11 +23,18 @@ export interface ApiFailureContext {
  */
 export function trackApiFailure(info: ApiFailureContext): void {
   const { endpoint, status, response, error, context = 'safeFetchJson', durationMs } = info;
+  // Do not log noisy client error banners for normal handled 4xx business responses (e.g. invalid password, fallback 404s, client auth checks)
+  if (status >= 400 && status < 500) {
+    return;
+  }
+
   const isServerDown = status >= 500 || status === 0;
-  const headerBg = isServerDown ? '#dc2626' : '#ea580c';
+  if (!isServerDown) return;
+
+  const headerBg = '#dc2626';
 
   console.groupCollapsed(
-    `%c 🚨 [CLIENT API ERROR] ${status || 'NETWORK DROP'} %c ${endpoint} %c (${context}) `,
+    `%c 🚨 [SERVER API ERROR] ${status || 'NETWORK DROP'} %c ${endpoint} %c (${context}) `,
     `background: ${headerBg}; color: white; font-weight: bold; border-radius: 3px 0 0 3px; padding: 2px 6px;`,
     'background: #1f2937; color: #f9fafb; font-family: monospace; padding: 2px 6px;',
     'background: #374151; color: #9ca3af; border-radius: 0 3px 3px 0; padding: 2px 6px;'
@@ -48,21 +55,6 @@ export function trackApiFailure(info: ApiFailureContext): void {
     console.log('%cClient Error Message:', 'font-weight: bold; color: #f87171;', error);
   }
 
-  // Actionable tips for immediate fix
-  console.log(
-    '%c💡 Diagnostic Hint:',
-    'font-weight: bold; color: #38bdf8;',
-    status === 400 && String(JSON.stringify(response)).includes('verification')
-      ? 'Verification failed. Tip: Check the 6-digit code received in your email or request a new code.'
-      : status === 401 || status === 403
-      ? 'Authorization error. Token may be missing or expired in localStorage.'
-      : status === 404
-      ? 'Endpoint not found on server. Check routes in backend/routes/index.js.'
-      : status >= 500
-      ? 'Backend threw an internal exception. Check backend server logs for the [BACKEND API ERROR DIAGNOSTIC] banner.'
-      : 'Verify internet connection and ensure backend server is active on port 3000.'
-  );
-
   console.groupEnd();
 }
 
@@ -78,13 +70,15 @@ export function initClientErrorTracker(): void {
     if (!reason) return;
     const msg = reason instanceof Error ? reason.message : String(reason);
 
-    // Ignore harmless Vite/HMR, WebSocket, extension, or third-party project notices
+    // Ignore harmless Vite/HMR, WebSocket, extension, Monaco cancellation, or third-party project notices
     if (
       !msg ||
       msg.includes('WebSocket') ||
+      msg.includes('closed without opened') ||
       msg.includes('vite') ||
       msg.includes('hmr') ||
       msg.includes('AbortError') ||
+      msg.includes('Canceled') ||
       msg.includes('ResizeObserver') ||
       msg.includes('Script error') ||
       msg.includes('Failed to fetch') ||
@@ -95,6 +89,8 @@ export function initClientErrorTracker(): void {
       msg.includes('manadrivers') ||
       msg.includes('urbanico') ||
       msg.includes('cloudinary') ||
+      msg.includes('No ID or name') ||
+      msg.includes('Origin trial') ||
       msg.includes('Unexpected token')
     ) {
       return;
@@ -112,13 +108,17 @@ export function initClientErrorTracker(): void {
       msg.includes('ResizeObserver') ||
       msg.includes('Script error') ||
       msg.includes('WebSocket') ||
+      msg.includes('closed without opened') ||
       msg.includes('vite') ||
+      msg.includes('Canceled') ||
       msg.includes('useNativeDriver') ||
       msg.includes('ApiService') ||
       msg.includes('getMaterials') ||
       msg.includes('manadrivers') ||
       msg.includes('urbanico') ||
       msg.includes('cloudinary') ||
+      msg.includes('No ID or name') ||
+      msg.includes('Origin trial') ||
       msg.includes('Unexpected token')
     ) {
       return;

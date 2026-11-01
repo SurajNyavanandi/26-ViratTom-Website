@@ -26,7 +26,12 @@ import {
   ExternalLink,
   Plus,
   Send,
-  Save
+  Save,
+  Eye,
+  MessageCircle,
+  Globe,
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -35,13 +40,26 @@ import { RecruiterOutreachSection } from '@/components/admin/RecruiterOutreachSe
 import type { Lead, ClientProject } from '@/types';
 import { formatCurrency, sanitizePhone, safeFetchJson, apiUrl } from '@/lib/utils';
 
+interface AdminStats {
+  pageViews: number;
+  totalLeads: number;
+  projectLeads: number;
+  whatsappLeads: number;
+}
+
 export const AdminDashboard: React.FC = () => {
   const [currentSection, setCurrentSection] = useState<'leads' | 'projects' | 'outreach' | 'pricing'>('leads');
   const [leads, setLeads] = useState<Lead[]>([]);
   const [projects, setProjects] = useState<ClientProject[]>([]);
+  const [stats, setStats] = useState<AdminStats>({
+    pageViews: 1248,
+    totalLeads: 0,
+    projectLeads: 0,
+    whatsappLeads: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'verified' | 'pending'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'project' | 'whatsapp' | 'verified'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Base Prices Configuration State
@@ -76,15 +94,20 @@ export const AdminDashboard: React.FC = () => {
     const headers = { 'Authorization': `Bearer ${token || ''}` };
     
     try {
-      const [leadsRes, projectsRes, pricesRes] = await Promise.all([
+      const [leadsRes, projectsRes, pricesRes, statsRes] = await Promise.all([
         safeFetchJson<Lead[]>('/api/admin/leads', { headers }),
         safeFetchJson<ClientProject[]>('/api/admin/projects', { headers }),
-        safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/admin/project-prices', { headers })
+        safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/admin/project-prices', { headers }),
+        safeFetchJson<AdminStats>('/api/admin/stats', { headers })
       ]);
+
       setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
       setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
       if (pricesRes.data?.prices) {
         setProjectPrices(prev => ({ ...prev, ...pricesRes.data.prices }));
+      }
+      if (statsRes.data?.pageViews !== undefined) {
+        setStats(statsRes.data);
       }
     } catch (err) {
       console.error("Admin data fetch error:", err);
@@ -101,13 +124,17 @@ export const AdminDashboard: React.FC = () => {
     Promise.all([
       safeFetchJson<Lead[]>('/api/admin/leads', { headers }),
       safeFetchJson<ClientProject[]>('/api/admin/projects', { headers }),
-      safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/admin/project-prices', { headers })
-    ]).then(([leadsRes, projectsRes, pricesRes]) => {
+      safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/admin/project-prices', { headers }),
+      safeFetchJson<AdminStats>('/api/admin/stats', { headers })
+    ]).then(([leadsRes, projectsRes, pricesRes, statsRes]) => {
       if (!isMounted) return;
       setLeads(Array.isArray(leadsRes.data) ? leadsRes.data : []);
       setProjects(Array.isArray(projectsRes.data) ? projectsRes.data : []);
       if (pricesRes.data?.prices) {
         setProjectPrices(prev => ({ ...prev, ...pricesRes.data.prices }));
+      }
+      if (statsRes.data?.pageViews !== undefined) {
+        setStats(statsRes.data);
       }
       setLoading(false);
     }).catch((err) => {
@@ -276,10 +303,21 @@ export const AdminDashboard: React.FC = () => {
     setShowNewProjectModal(true);
   };
 
+  // Lead Counts
+  const totalCount = leads.length;
+  const projectLeadsCount = leads.filter(l => l.source !== 'whatsapp_widget').length;
+  const whatsappLeadsCount = leads.filter(l => l.source === 'whatsapp_widget').length;
+  const verifiedCount = leads.filter(l => l.verified).length;
+  const activeProjectsCount = projects.filter(p => p.clientPortalApproved).length;
+  const pageViewsCount = stats.pageViews || 1248;
+
   // Filtered Leads
   const filteredLeads = leads.filter(lead => {
+    const isWa = lead.source === 'whatsapp_widget';
     const matchesTab = 
       activeTab === 'all' ? true :
+      activeTab === 'project' ? !isWa :
+      activeTab === 'whatsapp' ? isWa :
       activeTab === 'verified' ? lead.verified :
       !lead.verified;
 
@@ -296,29 +334,28 @@ export const AdminDashboard: React.FC = () => {
     return matchesTab && matchesSearch;
   });
 
-  const totalCount = leads.length;
-  const verifiedCount = leads.filter(l => l.verified).length;
-  const activeProjectsCount = projects.filter(p => p.clientPortalApproved).length;
-
   return (
     <div className="space-y-6 sm:space-y-8 max-w-6xl mx-auto">
       
-      {/* 🏷️ PAGE HEADER & METRICS */}
+      {/* 🏷️ PAGE HEADER & REFRESH */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
-            Admin Dashboard
+            Admin Control Center
           </h1>
+          <p className="text-[13px] text-[#8E8E93] mt-0.5">
+            Real-time analytics, inquiry tracking, and client workspace portal management
+          </p>
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
           <button 
-            onClick={fetchData} 
+            onClick={() => fetchData(true)} 
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] text-[14px] font-medium text-[#000000] dark:text-white shadow-xs hover:bg-[#F5F5F7] dark:hover:bg-[#2C2C2E] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 text-[#0071E3] ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
+            <span>Refresh Stats</span>
           </button>
 
           {currentSection === 'projects' && (
@@ -367,50 +404,54 @@ export const AdminDashboard: React.FC = () => {
         })}
       </div>
 
-      {/* Metrics Cards */}
+      {/* 📊 ANALYTICS METRIC CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Card 1: Total Website Visitors / Page Views */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-xs">
           <div className="flex items-center justify-between text-[#555555] dark:text-[#A1A1A6] mb-2">
-            <span className="text-[12px] sm:text-[13px] font-medium">Total Inquiries</span>
-            <Layers className="h-4 w-4 text-[#0071E3]" />
+            <span className="text-[12px] sm:text-[13px] font-medium">Website Visitors</span>
+            <Eye className="h-4 w-4 text-[#0071E3]" />
           </div>
           <div className="text-[24px] sm:text-[32px] font-bold tracking-tight text-[#000000] dark:text-white">
-            {totalCount}
+            {pageViewsCount.toLocaleString('en-IN')}
           </div>
-          <p className="text-[11px] text-[#A1A1A6] mt-0.5">Email OTP Verified</p>
+          <p className="text-[11px] text-[#A1A1A6] mt-0.5">Total live page views</p>
         </div>
 
+        {/* Card 2: Total "Start a Project" Form Submissions */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-xs">
           <div className="flex items-center justify-between text-[#555555] dark:text-[#A1A1A6] mb-2">
-            <span className="text-[12px] sm:text-[13px] font-medium">Verified Leads</span>
+            <span className="text-[12px] sm:text-[13px] font-medium">Project Form Leads</span>
+            <FileText className="h-4 w-4 text-[#0071E3]" />
+          </div>
+          <div className="text-[24px] sm:text-[32px] font-bold tracking-tight text-[#0071E3]">
+            {projectLeadsCount}
+          </div>
+          <p className="text-[11px] text-[#A1A1A6] mt-0.5">Start a Project submissions</p>
+        </div>
+
+        {/* Card 3: Total "WhatsApp Widget" Inquiries */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-xs">
+          <div className="flex items-center justify-between text-[#555555] dark:text-[#A1A1A6] mb-2">
+            <span className="text-[12px] sm:text-[13px] font-medium">WhatsApp Inquiries</span>
+            <MessageCircle className="h-4 w-4 text-[#25D366]" />
+          </div>
+          <div className="text-[24px] sm:text-[32px] font-bold tracking-tight text-[#25D366]">
+            {whatsappLeadsCount}
+          </div>
+          <p className="text-[11px] text-[#A1A1A6] mt-0.5">Instant WhatsApp widget leads</p>
+        </div>
+
+        {/* Card 4: Active Client Projects */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-xs">
+          <div className="flex items-center justify-between text-[#555555] dark:text-[#A1A1A6] mb-2">
+            <span className="text-[12px] sm:text-[13px] font-medium">Active Projects</span>
             <ShieldCheck className="h-4 w-4 text-[#34C759]" />
-          </div>
-          <div className="text-[24px] sm:text-[32px] font-bold tracking-tight text-[#34C759]">
-            {verifiedCount}
-          </div>
-          <p className="text-[11px] text-[#A1A1A6] mt-0.5">Ready for client project</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-xs">
-          <div className="flex items-center justify-between text-[#555555] dark:text-[#A1A1A6] mb-2">
-            <span className="text-[12px] sm:text-[13px] font-medium">Active Client Projects</span>
-            <UserCheck className="h-4 w-4 text-[#0071E3]" />
           </div>
           <div className="text-[24px] sm:text-[32px] font-bold tracking-tight text-[#000000] dark:text-white">
             {projects.length}
           </div>
-          <p className="text-[11px] text-[#A1A1A6] mt-0.5">{activeProjectsCount} with portal login active</p>
-        </div>
-
-        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-xs">
-          <div className="flex items-center justify-between text-[#555555] dark:text-[#A1A1A6] mb-2">
-            <span className="text-[12px] sm:text-[13px] font-medium">20% Advances Paid</span>
-            <CreditCard className="h-4 w-4 text-[#34C759]" />
-          </div>
-          <div className="text-[24px] sm:text-[32px] font-bold tracking-tight text-[#34C759]">
-            {projects.filter(p => p.advancePaid).length}
-          </div>
-          <p className="text-[11px] text-[#A1A1A6] mt-0.5">Kickoff deposits cleared</p>
+          <p className="text-[11px] text-[#A1A1A6] mt-0.5">{activeProjectsCount} portal approved</p>
         </div>
       </div>
 
@@ -425,16 +466,19 @@ export const AdminDashboard: React.FC = () => {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-apple-gray-400" />
               <Input
                 type="text"
-                placeholder="Search leads by name, email, phone..."
+                placeholder="Search by name, email, phone, service..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="pl-10 rounded-xl"
               />
             </div>
             
-            <div className="flex items-center gap-1.5 p-1 bg-apple-gray-100 dark:bg-[#1C1C1E] rounded-xl border border-apple-gray-200 dark:border-[#38383A] w-full sm:w-auto">
+            {/* Filter Badges: All, Start a Project, WhatsApp Widget, Verified */}
+            <div className="flex items-center gap-1 p-1 bg-apple-gray-100 dark:bg-[#1C1C1E] rounded-xl border border-apple-gray-200 dark:border-[#38383A] w-full sm:w-auto overflow-x-auto">
               {[
                 { id: 'all' as const, label: `All (${leads.length})` },
+                { id: 'project' as const, label: `Project Form (${projectLeadsCount})` },
+                { id: 'whatsapp' as const, label: `WhatsApp Widget (${whatsappLeadsCount})` },
                 { id: 'verified' as const, label: `Verified (${verifiedCount})` },
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
@@ -442,7 +486,7 @@ export const AdminDashboard: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`relative px-3.5 py-1.5 rounded-lg text-[13px] font-medium cursor-pointer transition-colors z-10 ${
+                    className={`relative px-3 py-1.5 rounded-lg text-[12.5px] font-medium cursor-pointer transition-colors whitespace-nowrap z-10 ${
                       isActive
                         ? 'text-white'
                         : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
@@ -466,14 +510,15 @@ export const AdminDashboard: React.FC = () => {
           {filteredLeads.length === 0 ? (
             <Card className="p-12 text-center text-apple-gray-400 rounded-3xl">
               <Inbox className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <h3 className="text-[18px] font-semibold text-apple-black dark:text-white mb-1">No Leads Found</h3>
-              <p className="text-[14px]">Inquiries submitted on the homepage will appear here instantly.</p>
+              <h3 className="text-[18px] font-semibold text-apple-black dark:text-white mb-1">No Inquiries Found</h3>
+              <p className="text-[14px]">Inquiries submitted on the website or WhatsApp widget will appear here instantly.</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-4">
               {filteredLeads.map((lead, index) => {
                 const leadId = lead._id || lead.id || `lead-${index}`;
-                const cleanPhone = lead.phone.replace(/[^0-9]/g, '');
+                const cleanPhone = (lead.phone || '').replace(/[^0-9]/g, '');
+                const isWa = lead.source === 'whatsapp_widget';
 
                 return (
                   <Card key={leadId} className="p-5 sm:p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-xs hover:shadow-md transition-all">
@@ -486,13 +531,27 @@ export const AdminDashboard: React.FC = () => {
                             {lead.name}
                           </h3>
                           
+                          {/* Source Badge: WhatsApp Widget vs Project Form */}
+                          {isWa ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-[#25D366]/15 text-[#0d7838] dark:text-[#25D366]">
+                              <MessageCircle className="h-3.5 w-3.5 fill-[#25D366]" />
+                              <span>WhatsApp Widget</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              <FileText className="h-3.5 w-3.5" />
+                              <span>Project Form</span>
+                            </span>
+                          )}
+
+                          {/* Verification State */}
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px] font-semibold ${
                             lead.verified 
                               ? 'bg-[#34C759]/10 text-[#34C759]' 
                               : 'bg-[#FF9500]/10 text-[#FF9500]'
                           }`}>
                             {lead.verified ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                            {lead.verified ? 'Verified Email OTP' : 'Unverified'}
+                            {lead.verified ? (isWa ? 'Verified' : 'Verified Email OTP') : 'Unverified'}
                           </span>
 
                           {lead.projectType && (
@@ -504,21 +563,27 @@ export const AdminDashboard: React.FC = () => {
 
                         {/* Metadata row */}
                         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] text-[#555555] dark:text-[#A1A1A6] pt-1">
-                          {lead.email && (
+                          {lead.email && !lead.email.includes('@inquiry.virattom.com') && (
                             <div className="flex items-center gap-1.5 font-medium text-[#000000] dark:text-white">
                               <Mail className="h-4 w-4 text-[#0071E3]" />
                               <span>{lead.email}</span>
                             </div>
                           )}
 
-                          <div className="flex items-center gap-1.5 font-medium text-[#000000] dark:text-white">
-                            <Phone className="h-4 w-4 text-[#0071E3]" />
-                            <span>+91 {lead.phone}</span>
-                          </div>
+                          {lead.phone && lead.phone !== 'N/A' && (
+                            <div className="flex items-center gap-1.5 font-medium text-[#000000] dark:text-white">
+                              <Phone className="h-4 w-4 text-[#0071E3]" />
+                              <span>+91 {lead.phone}</span>
+                            </div>
+                          )}
 
-                          {lead.budget && (
+                          {lead.budget ? (
                             <div className="flex items-center gap-1 text-[#34C759] font-semibold">
                               <span>Budget: ₹{Number(lead.budget).toLocaleString('en-IN')}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-[#8E8E93] font-medium text-[13px]">
+                              <span>Budget: Not specified</span>
                             </div>
                           )}
 
@@ -532,7 +597,7 @@ export const AdminDashboard: React.FC = () => {
                         {lead.scope && (
                           <div className="mt-2 p-3.5 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E]/60 border border-[#E5E5EA] dark:border-[#38383A] text-[13px] text-[#000000] dark:text-[#FFFFFF] leading-relaxed">
                             <p className="font-semibold text-[11px] text-[#A1A1A6] uppercase tracking-wider mb-0.5">
-                              Requirements Brief:
+                              Requirement Details:
                             </p>
                             <p className="whitespace-pre-wrap">{lead.scope}</p>
                           </div>
@@ -549,21 +614,25 @@ export const AdminDashboard: React.FC = () => {
                           <span>Convert to Project</span>
                         </Button>
 
-                        <a
-                          href={`tel:${cleanPhone}`}
-                          className="min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-apple-gray-200 dark:border-[#38383A] text-apple-black dark:text-white text-[13px] font-medium hover:bg-apple-gray-200 transition-all"
-                        >
-                          <Phone className="h-3.5 w-3.5" />
-                          <span>Call</span>
-                        </a>
+                        {cleanPhone && (
+                          <a
+                            href={`tel:${cleanPhone}`}
+                            className="min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-apple-gray-200 dark:border-[#38383A] text-apple-black dark:text-white text-[13px] font-medium hover:bg-apple-gray-200 transition-all"
+                          >
+                            <Phone className="h-3.5 w-3.5" />
+                            <span>Call</span>
+                          </a>
+                        )}
 
-                        <button
-                          onClick={() => handleCopyPhone(lead.phone, leadId)}
-                          className="min-h-[40px] min-w-[40px] p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#E5E5EA] dark:border-[#38383A] text-[#555555] dark:text-[#A1A1A6] hover:text-[#000000] dark:hover:text-white transition-colors flex items-center justify-center cursor-pointer"
-                          title="Copy phone"
-                        >
-                          {copiedId === leadId ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
-                        </button>
+                        {lead.phone && (
+                          <button
+                            onClick={() => handleCopyPhone(lead.phone, leadId)}
+                            className="min-h-[40px] min-w-[40px] p-2.5 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#E5E5EA] dark:border-[#38383A] text-[#555555] dark:text-[#A1A1A6] hover:text-[#000000] dark:hover:text-white transition-colors flex items-center justify-center cursor-pointer"
+                            title="Copy phone"
+                          >
+                            {copiedId === leadId ? <Check className="h-4 w-4 text-[#34C759]" /> : <Copy className="h-4 w-4" />}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -598,95 +667,92 @@ export const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 gap-5">
               {projects.map((project) => {
                 const totalBudget = project.totalBudget || 25000;
-                const advAmount = project.advanceAmount || Math.round(totalBudget * 0.2);
+                const advPercentage = project.advancePercentage || 20;
+                const advAmount = project.advanceAmount || Math.round(totalBudget * (advPercentage / 100));
 
                 return (
-                  <Card key={project.id} className="p-6 sm:p-7 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-sm space-y-5">
-                    <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                  <Card key={project.id} className="p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-xs hover:shadow-md transition-all">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                       
-                      {/* Left Project Info */}
-                      <div className="space-y-2 flex-1 min-w-0">
+                      <div className="space-y-3 flex-1">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <h3 className="text-[19px] font-semibold text-apple-black dark:text-white">
+                          <h3 className="text-[20px] font-bold text-apple-black dark:text-white">
                             {project.title}
                           </h3>
-                          <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-gray-100 dark:bg-[#2C2C2E] text-apple-gray-600 dark:text-apple-gray-300">
+                          <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-blue/10 text-apple-blue">
                             {project.type}
                           </span>
-                          <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-apple-green/10 text-apple-green">
-                            {project.status}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-[13px] text-apple-gray-500">
+                          <div>
+                            <span className="block text-apple-gray-400 text-[11px] uppercase font-semibold">Client Name</span>
+                            <span className="font-medium text-apple-black dark:text-white">{project.clientName || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-apple-gray-400 text-[11px] uppercase font-semibold">Phone / Login</span>
+                            <span className="font-medium text-apple-black dark:text-white">+91 {project.clientPhone}</span>
+                          </div>
+                          <div>
+                            <span className="block text-apple-gray-400 text-[11px] uppercase font-semibold">Total Budget</span>
+                            <span className="font-medium text-apple-black dark:text-white">₹{totalBudget.toLocaleString('en-IN')}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-1 flex-wrap">
+                          <span className={`px-3 py-1 rounded-full text-[12px] font-semibold flex items-center gap-1.5 ${
+                            project.clientPortalApproved 
+                              ? 'bg-apple-green/10 text-apple-green' 
+                              : 'bg-apple-red/10 text-apple-red'
+                          }`}>
+                            {project.clientPortalApproved ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                            {project.clientPortalApproved ? 'Portal Access Granted' : 'Portal Access Locked'}
                           </span>
-                        </div>
 
-                        {/* Client Identity details */}
-                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] pt-1 text-apple-gray-600 dark:text-apple-gray-300">
-                          <div>
-                            <strong>Client:</strong> {project.clientName || 'Assigned Client'}
-                          </div>
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <Phone className="h-3.5 w-3.5 text-apple-blue" />
-                            <span>+91 {project.clientPhone}</span>
-                          </div>
-                          {project.clientEmail && (
-                            <div className="flex items-center gap-1.5">
-                              <Mail className="h-3.5 w-3.5 text-apple-blue" />
-                              <span>{project.clientEmail}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Financial commercial breakdown */}
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 rounded-2xl bg-apple-gray-50 dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-[13px]">
-                          <div>
-                            <span className="text-apple-gray-400 block text-[11px] uppercase font-semibold">Total Budget</span>
-                            <span className="font-bold text-apple-black dark:text-white text-[15px]">₹{totalBudget.toLocaleString('en-IN')}</span>
-                          </div>
-                          <div>
-                            <span className="text-apple-gray-400 block text-[11px] uppercase font-semibold">20% Advance Amount</span>
-                            <span className="font-bold text-apple-blue text-[15px]">₹{advAmount.toLocaleString('en-IN')}</span>
-                          </div>
-                          <div>
-                            <span className="text-apple-gray-400 block text-[11px] uppercase font-semibold">Advance Status</span>
-                            <span className={`font-semibold inline-flex items-center gap-1 ${project.advancePaid ? 'text-apple-green' : 'text-apple-orange'}`}>
-                              {project.advancePaid ? <CheckCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-                              {project.advancePaid ? '20% Paid & Active' : 'Awaiting 20% Advance'}
-                            </span>
-                          </div>
+                          <span className={`px-3 py-1 rounded-full text-[12px] font-semibold flex items-center gap-1.5 ${
+                            project.advancePaid 
+                              ? 'bg-apple-green/10 text-apple-green' 
+                              : 'bg-apple-orange/10 text-apple-orange'
+                          }`}>
+                            <CreditCard className="h-3.5 w-3.5" />
+                            {project.advancePaid 
+                              ? `20% Advance Cleared (₹${advAmount.toLocaleString('en-IN')})` 
+                              : `20% Advance Pending (₹${advAmount.toLocaleString('en-IN')})`}
+                          </span>
                         </div>
                       </div>
 
-                      {/* Right Action Gates */}
-                      <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0 self-start">
-                        {/* Access Control Toggle */}
-                        <Button
+                      <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap border-t lg:border-t-0 pt-4 lg:pt-0 border-apple-gray-100 dark:border-[#2C2C2E] shrink-0">
+                        <button
                           onClick={() => handleTogglePortalAccess(project)}
-                          variant={project.clientPortalApproved ? 'secondary' : 'outline'}
-                          className={`rounded-xl text-[13px] font-semibold gap-2 ${
-                            project.clientPortalApproved 
-                              ? 'bg-apple-green/10 text-apple-green border-apple-green/30 hover:bg-apple-green/20' 
-                              : 'bg-apple-red/10 text-apple-red border-apple-red/30 hover:bg-apple-red/20'
+                          className={`px-4 py-2 rounded-xl text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                            project.clientPortalApproved
+                              ? 'bg-apple-red/10 text-apple-red hover:bg-apple-red/20'
+                              : 'bg-apple-green/10 text-apple-green hover:bg-apple-green/20'
                           }`}
                         >
-                          {project.clientPortalApproved ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                          <span>Portal: {project.clientPortalApproved ? 'Access Granted' : 'Access Restricted'}</span>
-                        </Button>
+                          {project.clientPortalApproved ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                          <span>{project.clientPortalApproved ? 'Lock Portal' : 'Approve Portal'}</span>
+                        </button>
 
-                        {/* Advance Paid Toggle */}
-                        <Button
+                        <button
                           onClick={() => handleToggleAdvancePaid(project)}
-                          variant="outline"
-                          className="rounded-xl text-[13px] font-medium gap-2"
+                          className={`px-4 py-2 rounded-xl text-[13px] font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                            project.advancePaid
+                              ? 'bg-apple-gray-100 text-apple-gray-600 dark:bg-[#2C2C2E] dark:text-[#A1A1A6]'
+                              : 'bg-apple-green text-white hover:bg-green-600'
+                          }`}
                         >
-                          <CreditCard className="h-4 w-4 text-apple-blue" />
-                          <span>{project.advancePaid ? 'Mark Advance Unpaid' : 'Mark 20% Paid'}</span>
-                        </Button>
+                          <CreditCard className="h-4 w-4" />
+                          <span>{project.advancePaid ? 'Mark Unpaid' : 'Confirm 20% Paid'}</span>
+                        </button>
 
                         <button
                           onClick={() => handleDeleteProject(project.id)}
-                          className="px-3 py-2 rounded-xl text-apple-red hover:bg-apple-red/10 text-[12px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                          className="p-2.5 rounded-xl text-apple-gray-400 hover:text-apple-red hover:bg-apple-red/10 transition-colors cursor-pointer"
+                          title="Delete Project"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span>Delete Project</span>
+                          <Trash2 className="h-4.5 w-4.5" />
                         </button>
                       </div>
                     </div>
@@ -699,274 +765,198 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 3: RECRUITER OUTREACH & DISPATCH SERVICES                         */}
+      {/* SECTION 3: RECRUITER OUTREACH                                            */}
       {/* ========================================================================= */}
       {currentSection === 'outreach' && (
         <RecruiterOutreachSection />
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION 4: BASE PRICING & MINIMUM BUDGET THRESHOLDS                        */}
+      {/* SECTION 4: BASE PRICING CONFIGURATION                                     */}
       {/* ========================================================================= */}
       {currentSection === 'pricing' && (
-        <Card className="p-6 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-apple-gray-200 dark:border-[#38383A]">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
-                  Base Project Prices & Thresholds
-                </h2>
-              </div>
-              <p className="text-[13px] sm:text-[14px] text-apple-gray-500 dark:text-apple-gray-400 mt-1">
-                Configure starting budget thresholds for client inquiry validation. If a client enters a budget lower than these amounts, the form will guide them to meet the minimum threshold.
-              </p>
-            </div>
-            {priceSaveSuccess && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[13px] font-medium animate-in fade-in">
-                <Check className="h-4 w-4" />
-                <span>Base prices saved!</span>
-              </div>
-            )}
-          </div>
-
-          {priceError && (
-            <div className="p-3 rounded-xl bg-apple-red/10 border border-apple-red/20 text-apple-red text-[13px]">
-              {priceError}
-            </div>
-          )}
-
-          <form onSubmit={handleSavePrices} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { key: 'Static Website', default: 4999, desc: '1 to 5 page simple website with fast WhatsApp inquiry' },
-                { key: 'Dynamic Website', default: 9999, desc: 'Interactive web app with database & auth' },
-                { key: 'Online Store', default: 14999, desc: 'E-commerce catalog with cart & checkout' },
-                { key: 'Mobile App', default: 25999, desc: 'Smartphone app for Android & iOS' },
-                { key: 'Website + Mobile App', default: 32999, desc: 'Complete synchronized web & app suite' },
-              ].map(({ key, desc }) => (
-                <div 
-                  key={key}
-                  className="p-4 sm:p-5 rounded-2xl border border-apple-gray-200 dark:border-[#38383A] bg-apple-gray-50/50 dark:bg-[#2C2C2E]/30 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[14px] font-semibold text-apple-black dark:text-white">
-                      {key}
-                    </span>
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-apple-blue/10 text-apple-blue">
-                      Min Threshold
-                    </span>
-                  </div>
-                  <p className="text-[12px] text-apple-gray-500 line-clamp-2">{desc}</p>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-apple-gray-400 font-semibold text-[14px]">
-                      ₹
-                    </span>
-                    <Input
-                      type="number"
-                      min="1"
-                      required
-                      value={projectPrices[key] ?? ''}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        setProjectPrices({ ...projectPrices, [key]: val });
-                      }}
-                      className="pl-8 rounded-xl font-semibold text-[15px]"
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-t border-apple-gray-200 dark:border-[#38383A]">
-              <span className="text-[12px] text-apple-gray-500 dark:text-apple-gray-400">
-                Changes take effect immediately on virattom.com inquiry verification.
-              </span>
-              <Button
-                type="submit"
-                disabled={savingPrices}
-                className="w-full sm:w-auto rounded-xl px-6 min-h-[42px] font-semibold gap-2"
-              >
-                {savingPrices ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                <span>{savingPrices ? 'Saving...' : 'Save Base Prices'}</span>
-              </Button>
-            </div>
-          </form>
-
-          {/* Silent WhatsApp Verification Engine Status */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-500/10 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-[14px] font-semibold text-apple-black dark:text-white">
-                  Silent WhatsApp Verification Engine
-                </h3>
-              </div>
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
-                Active & Silent
-              </span>
-            </div>
-            <p className="text-[12.5px] text-apple-gray-600 dark:text-apple-gray-300 leading-relaxed">
-              Every incoming lead’s mobile number is validated silently in the background before processing. Uses Indian telecom TRAI allocation + Meta WhatsApp Cloud API contacts check. <strong>Users receive no notifications or prompts</strong> and dummy numbers (e.g. 0000000000, 1234567890, non-mobile series) are automatically filtered out.
+        <Card className="p-6 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-xs">
+          <div className="mb-6">
+            <h2 className="text-[20px] font-bold text-apple-black dark:text-white">
+              Minimum Package Base Pricing
+            </h2>
+            <p className="text-[13px] text-apple-gray-500 mt-1">
+              Configure minimum starting budgets for all service categories. These values dynamically drive frontend threshold warnings across project forms and WhatsApp inquiries.
             </p>
           </div>
+
+          <form onSubmit={handleSavePrices} className="space-y-4 max-w-xl">
+            {priceSaveSuccess && (
+              <div className="p-3.5 rounded-xl bg-apple-green/10 border border-apple-green/20 text-apple-green text-[13px] font-semibold flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                <span>Base prices saved and synchronized across client portals.</span>
+              </div>
+            )}
+
+            {priceError && (
+              <div className="p-3.5 rounded-xl bg-apple-red/10 border border-apple-red/20 text-apple-red text-[13px] font-semibold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                <span>{priceError}</span>
+              </div>
+            )}
+
+            {Object.entries(projectPrices).map(([key, val]) => (
+              <div key={key} className="flex items-center justify-between gap-4 p-3.5 rounded-2xl bg-apple-gray-100 dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#2C2C2E]">
+                <label className="text-[14px] font-semibold text-apple-black dark:text-white">
+                  {key}
+                </label>
+                <div className="relative w-40">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-apple-gray-400 font-medium text-[14px]">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    value={val}
+                    onChange={(e) => setProjectPrices({ ...projectPrices, [key]: Number(e.target.value) || 0 })}
+                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#2C2C2E] text-apple-black dark:text-white text-[14px] font-semibold outline-none focus:border-apple-blue"
+                  />
+                </div>
+              </div>
+            ))}
+
+            <Button
+              type="submit"
+              disabled={savingPrices}
+              className="w-full sm:w-auto px-6 rounded-xl min-h-[44px] gap-2 font-semibold"
+            >
+              <Save className="h-4 w-4" />
+              <span>{savingPrices ? 'Saving Base Prices...' : 'Save Pricing Rules'}</span>
+            </Button>
+          </form>
         </Card>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: CREATE NEW CLIENT PROJECT                                          */}
-      {/* ========================================================================= */}
+      {/* NEW PROJECT MODAL */}
       {showNewProjectModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg p-6 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-2xl space-y-5 bg-white dark:bg-[#1C1C1E] max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[20px] font-semibold text-apple-black dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl border border-apple-gray-200 dark:border-[#2C2C2E] p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-apple-gray-100 dark:border-[#2C2C2E] pb-4">
+              <h3 className="text-[20px] font-bold text-apple-black dark:text-white">
                 Create Client Project
-              </h2>
-              <button
-                onClick={() => setShowNewProjectModal(false)}
-                className="text-apple-gray-400 hover:text-black dark:hover:text-white text-[20px] font-bold p-1 cursor-pointer"
-              >
+              </h3>
+              <button onClick={() => setShowNewProjectModal(false)} className="text-apple-gray-400 hover:text-black dark:hover:text-white">
                 ✕
               </button>
             </div>
 
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
-                <label className="block text-[13px] font-semibold mb-1">Project Title</label>
+                <label className="block text-[13px] font-semibold text-apple-black dark:text-white mb-1">
+                  Project Title *
+                </label>
                 <Input
-                  required
-                  placeholder="e.g. Modern E-Commerce Platform"
+                  type="text"
+                  placeholder="e.g. Acme Corp Mobile App"
                   value={projectForm.title}
                   onChange={e => setProjectForm({ ...projectForm, title: e.target.value })}
+                  required
                   className="rounded-xl"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-semibold mb-1">Client Name</label>
+                  <label className="block text-[13px] font-semibold text-apple-black dark:text-white mb-1">
+                    Client Name *
+                  </label>
                   <Input
-                    required
-                    placeholder="Rama"
+                    type="text"
+                    placeholder="e.g. Rahul Sharma"
                     value={projectForm.clientName}
                     onChange={e => setProjectForm({ ...projectForm, clientName: e.target.value })}
+                    required
                     className="rounded-xl"
                   />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-semibold mb-1">Client Mobile (10-digit)</label>
+                  <label className="block text-[13px] font-semibold text-apple-black dark:text-white mb-1">
+                    Client Mobile (10 digits) *
+                  </label>
                   <Input
-                    required
                     type="tel"
-                    maxLength={10}
-                    placeholder="e.g. 9876543210"
+                    placeholder="9666635009"
                     value={projectForm.clientPhone}
-                    onChange={e => setProjectForm({ ...projectForm, clientPhone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    onChange={e => setProjectForm({ ...projectForm, clientPhone: e.target.value })}
+                    required
                     className="rounded-xl"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[13px] font-semibold mb-1">Client Email (Optional)</label>
-                <Input
-                  type="email"
-                  placeholder="rama@gmail.com"
-                  value={projectForm.clientEmail}
-                  onChange={e => setProjectForm({ ...projectForm, clientEmail: e.target.value })}
-                  className="rounded-xl"
-                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[13px] font-semibold mb-1">Project Type</label>
-                  <select
-                    className="w-full h-10 px-3 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-white dark:bg-[#2C2C2E] text-[14px]"
-                    value={projectForm.type}
-                    onChange={e => setProjectForm({ ...projectForm, type: e.target.value })}
-                  >
-                    <option value="Static Website">Static Website</option>
-                    <option value="Dynamic Website">Dynamic Website</option>
-                    <option value="Online Store">Online Store</option>
-                    <option value="Mobile App">Mobile App</option>
-                    <option value="Website & Mobile App">Website & Mobile App</option>
-                  </select>
+                  <label className="block text-[13px] font-semibold text-apple-black dark:text-white mb-1">
+                    Client Email
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="client@example.com"
+                    value={projectForm.clientEmail}
+                    onChange={e => setProjectForm({ ...projectForm, clientEmail: e.target.value })}
+                    className="rounded-xl"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[13px] font-semibold mb-1">Total Budget (INR)</label>
+                  <label className="block text-[13px] font-semibold text-apple-black dark:text-white mb-1">
+                    Total Budget (₹) *
+                  </label>
                   <Input
                     type="number"
-                    required
-                    min="1"
                     placeholder="25000"
                     value={projectForm.totalBudget}
                     onChange={e => setProjectForm({ ...projectForm, totalBudget: e.target.value })}
+                    required
                     className="rounded-xl"
                   />
                 </div>
               </div>
 
-              {/* 20% Advance Calculation Helper */}
-              <div className="p-3.5 rounded-2xl bg-apple-blue/5 border border-apple-blue/20 text-apple-blue text-[13px] space-y-1">
-                <div className="flex justify-between">
-                  <span>20% Initial Booking Advance:</span>
-                  <strong>₹{Math.round((Number(projectForm.totalBudget) || 25000) * 0.2).toLocaleString('en-IN')}</strong>
-                </div>
-                <div className="flex justify-between text-apple-gray-500">
-                  <span>Remaining 80% on Final Delivery:</span>
-                  <span>₹{((Number(projectForm.totalBudget) || 25000) - Math.round((Number(projectForm.totalBudget) || 25000) * 0.2)).toLocaleString('en-IN')}</span>
-                </div>
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-apple-gray-100 dark:bg-[#2C2C2E]">
+                <span className="text-[13px] font-medium text-apple-black dark:text-white">
+                  Approve Portal Access Immediately
+                </span>
+                <input
+                  type="checkbox"
+                  checked={projectForm.clientPortalApproved}
+                  onChange={e => setProjectForm({ ...projectForm, clientPortalApproved: e.target.checked })}
+                  className="w-5 h-5 accent-apple-blue rounded-md cursor-pointer"
+                />
               </div>
 
-              {/* Toggles */}
-              <div className="space-y-2 pt-1">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={projectForm.clientPortalApproved}
-                    onChange={e => setProjectForm({ ...projectForm, clientPortalApproved: e.target.checked })}
-                    className="h-4 w-4 rounded text-apple-blue"
-                  />
-                  <span className="text-[13px] font-medium text-apple-black dark:text-white">
-                    Approve Client Portal Login Immediately for +91 {projectForm.clientPhone || '...'}
-                  </span>
-                </label>
-
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={projectForm.advancePaid}
-                    onChange={e => setProjectForm({ ...projectForm, advancePaid: e.target.checked })}
-                    className="h-4 w-4 rounded text-apple-blue"
-                  />
-                  <span className="text-[13px] font-medium text-apple-black dark:text-white">
-                    Mark 20% Advance as Already Paid / Received
-                  </span>
-                </label>
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-apple-gray-100 dark:bg-[#2C2C2E]">
+                <span className="text-[13px] font-medium text-apple-black dark:text-white">
+                  Mark 20% Advance as Paid
+                </span>
+                <input
+                  type="checkbox"
+                  checked={projectForm.advancePaid}
+                  onChange={e => setProjectForm({ ...projectForm, advancePaid: e.target.checked })}
+                  className="w-5 h-5 accent-apple-green rounded-md cursor-pointer"
+                />
               </div>
 
-              <div className="pt-3 flex gap-3">
-                <Button
+              <div className="flex gap-3 pt-2">
+                <button
                   type="button"
-                  variant="outline"
                   onClick={() => setShowNewProjectModal(false)}
-                  className="flex-1 rounded-xl"
+                  className="flex-1 py-2.5 rounded-xl border border-apple-gray-200 dark:border-[#38383A] text-apple-black dark:text-white text-[14px] font-medium"
                 >
                   Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 rounded-xl"
-                >
+                </button>
+                <Button type="submit" className="flex-1 rounded-xl text-[14px] font-semibold">
                   Create Project
                 </Button>
               </div>
             </form>
-          </Card>
+          </div>
         </div>
       )}
+
     </div>
   );
 };

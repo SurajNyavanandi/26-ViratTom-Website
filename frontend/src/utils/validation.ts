@@ -81,20 +81,20 @@ export const Validation = {
     return null;
   },
 
-  validateBudget(budget: string | number, minThreshold = 4999): string | null {
+  validateBudget(budget: string | number, minThreshold?: number): string | null {
     const str = String(budget || '').trim();
     if (!str) {
       return 'Estimated budget is required.';
     }
     const num = Number(str);
     if (isNaN(num) || num <= 0) {
-      return 'Budget must be a positive numerical amount.';
+      return 'Please enter a positive estimated budget amount.';
     }
-    if (num < minThreshold) {
-      return `Minimum budget for this project type is ₹${minThreshold.toLocaleString('en-IN')}.`;
+    if (minThreshold && minThreshold > 0 && num < minThreshold) {
+      return `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.`;
     }
-    if (num > 300000) {
-      return 'Maximum budget value is ₹3,00,000 for standard web inquiries.';
+    if (num > 3000000) {
+      return 'Maximum budget value is ₹30,00,000 for standard web inquiries.';
     }
     return null;
   },
@@ -102,10 +102,7 @@ export const Validation = {
   validateScope(scope: string): string | null {
     const trimmed = (scope || '').trim();
     if (!trimmed) {
-      return 'Project scope / requirements description is required.';
-    }
-    if (trimmed.length < 15) {
-      return `Please provide at least 15 characters describing your project goals (currently ${trimmed.length} chars).`;
+      return null;
     }
     if (trimmed.length > 2000) {
       return 'Project scope must be under 2000 characters.';
@@ -121,7 +118,7 @@ export const Validation = {
     return null;
   },
 
-  validateLeadForm(values: LeadFormValues, minBudget = 4999): {
+  validateLeadForm(values: LeadFormValues, minBudget?: number): {
     isValid: boolean;
     errors: LeadFormErrors;
     firstErrorField: keyof LeadFormValues | null;

@@ -7,6 +7,7 @@ export interface Lead {
   projectType?: string;
   budget?: string | number;
   scope?: string;
+  source?: 'project_form' | 'whatsapp_widget' | string;
   verified?: boolean;
   createdAt?: string;
 }

@@ -77,13 +77,45 @@ export const PROJECT_MIN_PRICES: Record<string, number> = {
   'Website + Mobile App': 32999,
 };
 
-export function getMinPrice(type: string): number {
-  return PROJECT_MIN_PRICES[type] || 4999;
+export function normalizeProjectType(typeOrService: string): string {
+  if (!typeOrService) return 'Static Website';
+  const lower = typeOrService.toLowerCase();
+  if (lower.includes('fix') || lower.includes('question') || lower.includes('resume')) return '';
+  if (lower.includes('static')) return 'Static Website';
+  if (lower.includes('dynamic')) return 'Dynamic Website';
+  if (lower.includes('store') || lower.includes('ecommerce') || lower.includes('e-commerce')) return 'Online Store';
+  if (lower.includes('website + mobile') || lower.includes('full_stack') || lower.includes('full stack')) return 'Website + Mobile App';
+  if (lower.includes('mobile') || lower.includes('app')) return 'Mobile App';
+  return typeOrService;
+}
+
+export function getMinPrice(type: string, dynamicPrices?: Record<string, number>): number {
+  const norm = normalizeProjectType(type);
+  if (!norm) return 0;
+  if (dynamicPrices && dynamicPrices[norm] !== undefined) {
+    return dynamicPrices[norm];
+  }
+  return PROJECT_MIN_PRICES[norm] || PROJECT_MIN_PRICES[type] || 0;
 }
 
 export function getApiBaseUrl(): string {
   const env = import.meta.env as Record<string, any>;
   const customUrl = (env.BACKEND_API_URL || env.VITE_API_URL || '').trim();
+
+  // If running in browser and on localhost/127.0.0.1:
+  // If customUrl points to an external remote domain (e.g. *.onrender.com, *.vercel.app, *.virattom.com),
+  // but developer is testing locally, do NOT dispatch API requests to the remote server.
+  // Default to relative root so local dev server / Vite proxy handles requests seamlessly.
+  if (typeof window !== 'undefined' && window.location) {
+    const isLocalhost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '0.0.0.0';
+    if (isLocalhost && customUrl && !customUrl.includes('localhost') && !customUrl.includes('127.0.0.1')) {
+      return '';
+    }
+  }
+
   return customUrl.replace(/\/+$/, '');
 }
 

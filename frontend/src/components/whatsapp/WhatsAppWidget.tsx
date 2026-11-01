@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { X, MessageCircle, ArrowRight, AlertCircle, ChevronDown, Check } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { X, MessageCircle, ArrowRight, AlertCircle, ChevronDown, Check, CheckCircle2, ShieldCheck, Loader2 } from 'lucide-react';
+import { safeFetchJson, normalizeProjectType, PROJECT_MIN_PRICES } from '@/lib/utils';
 
 interface ServiceOption {
   id: string;
@@ -9,18 +10,28 @@ interface ServiceOption {
 
 const SERVICE_OPTIONS: ServiceOption[] = [
   {
-    id: 'website',
-    name: 'Website (Business, Shop, Portfolio)',
+    id: 'static_website',
+    name: 'Static Website',
     requiresBudget: true,
   },
   {
-    id: 'mobile',
-    name: 'Mobile App (iOS & Android)',
+    id: 'dynamic_website',
+    name: 'Dynamic Website',
     requiresBudget: true,
   },
   {
     id: 'ecommerce',
-    name: 'E-Commerce Platform',
+    name: 'Online Store (E-Commerce)',
+    requiresBudget: true,
+  },
+  {
+    id: 'mobile_app',
+    name: 'Mobile App (iOS & Android)',
+    requiresBudget: true,
+  },
+  {
+    id: 'full_stack',
+    name: 'Website + Mobile App',
     requiresBudget: true,
   },
   {
@@ -43,16 +54,41 @@ interface WhatsAppFormData {
   message: string;
 }
 
-const DEFAULT_WHATSAPP_NUMBER = '919666635009';
-
 export const WhatsAppWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [nameError, setNameError] = useState(false);
   const [budgetError, setBudgetError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [projectPrices, setProjectPrices] = useState<Record<string, number>>({});
 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // Dynamically fetch configured project prices from Admin Panel
+  useEffect(() => {
+    let isMounted = true;
+    safeFetchJson<{ success: boolean; prices: Record<string, number> }>('/api/project-prices')
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.ok && res.data?.prices) {
+          setProjectPrices(res.data.prices);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const getDynamicThreshold = useCallback((serviceName: string): number => {
+    const norm = normalizeProjectType(serviceName);
+    if (!norm) return 0;
+    return projectPrices[norm] || projectPrices[serviceName] || PROJECT_MIN_PRICES[norm] || PROJECT_MIN_PRICES[serviceName] || 0;
+  }, [projectPrices]);
 
   const [form, setForm] = useState<WhatsAppFormData>(() => {
     try {
@@ -80,6 +116,8 @@ export const WhatsAppWidget: React.FC = () => {
   const selectedService =
     SERVICE_OPTIONS.find((s) => s.name === form.service) || SERVICE_OPTIONS[0];
 
+  const numericBudget = parseInt(form.budget.replace(/\D/g, ''), 10) || 0;
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -106,6 +144,8 @@ export const WhatsAppWidget: React.FC = () => {
     setIsDropdownOpen(false);
     setNameError(false);
     setBudgetError(null);
+    setServerError(null);
+    setIsSubmitted(false);
   };
 
   const handleCloseModal = () => {
@@ -113,25 +153,39 @@ export const WhatsAppWidget: React.FC = () => {
     setIsDropdownOpen(false);
     setNameError(false);
     setBudgetError(null);
+    setServerError(null);
   };
 
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/[^0-9]/g, '');
     setForm((prev) => ({ ...prev, budget: val }));
     if (budgetError) {
-      setBudgetError(null);
+      const num = parseInt(val, 10) || 0;
+      const minThreshold = getDynamicThreshold(selectedService.name);
+      if (num >= minThreshold && num > 0) {
+        setBudgetError(null);
+      }
     }
   };
 
   const handleSelectService = (serviceName: string) => {
     setForm((prev) => ({ ...prev, service: serviceName }));
     setIsDropdownOpen(false);
-    if (budgetError) {
+    const targetService = SERVICE_OPTIONS.find((s) => s.name === serviceName);
+    if (targetService?.requiresBudget && form.budget) {
+      const num = parseInt(form.budget.replace(/\D/g, ''), 10) || 0;
+      const newThreshold = getDynamicThreshold(serviceName);
+      if (num > 0 && num < newThreshold) {
+        setBudgetError(`Minimum budget for this project is ₹${newThreshold.toLocaleString('en-IN')}.`);
+      } else if (num >= newThreshold) {
+        setBudgetError(null);
+      }
+    } else {
       setBudgetError(null);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!form.name.trim()) {
@@ -140,53 +194,70 @@ export const WhatsAppWidget: React.FC = () => {
     }
     setNameError(false);
 
-    const rawNumber = parseInt(form.budget.replace(/\D/g, ''), 10);
+    const minThreshold = getDynamicThreshold(selectedService.name);
 
-    // Enforce budget only for services that require it (Fix/Update & Questions do NOT require budget and have no minimums)
     if (selectedService.requiresBudget) {
-      if (!form.budget.trim() || isNaN(rawNumber) || rawNumber <= 0) {
-        setBudgetError('Please enter your estimated budget');
+      if (!form.budget.trim() || isNaN(numericBudget) || numericBudget <= 0) {
+        setBudgetError('Please enter your estimated budget amount');
+        return;
+      }
+      if (minThreshold > 0 && numericBudget < minThreshold) {
+        setBudgetError(`Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.`);
         return;
       }
     }
 
     setBudgetError(null);
-
-    // Format budget cleanly
-    const formattedBudget =
-      !isNaN(rawNumber) && rawNumber > 0
-        ? `₹${rawNumber.toLocaleString('en-IN')}`
-        : 'Not specified';
-
-    // Build the minimalist & professional WhatsApp template
-    const lines = [
-      'Hello ViratTom Team! 👋',
-      'I would like to discuss a project with you:',
-      `Name: ${form.name.trim()}`,
-      `Project Type: ${form.service}`,
-      `Estimated Budget: ${formattedBudget}`,
-      'Can we discuss the timeline and pricing?',
-    ];
-
-    if (form.message && form.message.trim()) {
-      lines.push(`Note: ${form.message.trim()}`);
-    }
-
-    const messageText = lines.join('\n');
-    const waUrl = `https://wa.me/${DEFAULT_WHATSAPP_NUMBER}?text=${encodeURIComponent(messageText)}`;
+    setServerError(null);
+    setIsSubmitting(true);
 
     try {
       localStorage.setItem('virattom_wa_lead_data', JSON.stringify(form));
     } catch {}
 
-    // Directly open WhatsApp without any intermediate confirmation popup
-    const opened = window.open(waUrl, '_blank', 'noopener,noreferrer');
-    if (!opened || opened.closed || typeof opened.closed === 'undefined') {
-      window.location.href = waUrl;
-    }
+    try {
+      let res = await safeFetchJson<{ success: boolean; message?: string; error?: string }>('/api/whatsapp-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          service: selectedService.name,
+          projectType: selectedService.name,
+          budget: numericBudget,
+          message: form.message.trim(),
+          source: 'whatsapp_widget',
+        }),
+      });
 
-    // Immediately close modal on dispatch
-    handleCloseModal();
+      // Seamless fallback: If the deployed server does not have /api/whatsapp-lead (404),
+      // retry via /api/lead which handles source: 'whatsapp_widget'
+      if (!res.ok && res.status === 404) {
+        res = await safeFetchJson<{ success: boolean; message?: string; error?: string }>('/api/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+            service: selectedService.name,
+            projectType: selectedService.name,
+            budget: numericBudget,
+            message: form.message.trim(),
+            source: 'whatsapp_widget',
+          }),
+        });
+      }
+
+      if (res.ok && res.data?.success) {
+        setIsSubmitted(true);
+      } else {
+        setServerError(res.data?.error || 'Failed to send inquiry. Please try again.');
+      }
+    } catch (err: any) {
+      setServerError('Network error submitting inquiry. Please check connection.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -201,7 +272,7 @@ export const WhatsAppWidget: React.FC = () => {
         >
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-            <span>Chat on WhatsApp</span>
+            <span>Chat with Engineering Team</span>
           </div>
         </div>
 
@@ -210,7 +281,7 @@ export const WhatsAppWidget: React.FC = () => {
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
           type="button"
-          aria-label="WhatsApp Chat"
+          aria-label="WhatsApp Inquiry"
           className="group relative flex items-center justify-center w-14 h-14 bg-[#25D366] hover:bg-[#20ba59] active:scale-95 text-white rounded-full shadow-[0_8px_24px_rgba(37,211,102,0.35)] transition-all duration-200 cursor-pointer"
         >
           <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-30 animate-ping -z-10 group-hover:opacity-45" />
@@ -235,175 +306,234 @@ export const WhatsAppWidget: React.FC = () => {
 
             {/* Modal Body */}
             <div className="p-6 pt-6">
-              <form id="whatsapp-form" onSubmit={handleSubmit} className="space-y-4">
-                {/* Header title */}
-                <div className="pr-8 pb-1">
-                  <h3 className="text-[17px] font-semibold text-[#1C1C1E] dark:text-white">
-                    Start a WhatsApp Chat
-                  </h3>
-                  <p className="text-[13px] text-[#8E8E93] mt-0.5">
-                    Connect directly with our engineering team
-                  </p>
-                </div>
+              {isSubmitted ? (
+                /* In-App Confirmation / Success State */
+                <div className="text-center py-6 px-2 space-y-4">
+                  <div className="w-16 h-16 bg-[#25D366]/15 rounded-full flex items-center justify-center mx-auto text-[#25D366]">
+                    <CheckCircle2 size={36} />
+                  </div>
 
-                {/* Name Input */}
-                <div>
-                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                    Your Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter your name"
-                    value={form.name}
-                    onChange={(e) => {
-                      setForm({ ...form, name: e.target.value });
-                      if (nameError) setNameError(false);
-                    }}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
-                      nameError
-                        ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
-                        : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
-                    }`}
-                  />
-                  {nameError && (
-                    <p className="text-[12px] text-red-500 mt-1">Please enter your name</p>
-                  )}
-                </div>
+                  <div className="space-y-2">
+                    <h3 className="text-[20px] font-bold text-[#1C1C1E] dark:text-white">
+                      Inquiry Received!
+                    </h3>
+                    <p className="text-[14px] text-[#6E6E73] dark:text-[#A1A1A6] leading-relaxed max-w-xs mx-auto">
+                      Thank you! Our team has received your inquiry and will contact you shortly via WhatsApp or Email.
+                    </p>
+                  </div>
 
-                {/* Phone Number (Optional) */}
-                <div>
-                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                    Phone Number <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="e.g. +91 98765 43210 (Optional)"
-                    value={form.phone}
-                    onChange={(e) =>
-                      setForm({ ...form, phone: e.target.value.replace(/[^\d+\s-]/g, '') })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[14px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all"
-                  />
-                </div>
+                  <div className="p-3.5 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-2xl text-[12.5px] text-[#424245] dark:text-[#D2D2D7] text-left flex items-start gap-2.5">
+                    <ShieldCheck size={18} className="text-[#25D366] shrink-0 mt-0.5" />
+                    <span>
+                      Your inquiry has been logged securely in our system. You will receive an instant reply from a technical specialist.
+                    </span>
+                  </div>
 
-                {/* Custom Apple-Minimalist Dropdown ("What do you need help with?") */}
-                <div className="relative" ref={dropdownRef}>
-                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                    What do you need help with?
-                  </label>
                   <button
                     type="button"
-                    onClick={() => setIsDropdownOpen((prev) => !prev)}
-                    aria-haspopup="listbox"
-                    aria-expanded={isDropdownOpen}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] font-medium flex items-center justify-between text-left outline-none transition-all cursor-pointer ${
-                      isDropdownOpen
-                        ? 'border-[#25D366] ring-2 ring-[#25D366]/20 bg-white dark:bg-[#2C2C2E]'
-                        : 'border-[#E5E5EA] dark:border-[#3A3A3C] hover:border-[#D1D1D6] dark:hover:border-[#48484A]'
-                    }`}
+                    onClick={handleCloseModal}
+                    className="w-full py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-98 text-white font-semibold text-[14.5px] transition-all cursor-pointer shadow-sm"
                   >
-                    <span className="truncate pr-2">{form.service}</span>
-                    <ChevronDown
-                      size={16}
-                      className={`text-[#8E8E93] transition-transform duration-200 shrink-0 ml-1 ${
-                        isDropdownOpen ? 'rotate-180 text-[#25D366]' : ''
-                      }`}
-                    />
+                    Done
                   </button>
+                </div>
+              ) : (
+                /* Submission Form */
+                <form id="whatsapp-form" onSubmit={handleSubmit} className="space-y-4">
+                  {/* Header title */}
+                  <div className="pr-8 pb-1">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-[#25D366]/10 text-[#25D366] rounded-lg">
+                        <MessageCircle size={18} />
+                      </div>
+                      <h3 className="text-[17px] font-semibold text-[#1C1C1E] dark:text-white">
+                        WhatsApp Instant Inquiry
+                      </h3>
+                    </div>
+                    <p className="text-[13px] text-[#8E8E93] mt-1">
+                      Send your project requirement directly to our team
+                    </p>
+                  </div>
 
-                  {/* Custom Dropdown Options Menu */}
-                  {isDropdownOpen && (
-                    <div
-                      role="listbox"
-                      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#242426] rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.16)] border border-[#E5E5EA] dark:border-[#38383A] p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
-                    >
-                      {SERVICE_OPTIONS.map((opt) => {
-                        const isSelected = form.service === opt.name;
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            onClick={() => handleSelectService(opt.name)}
-                            className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13.5px] transition-all flex items-center justify-between cursor-pointer ${
-                              isSelected
-                                ? 'bg-[#E8F8EE] dark:bg-[#1C3627] text-[#0d7838] dark:text-[#25D366] font-semibold shadow-xs'
-                                : 'text-[#1C1C1E] dark:text-[#E5E5EA] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]'
-                            }`}
-                          >
-                            <span className="truncate pr-2">{opt.name}</span>
-                            {isSelected && <Check size={16} className="text-[#25D366] shrink-0" />}
-                          </button>
-                        );
-                      })}
+                  {serverError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-xl text-red-600 dark:text-red-400 text-[13px] flex items-center gap-2">
+                      <AlertCircle size={16} className="shrink-0" />
+                      <span>{serverError}</span>
                     </div>
                   )}
-                </div>
 
-                {/* Numeric Budget Input (₹) */}
-                <div>
-                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                    Estimated Budget (₹){' '}
-                    {selectedService.requiresBudget ? (
-                      <span className="text-red-500">*</span>
-                    ) : (
-                      <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93] font-medium text-[14px] pointer-events-none">
-                      ₹
-                    </span>
+                  {/* Name Input */}
+                  <div>
+                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                      Your Name <span className="text-red-500">*</span>
+                    </label>
                     <input
                       type="text"
-                      inputMode="numeric"
-                      placeholder={
-                        selectedService.requiresBudget
-                          ? 'Enter your budget'
-                          : 'Optional (or discuss on chat)'
-                      }
-                      value={form.budget}
-                      onChange={handleBudgetChange}
-                      className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
-                        budgetError
-                          ? 'border-red-500 focus:ring-2 focus:ring-red-500/20 bg-red-50/10'
+                      placeholder="Enter your name"
+                      value={form.name}
+                      onChange={(e) => {
+                        setForm({ ...form, name: e.target.value });
+                        if (nameError) setNameError(false);
+                      }}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
+                        nameError
+                          ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
                           : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
                       }`}
                     />
+                    {nameError && (
+                      <p className="text-[12px] text-red-500 mt-1">Please enter your name</p>
+                    )}
                   </div>
-                  {budgetError && (
-                    <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-red-500 font-medium">
-                      <AlertCircle size={14} className="shrink-0" />
-                      <span>{budgetError}</span>
+
+                  {/* Phone Number / Contact */}
+                  <div>
+                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                      Mobile Number / WhatsApp <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 9876543210 (Optional)"
+                      value={form.phone}
+                      onChange={(e) =>
+                        setForm({ ...form, phone: e.target.value.replace(/[^\d+\s-]/g, '') })
+                      }
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[14px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all"
+                    />
+                  </div>
+
+                  {/* Service Dropdown */}
+                  <div className="relative" ref={dropdownRef}>
+                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                      What do you need help with?
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsDropdownOpen((prev) => !prev)}
+                      aria-haspopup="listbox"
+                      aria-expanded={isDropdownOpen}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] font-medium flex items-center justify-between text-left outline-none transition-all cursor-pointer ${
+                        isDropdownOpen
+                          ? 'border-[#25D366] ring-2 ring-[#25D366]/20 bg-white dark:bg-[#2C2C2E]'
+                          : 'border-[#E5E5EA] dark:border-[#3A3A3C] hover:border-[#D1D1D6] dark:hover:border-[#48484A]'
+                      }`}
+                    >
+                      <span className="truncate pr-2">{form.service}</span>
+                      <ChevronDown
+                        size={16}
+                        className={`text-[#8E8E93] transition-transform duration-200 shrink-0 ml-1 ${
+                          isDropdownOpen ? 'rotate-180 text-[#25D366]' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {/* Custom Dropdown Options Menu */}
+                    {isDropdownOpen && (
+                      <div
+                        role="listbox"
+                        className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white dark:bg-[#242426] rounded-2xl shadow-[0_12px_32px_rgba(0,0,0,0.16)] border border-[#E5E5EA] dark:border-[#38383A] p-1.5 space-y-0.5 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md max-h-60 overflow-y-auto"
+                      >
+                        {SERVICE_OPTIONS.map((opt) => {
+                          const isSelected = form.service === opt.name;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => handleSelectService(opt.name)}
+                              className={`w-full text-left px-3.5 py-2.5 rounded-xl text-[13.5px] transition-all flex items-center justify-between cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#E8F8EE] dark:bg-[#1C3627] text-[#0d7838] dark:text-[#25D366] font-semibold shadow-xs'
+                                  : 'text-[#1C1C1E] dark:text-[#E5E5EA] hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]'
+                              }`}
+                            >
+                              <div className="flex flex-col truncate pr-2">
+                                <span className="font-medium truncate">{opt.name}</span>
+                              </div>
+                              {isSelected && <Check size={16} className="text-[#25D366] shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Budget Input (₹) */}
+                  <div>
+                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                      Estimated Budget (₹){' '}
+                      {selectedService.requiresBudget ? (
+                        <span className="text-red-500">*</span>
+                      ) : (
+                        <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
+                      )}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8E8E93] font-medium text-[14px] pointer-events-none">
+                        ₹
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder={
+                          selectedService.requiresBudget
+                            ? 'Enter estimated budget'
+                            : 'Optional'
+                        }
+                        value={form.budget}
+                        onChange={handleBudgetChange}
+                        className={`w-full pl-8 pr-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
+                          budgetError
+                            ? 'border-red-500 focus:ring-2 focus:ring-red-500/20 bg-red-50/10'
+                            : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
+                        }`}
+                      />
                     </div>
-                  )}
-                </div>
 
-                {/* Optional Short Message */}
-                <div>
-                  <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                    Note / Description <span className="text-[#8E8E93] font-normal">(Optional)</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="Brief details (or discuss directly on WhatsApp)..."
-                    value={form.message}
-                    onChange={(e) => setForm({ ...form, message: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all resize-none"
-                  />
-                </div>
+                    {budgetError && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-[12px] text-red-500 font-medium">
+                        <AlertCircle size={14} className="shrink-0" />
+                        <span>{budgetError}</span>
+                      </div>
+                    )}
+                  </div>
 
-                {/* Direct WhatsApp Submit Button */}
-                <button
-                  type="submit"
-                  className="w-full mt-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-98 text-white font-semibold text-[14.5px] flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-                >
-                  <MessageCircle size={18} className="fill-white" />
-                  <span>Start Chat</span>
-                  <ArrowRight size={16} />
-                </button>
-              </form>
+                  {/* Description / Message */}
+                  <div>
+                    <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
+                      Requirement Details <span className="text-[#8E8E93] font-normal">(Optional)</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Brief details about your project requirements..."
+                      value={form.message}
+                      onChange={(e) => setForm({ ...form, message: e.target.value })}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[13.5px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all resize-none"
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full mt-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] active:scale-98 text-white font-semibold text-[14.5px] flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer disabled:opacity-60"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>Sending Inquiry...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MessageCircle size={18} className="fill-white" />
+                        <span>Submit Inquiry</span>
+                        <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>

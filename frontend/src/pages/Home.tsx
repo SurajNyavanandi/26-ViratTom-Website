@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { ArrowRight, ArrowUpRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES } from '@/lib/utils';
+import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES, normalizeProjectType } from '@/lib/utils';
 import { Validation, type LeadFormValues, type LeadFormErrors } from '@/lib/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
@@ -153,15 +153,9 @@ export const Home = () => {
   }, []);
 
   const getProjectThreshold = useCallback((type: string) => {
-    return projectPrices[type] || PROJECT_MIN_PRICES[type] || 4999;
+    const norm = normalizeProjectType(type);
+    return projectPrices[norm] || projectPrices[type] || PROJECT_MIN_PRICES[norm] || PROJECT_MIN_PRICES[type] || 4999;
   }, [projectPrices]);
-
-  const isPhoneValid = Boolean(
-    formState.phone.length === 10 &&
-    ['6', '7', '8', '9'].includes(formState.phone[0]) &&
-    !/^(\d)\1{9}$/.test(formState.phone) &&
-    !['0123456789', '1234567890', '0987654321', '9876543210'].includes(formState.phone)
-  );
 
   // Handle URL hash scrolling (e.g. #services, #pricing, #projects, #contact)
   useEffect(() => {
@@ -181,12 +175,41 @@ export const Home = () => {
     }
   }, [location.hash, loading]);
 
+  const [hasSubmittedForm, setHasSubmittedForm] = useState(false);
+
   const handleFieldChange = (field: keyof LeadFormValues, val: string) => {
     const updated = { ...formState, [field]: val };
     setFormState(updated);
     if (error) setError('');
-    if (touchedFields[field]) {
+
+    if (field === 'projectType') {
+      const minThreshold = getProjectThreshold(val);
+      if (hasSubmittedForm && formState.budget) {
+        const num = Number(formState.budget);
+        if (!isNaN(num) && num > 0) {
+          if (num < minThreshold) {
+            setFieldErrors(prev => ({ ...prev, budget: `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.` }));
+          } else {
+            setFieldErrors(prev => ({ ...prev, budget: '' }));
+          }
+        }
+      }
+    } else if (field === 'budget') {
+      const num = Number(val);
       const minThreshold = getProjectThreshold(updated.projectType);
+      if (hasSubmittedForm) {
+        if (!val.trim()) {
+          setFieldErrors(prev => ({ ...prev, budget: 'Estimated budget is required.' }));
+        } else if (isNaN(num) || num <= 0) {
+          setFieldErrors(prev => ({ ...prev, budget: 'Please enter a positive estimated budget amount.' }));
+        } else if (num < minThreshold) {
+          setFieldErrors(prev => ({ ...prev, budget: `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.` }));
+        } else {
+          setFieldErrors(prev => ({ ...prev, budget: '' }));
+        }
+      }
+    } else if (touchedFields[field]) {
+      const minThreshold = hasSubmittedForm ? getProjectThreshold(updated.projectType) : undefined;
       const res = Validation.validateLeadForm(updated, minThreshold);
       setFieldErrors(prev => ({ ...prev, [field]: res.errors[field] || '' }));
     }
@@ -194,7 +217,7 @@ export const Home = () => {
 
   const handleFieldBlur = (field: keyof LeadFormValues) => {
     setTouchedFields(prev => ({ ...prev, [field]: true }));
-    const minThreshold = getProjectThreshold(formState.projectType);
+    const minThreshold = hasSubmittedForm ? getProjectThreshold(formState.projectType) : undefined;
     const res = Validation.validateLeadForm(formState, minThreshold);
     setFieldErrors(prev => ({ ...prev, [field]: res.errors[field] || '' }));
   };
@@ -203,6 +226,7 @@ export const Home = () => {
     e.preventDefault();
     if (formStatus === 'submitting') return; // Prevent duplicate submissions
     setError('');
+    setHasSubmittedForm(true);
 
     const minThreshold = getProjectThreshold(formState.projectType);
     const validationResult = Validation.validateLeadForm(formState, minThreshold);
@@ -1193,12 +1217,6 @@ export const Home = () => {
                     <label className="block text-[14px] font-medium text-apple-black">
                       Full Name <span className="text-apple-red">*</span>
                     </label>
-                    {touchedFields.name && !fieldErrors.name && formState.name.trim().length >= 2 && (
-                      <span className="text-[12px] font-medium text-emerald-600 flex items-center gap-1 animate-in fade-in">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Valid
-                      </span>
-                    )}
                   </div>
                   <Input 
                     ref={nameInputRef}
@@ -1228,12 +1246,6 @@ export const Home = () => {
                     <label className="block text-[14px] font-medium text-apple-black">
                       Email Address <span className="text-apple-red">*</span>
                     </label>
-                    {touchedFields.email && !fieldErrors.email && Validation.isValidEmail(formState.email) && (
-                      <span className="text-[12px] font-medium text-emerald-600 flex items-center gap-1 animate-in fade-in">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Valid Email
-                      </span>
-                    )}
                   </div>
                   <Input 
                     ref={emailInputRef}
@@ -1263,12 +1275,6 @@ export const Home = () => {
                     <label className="block text-[14px] font-medium text-apple-black">
                       Mobile Number <span className="text-apple-red">*</span>
                     </label>
-                    {isPhoneValid && (
-                      <span className="text-[12px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-in fade-in">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Valid 10-Digit Mobile
-                      </span>
-                    )}
                   </div>
                   <div className="relative">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[14px] text-apple-gray-400 font-medium z-10 pointer-events-none">
@@ -1280,11 +1286,9 @@ export const Home = () => {
                       required 
                       maxLength={10}
                       placeholder="10-digit mobile number"
-                      className={`pl-12 pr-10 rounded-xl transition-all ${
+                      className={`pl-12 rounded-xl transition-all ${
                         fieldErrors.phone
                           ? 'border-apple-red focus:border-apple-red focus:ring-apple-red/20 ring-1 ring-apple-red/20'
-                          : isPhoneValid
-                          ? 'border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/20 bg-emerald-50/15 dark:bg-emerald-950/10'
                           : ''
                       }`}
                       value={formState.phone} 
@@ -1294,11 +1298,6 @@ export const Home = () => {
                       }} 
                       onBlur={() => handleFieldBlur('phone')}
                     />
-                    {isPhoneValid && (
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-emerald-500 animate-in zoom-in-75">
-                        <CheckCircle className="h-4 w-4" />
-                      </div>
-                    )}
                   </div>
                   {fieldErrors.phone ? (
                     <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
@@ -1318,17 +1317,13 @@ export const Home = () => {
                     <label className="block text-[14px] font-medium text-apple-black">
                       Estimated Budget (INR) <span className="text-apple-red">*</span>
                     </label>
-                    <span className="text-[11.5px] text-apple-gray-400">
-                      Min: ₹{getProjectThreshold(formState.projectType).toLocaleString('en-IN')}
-                    </span>
                   </div>
                   <Input 
                     ref={budgetInputRef}
                     type="number" 
                     required 
-                    min={getProjectThreshold(formState.projectType)}
-                    max="300000"
-                    placeholder={`e.g. ${getProjectThreshold(formState.projectType)}`}
+                    max="3000000"
+                    placeholder="Enter estimated budget"
                     value={formState.budget} 
                     onChange={e => {
                       const val = e.target.value;
@@ -1336,8 +1331,8 @@ export const Home = () => {
                         handleFieldChange('budget', '');
                       } else {
                         const num = Number(val);
-                        if (!isNaN(num) && num > 300000) {
-                          handleFieldChange('budget', '300000');
+                        if (!isNaN(num) && num > 3000000) {
+                          handleFieldChange('budget', '3000000');
                         } else {
                           handleFieldChange('budget', val);
                         }
@@ -1350,51 +1345,37 @@ export const Home = () => {
                         : ''
                     }`}
                   />
-                  {fieldErrors.budget ? (
+                  {fieldErrors.budget && (
                     <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
                       <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                       {fieldErrors.budget}
                     </p>
-                  ) : (
-                    <p className="text-[11.5px] text-apple-gray-400 mt-1">
-                      Minimum ₹{getProjectThreshold(formState.projectType).toLocaleString('en-IN')} for {formState.projectType}.
-                    </p>
                   )}
                 </div>
 
-                {/* 6. Project Scope / Requirements (Mandatory, min 15 chars) */}
+                {/* 6. Project Scope / Requirements (Optional) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-[14px] font-medium text-apple-black">
-                      Project Scope / Requirements <span className="text-apple-red">*</span>
+                      Project Scope / Requirements <span className="text-apple-gray-400 font-normal text-[12px]">(Optional)</span>
                     </label>
-                    <span className={`text-[12px] font-medium transition-colors ${
-                      formState.scope.trim().length >= 15 ? 'text-emerald-600' : 'text-apple-gray-400'
-                    }`}>
-                      {formState.scope.trim().length}/15 chars min
-                    </span>
                   </div>
                   <textarea 
                     ref={scopeTextareaRef}
-                    required
-                    className={`flex min-h-28 w-full rounded-xl border bg-white px-3.5 py-2.5 text-[15px] placeholder:text-apple-gray-400 focus-visible:outline-none focus-visible:ring-2 leading-relaxed transition-all ${
+                    className={`flex min-h-24 w-full rounded-xl border bg-white px-3.5 py-2.5 text-[15px] placeholder:text-apple-gray-400 focus-visible:outline-none focus-visible:ring-2 leading-relaxed transition-all ${
                       fieldErrors.scope 
                         ? 'border-apple-red focus-visible:ring-apple-red/20 ring-1 ring-apple-red/20' 
                         : 'border-apple-gray-300 focus-visible:ring-apple-blue'
                     }`}
-                    placeholder="Describe what features you need, pages, timeline, or business goals (at least 15 characters)..."
+                    placeholder="Describe what features you need, pages, timeline, or business goals (optional)..."
                     value={formState.scope}
                     onChange={e => handleFieldChange('scope', e.target.value)}
                     onBlur={() => handleFieldBlur('scope')}
                   />
-                  {fieldErrors.scope ? (
+                  {fieldErrors.scope && (
                     <p className="text-[12px] text-apple-red mt-1.5 flex items-center gap-1.5 font-medium animate-in fade-in">
                       <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                       {fieldErrors.scope}
-                    </p>
-                  ) : (
-                    <p className="text-[11.5px] text-apple-gray-400 mt-1">
-                      Please provide at least 15 characters describing what you would like to build.
                     </p>
                   )}
                 </div>

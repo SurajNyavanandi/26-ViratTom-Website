@@ -35,6 +35,10 @@ const leadSchema = new mongoose.Schema(
       type: String,
       default: 'Static Website',
     },
+    source: {
+      type: String,
+      default: 'project_form',
+    },
     status: {
       type: String,
       enum: ['New', 'Contacted', 'In Progress', 'Converted', 'Archived'],

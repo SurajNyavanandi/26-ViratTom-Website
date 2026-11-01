@@ -160,6 +160,26 @@ const DEFAULT_PROJECT_PRICES = {
 
 let inMemoryProjectPrices = { ...DEFAULT_PROJECT_PRICES };
 
+const getBackendProjectThreshold = (typeOrService) => {
+  if (!typeOrService) return 0;
+  const str = String(typeOrService).toLowerCase();
+  if (str.includes('fix') || str.includes('question') || str.includes('resume')) return 0;
+  let matchedKey = null;
+  if (str.includes('static')) matchedKey = 'Static Website';
+  else if (str.includes('dynamic')) matchedKey = 'Dynamic Website';
+  else if (str.includes('store') || str.includes('ecommerce') || str.includes('e-commerce')) matchedKey = 'Online Store';
+  else if (str.includes('website + mobile') || str.includes('full_stack') || str.includes('full stack')) matchedKey = 'Website + Mobile App';
+  else if (str.includes('mobile') || str.includes('app')) matchedKey = 'Mobile App';
+  else {
+    matchedKey = Object.keys(inMemoryProjectPrices).find(k => k.toLowerCase() === str.toLowerCase());
+  }
+
+  if (matchedKey && inMemoryProjectPrices[matchedKey] !== undefined) {
+    return inMemoryProjectPrices[matchedKey];
+  }
+  return (matchedKey && DEFAULT_PROJECT_PRICES[matchedKey]) || 0;
+};
+
 const clientProjects = [
   {
     id: 'proj_1',
@@ -305,6 +325,7 @@ const sanitizeLeadData = (data = {}) => {
     service: String(data.service || data.projectType || 'Custom Application Development').trim().slice(0, 100),
     message: String(data.message || '').trim().slice(0, 2000),
     projectType: String(data.projectType || (isResume ? 'Resume User' : 'Static Website')).trim().slice(0, 100),
+    source: String(data.source || 'project_form').trim().slice(0, 50),
     whatsappVerified: Boolean(data.whatsappVerified),
     waId: String(data.waId || '').trim().slice(0, 30),
   };
@@ -345,8 +366,15 @@ const requestEmailOtpHandler = async (req, res) => {
     if (!numBudget || numBudget <= 0) {
       return res.status(400).json({ success: false, error: 'A positive estimated budget amount is required.' });
     }
-    if (!trimmedScope || trimmedScope.length < 15) {
-      return res.status(400).json({ success: false, error: 'Project scope / requirements description is required (at least 15 characters).' });
+    const minThreshold = getBackendProjectThreshold(trimmedType);
+    if (minThreshold > 0 && numBudget < minThreshold) {
+      return res.status(400).json({
+        success: false,
+        error: `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.`
+      });
+    }
+    if (trimmedScope && trimmedScope.length > 2000) {
+      return res.status(400).json({ success: false, error: 'Project scope must not exceed 2000 characters.' });
     }
   } else {
     if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
@@ -502,6 +530,14 @@ const verifyEmailOtpHandler = async (req, res) => {
     const sanitized = sanitizeLeadData({ ...finalLeadData, email: cleanEmail });
     const isResume = sanitized.projectType === 'Resume User';
 
+    const minThreshold = getBackendProjectThreshold(sanitized.projectType || sanitized.service);
+    if (!isResume && minThreshold > 0 && sanitized.budget < minThreshold) {
+      return res.status(400).json({
+        success: false,
+        error: `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.`
+      });
+    }
+
     // Persist Lead in MongoDB if connected (strictly whitelisted fields)
     if (isDbReady()) {
       try {
@@ -595,9 +631,173 @@ const verifyEmailOtpHandler = async (req, res) => {
 };
 
 // -------------------------------------------------------------
+// Website Visitor Tracking & Admin Analytics Stats
+// -------------------------------------------------------------
+let inMemoryPageViews = 1248;
+
+const trackVisit = async (req, res) => {
+  if (isDbReady()) {
+    try {
+      const stat = await SiteStat.findOneAndUpdate(
+        { key: 'page_views' },
+        { $inc: { value: 1 }, $set: { lastUpdated: new Date() } },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+      );
+      if (stat && typeof stat.value === 'number') {
+        inMemoryPageViews = stat.value;
+      } else {
+        inMemoryPageViews += 1;
+      }
+    } catch {
+      inMemoryPageViews += 1;
+    }
+  } else {
+    inMemoryPageViews += 1;
+  }
+  return res.json({ success: true, pageViews: inMemoryPageViews });
+};
+
+const getAdminStats = async (req, res) => {
+  let pageViews = inMemoryPageViews;
+  let projectLeads = 0;
+  let whatsappLeads = 0;
+  let totalLeads = 0;
+
+  if (isDbReady()) {
+    try {
+      const stat = await SiteStat.findOne({ key: 'page_views' });
+      if (stat && typeof stat.value === 'number') {
+        pageViews = stat.value;
+      }
+      totalLeads = await Lead.countDocuments();
+      whatsappLeads = await Lead.countDocuments({ source: 'whatsapp_widget' });
+      projectLeads = totalLeads - whatsappLeads;
+    } catch {
+      // Memory fallback
+    }
+  }
+
+  if (totalLeads === 0 && fallbackLeads.length > 0) {
+    totalLeads = fallbackLeads.length;
+    whatsappLeads = fallbackLeads.filter(l => l.source === 'whatsapp_widget').length;
+    projectLeads = totalLeads - whatsappLeads;
+  }
+
+  return res.json({
+    success: true,
+    pageViews,
+    totalLeads,
+    projectLeads,
+    whatsappLeads,
+  });
+};
+
+const submitWhatsAppLead = async (req, res) => {
+  const { name, phone, email, service, budget, message, projectType } = req.body || {};
+  const trimmedName = String(name || '').trim();
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const rawPhone = String(phone || '').replace(/\D/g, '');
+  const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : '';
+  const selectedService = String(service || projectType || 'Website Inquiry').trim();
+  const numBudget = Number(budget) || 0;
+  const noteMessage = String(message || '').trim();
+
+  if (!trimmedName || trimmedName.length < 2) {
+    return res.status(400).json({ success: false, error: 'Please enter your name.' });
+  }
+
+  const minThreshold = getBackendProjectThreshold(selectedService);
+  if (minThreshold > 0) {
+    if (!numBudget || numBudget <= 0) {
+      return res.status(400).json({ success: false, error: 'Please enter your estimated budget amount.' });
+    }
+    if (numBudget < minThreshold) {
+      return res.status(400).json({
+        success: false,
+        error: `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.`
+      });
+    }
+  }
+
+  const generatedEmail = cleanEmail || `${cleanPhone || Date.now()}@inquiry.virattom.com`;
+
+  const sanitized = sanitizeLeadData({
+    name: trimmedName,
+    email: generatedEmail,
+    phone: cleanPhone || 'N/A',
+    service: selectedService,
+    projectType: selectedService,
+    budget: numBudget,
+    scope: noteMessage || `WhatsApp Inquiry: ${selectedService}`,
+    message: noteMessage,
+    source: 'whatsapp_widget',
+    whatsappVerified: true,
+  });
+
+  let savedLead = null;
+  if (isDbReady()) {
+    try {
+      savedLead = await Lead.create({
+        name: sanitized.name,
+        email: sanitized.email,
+        phone: sanitized.phone,
+        company: sanitized.company,
+        budget: sanitized.budget,
+        scope: sanitized.scope,
+        service: sanitized.service,
+        message: sanitized.message,
+        projectType: sanitized.projectType,
+        source: 'whatsapp_widget',
+        verified: true,
+        whatsappVerified: true,
+        ipAddress: String(req.ip || '').slice(0, 45),
+      });
+    } catch (err) {
+      console.warn('[WhatsApp Lead DB Save Notice]', err.message);
+    }
+  }
+
+  if (!savedLead) {
+    savedLead = {
+      _id: String(fallbackIdCounter++),
+      ...sanitized,
+      source: 'whatsapp_widget',
+      verified: true,
+      createdAt: new Date().toISOString(),
+    };
+    fallbackLeads.unshift(savedLead);
+  }
+
+  dispatchAlert({
+    type: 'NEW_WHATSAPP_LEAD',
+    title: '💬 New WhatsApp Widget Inquiry',
+    message: `${trimmedName} (${cleanPhone || cleanEmail}) submitted a WhatsApp inquiry for "${selectedService}" (Budget: ₹${numBudget.toLocaleString('en-IN')})`,
+    meta: {
+      name: trimmedName,
+      phone: cleanPhone,
+      email: cleanEmail,
+      service: selectedService,
+      budget: numBudget,
+      message: noteMessage,
+      source: 'whatsapp_widget',
+    },
+  }).catch(() => {});
+
+  return res.json({
+    success: true,
+    message: 'Thank you! Our team has received your inquiry and will contact you shortly via WhatsApp or Email.',
+    lead: savedLead,
+  });
+};
+
+// -------------------------------------------------------------
 // Phone OTP & Lead Submission
 // -------------------------------------------------------------
 const submitLead = async (req, res) => {
+  if (req.body && req.body.source === 'whatsapp_widget') {
+    return submitWhatsAppLead(req, res);
+  }
+
   const { name, email, phone, service, budget, message, company, scope, projectType } = req.body || {};
   const cleanEmail = String(email || '').trim().toLowerCase();
   const rawPhone = String(phone || '').replace(/\D/g, '');
@@ -625,8 +825,15 @@ const submitLead = async (req, res) => {
   if (!numBudget || numBudget <= 0) {
     return res.status(400).json({ success: false, error: 'A positive estimated budget amount is required.' });
   }
-  if (!trimmedScope || trimmedScope.length < 15) {
-    return res.status(400).json({ success: false, error: 'Project scope / requirements description is required (at least 15 characters).' });
+  const minThreshold = getBackendProjectThreshold(trimmedType || service);
+  if (minThreshold > 0 && numBudget < minThreshold) {
+    return res.status(400).json({
+      success: false,
+      error: `Minimum budget for this project is ₹${minThreshold.toLocaleString('en-IN')}.`
+    });
+  }
+  if (trimmedScope && trimmedScope.length > 2000) {
+    return res.status(400).json({ success: false, error: 'Project scope must not exceed 2000 characters.' });
   }
 
   // Silent WhatsApp presence & valid mobile number check with 2s strict timeout
@@ -2211,5 +2418,8 @@ module.exports = {
   updateAdminProject,
   createAdminProject,
   deleteAdminProject,
+  trackVisit,
+  getAdminStats,
+  submitWhatsAppLead,
   syncFallbackData,
 };

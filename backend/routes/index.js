@@ -40,6 +40,9 @@ const {
   getProjectPrices,
   updateProjectPrices,
   getWhatsAppStatus,
+  trackVisit,
+  getAdminStats,
+  submitWhatsAppLead,
 } = require('../controllers/siteController');
 const { protectAdmin, protectClient } = require('../middleware/authMiddleware');
 const { dispatchAlert } = require('../services/alertService');
@@ -66,7 +69,9 @@ router.get('/config', (req, res) => {
     siteUrl,
   });
 });
+router.post('/track-visit', trackVisit);
 router.post('/lead', submitLead);
+router.post('/whatsapp-lead', submitWhatsAppLead);
 router.post('/lead/request-email-otp', requestEmailOtpHandler);
 router.post('/lead/verify-email-otp', verifyEmailOtpHandler);
 router.post('/verify-otp', verifyOtp);
@@ -103,6 +108,7 @@ router.post('/admin/forgot-password', requestAdminForgotPassword);
 router.post('/admin/reset-password', resetAdminPassword);
 router.post('/admin/change-password', protectAdmin, changeAdminPassword);
 router.get('/admin/leads', protectAdmin, getLeads);
+router.get('/admin/stats', protectAdmin, getAdminStats);
 router.get('/admin/projects', protectAdmin, getAdminProjects);
 router.put('/admin/projects/:id', protectAdmin, updateAdminProject);
 router.post('/admin/projects', protectAdmin, createAdminProject);

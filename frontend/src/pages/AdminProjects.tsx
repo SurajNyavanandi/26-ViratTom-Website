@@ -1,65 +1,118 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FolderKanban, 
-  Shield, 
-  Send, 
   CheckCircle2, 
   Plus, 
-  Check, 
-  Copy, 
-  FileText, 
-  Download, 
   ExternalLink, 
-  Smartphone, 
   Globe, 
-  Clock, 
   MessageSquare,
-  Sparkles,
   Save,
+  Trash2,
+  Check,
+  Edit2,
+  DollarSign,
   AlertCircle
 } from 'lucide-react';
-import type { ClientProject, Milestone } from '@/types';
-import { sanitizePhone, apiUrl } from '@/lib/utils';
+import type { ClientProject } from '@/types';
+import { formatCurrency, apiUrl } from '@/lib/utils';
 
 export const AdminProjects: React.FC = () => {
   const [projects, setProjects] = useState<ClientProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [clientPhone, setClientPhone] = useState('');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
-  const [phoneSaveSuccess, setPhoneSaveSuccess] = useState(false);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [newMilestoneText, setNewMilestoneText] = useState('');
-  const [notified, setNotified] = useState(false);
-  const [feedbackResolved, setFeedbackResolved] = useState(false);
+  
+  // Live App/Website URL state
+  const [liveUrl, setLiveUrl] = useState('');
+  const [isEditingUrl, setIsEditingUrl] = useState(false);
+  const [urlSavedSuccess, setUrlSavedSuccess] = useState(false);
+
+  // New Client Project Modal
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProjectTitle, setNewProjectTitle] = useState('');
   const [newProjectPhone, setNewProjectPhone] = useState('');
+  const [newProjectBudget, setNewProjectBudget] = useState('25000');
+  const [newProjectUrl, setNewProjectUrl] = useState('');
+
+  // Fetch projects on load
+  const fetchProjects = async () => {
+    const token = localStorage.getItem('admin_token') || '';
+    try {
+      const res = await fetch(apiUrl('/api/admin/projects'), {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setProjects(data);
+        const currentId = selectedProjectId || data[0].id;
+        setSelectedProjectId(currentId);
+        const active = data.find((p: any) => p.id === currentId) || data[0];
+        setClientPhone(active.clientPhone || '');
+        setLiveUrl(active.liveUrl || (active.deliverables && active.deliverables[0]?.url !== '#' ? active.deliverables[0].url : ''));
+      } else {
+        setProjects([]);
+      }
+    } catch (err) {
+      console.error('[AdminProjects] Fetch error:', err);
+    }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token') || '';
-    fetch(apiUrl('/api/admin/projects'), {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setProjects(data);
-          const first = data[0];
-          setSelectedProjectId(first.id);
-          setClientPhone(first.clientPhone || '');
-          if (first.milestones) setMilestones(first.milestones);
-        } else {
-          setProjects([]);
-        }
-      })
-      .catch(err => console.error('[AdminProjects] Fetch error:', err));
+    fetchProjects();
   }, []);
 
   const currentProject = projects.find(p => p.id === selectedProjectId) || projects[0] || null;
 
-  const handleTogglePortalAccess = async () => {
+  // Sync state when selected project changes
+  useEffect(() => {
+    if (currentProject) {
+      setClientPhone(currentProject.clientPhone || '');
+      const url = (currentProject as any).liveUrl || 
+                 (currentProject.deliverables && currentProject.deliverables[0]?.url !== '#' ? currentProject.deliverables[0].url : '');
+      setLiveUrl(url);
+    }
+  }, [selectedProjectId, currentProject]);
+
+  // Update Live App/Website URL
+  const handleSaveLiveUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProjectId) return;
+    const token = localStorage.getItem('admin_token') || '';
+    
+    let cleanUrl = liveUrl.trim();
+    if (cleanUrl && !cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+
+    try {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          liveUrl: cleanUrl,
+          deliverables: [
+            { name: 'Live Deployed Website / App', url: cleanUrl || '#', locked: false }
+          ]
+        })
+      });
+
+      setUrlSavedSuccess(true);
+      setIsEditingUrl(false);
+      setLiveUrl(cleanUrl);
+      setTimeout(() => setUrlSavedSuccess(false), 2500);
+      fetchProjects();
+    } catch (err) {
+      console.error('Error saving live URL:', err);
+    }
+  };
+
+  // Toggle Payment Status
+  const handleTogglePaymentStatus = async (field: 'advancePaid' | 'finalPaid') => {
     if (!currentProject) return;
-    const updatedApproved = currentProject.clientPortalApproved === false ? true : false;
+    const currentVal = Boolean((currentProject as any)[field]);
     const token = localStorage.getItem('admin_token') || '';
     try {
       await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
@@ -68,14 +121,64 @@ export const AdminProjects: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ clientPortalApproved: updatedApproved })
+        body: JSON.stringify({ [field]: !currentVal })
       });
-      setProjects(projects.map(p => p.id === selectedProjectId ? { ...p, clientPortalApproved: updatedApproved } : p));
+      fetchProjects();
     } catch (err) {
-      console.error('Error toggling client portal access:', err);
+      console.error('Error updating payment status:', err);
     }
   };
 
+  // Resolve / Fix Client Query
+  const handleToggleQueryStatus = async (queryId: number) => {
+    if (!currentProject) return;
+    const currentFeedback = currentProject.feedback || [];
+    const updatedFeedback = currentFeedback.map((item: any) => {
+      if (item.id === queryId) {
+        return { ...item, resolved: !item.resolved };
+      }
+      return item;
+    });
+
+    const token = localStorage.getItem('admin_token') || '';
+    try {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ feedback: updatedFeedback })
+      });
+      fetchProjects();
+    } catch (err) {
+      console.error('Error toggling query resolution:', err);
+    }
+  };
+
+  // Delete Client Query
+  const handleDeleteQuery = async (queryId: number) => {
+    if (!currentProject) return;
+    if (!window.confirm('Delete this client query?')) return;
+
+    const updatedFeedback = (currentProject.feedback || []).filter((item: any) => item.id !== queryId);
+    const token = localStorage.getItem('admin_token') || '';
+    try {
+      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ feedback: updatedFeedback })
+      });
+      fetchProjects();
+    } catch (err) {
+      console.error('Error deleting query:', err);
+    }
+  };
+
+  // Save Client Phone
   const handleSavePhone = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPhone = clientPhone.replace(/\D/g, '').slice(-10);
@@ -89,61 +192,24 @@ export const AdminProjects: React.FC = () => {
         },
         body: JSON.stringify({ clientPhone: cleanPhone })
       });
-      setPhoneSaveSuccess(true);
       setIsEditingPhone(false);
-      setTimeout(() => setPhoneSaveSuccess(false), 2500);
+      fetchProjects();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const toggleMilestone = async (id: number) => {
-    const updated = milestones.map(m => m.id === id ? { ...m, done: !m.done } : m);
-    setMilestones(updated);
-    const token = localStorage.getItem('admin_token') || '';
-    try {
-      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ milestones: updated })
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleAddMilestone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMilestoneText.trim()) return;
-    const updated = [
-      ...milestones,
-      { id: Date.now(), task: newMilestoneText.trim(), done: false }
-    ];
-    setMilestones(updated);
-    setNewMilestoneText('');
-    const token = localStorage.getItem('admin_token') || '';
-    try {
-      await fetch(apiUrl(`/api/admin/projects/${selectedProjectId}`), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ milestones: updated })
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
+  // Create New Client Project
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectTitle.trim() || !newProjectPhone.trim()) return;
     const token = localStorage.getItem('admin_token') || '';
     try {
+      let cleanUrl = newProjectUrl.trim();
+      if (cleanUrl && !cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+
       const res = await fetch(apiUrl('/api/admin/projects'), {
         method: 'POST',
         headers: {
@@ -152,74 +218,84 @@ export const AdminProjects: React.FC = () => {
         },
         body: JSON.stringify({
           title: newProjectTitle.trim(),
-          clientPhone: newProjectPhone.trim()
+          clientPhone: newProjectPhone.trim(),
+          totalBudget: Number(newProjectBudget) || 25000,
+          liveUrl: cleanUrl,
+          deliverables: [{ name: 'Live Deployed Website / App', url: cleanUrl || '#', locked: false }]
         })
       });
       const created = await res.json();
       if (created && created.id) {
-        setProjects(prev => [created, ...prev]);
-        setSelectedProjectId(created.id);
-        setClientPhone(created.clientPhone);
-        setMilestones(created.milestones || []);
         setShowAddProject(false);
         setNewProjectTitle('');
         setNewProjectPhone('');
+        setNewProjectBudget('25000');
+        setNewProjectUrl('');
+        setSelectedProjectId(created.id);
+        fetchProjects();
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleNotify = () => {
-    setNotified(true);
-    setTimeout(() => setNotified(false), 3000);
-  };
-
-  const completedCount = milestones.filter(m => m.done).length;
-  const progressPercent = Math.round((completedCount / (milestones.length || 1)) * 100);
+  const queries = currentProject?.feedback || [];
+  const pendingQueries = queries.filter((q: any) => !q.resolved);
+  const fixedQueries = queries.filter((q: any) => q.resolved);
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      
-      {/* ========================================================================= */}
-      {/* 🚀 PAGE TITLE & ACTIONS                                                   */}
-      {/* ========================================================================= */}
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
-            Active Projects
+          <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight text-apple-black dark:text-white">
+            Client Projects Management
           </h1>
+          <p className="text-[13px] text-apple-gray-500">
+            Manage client payments, update deployed app links, and resolve client queries.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowAddProject(true)}
-            className="px-4 py-2 rounded-xl bg-[#0071E3] text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-xs hover:bg-[#0077ED] transition-all cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New Project</span>
-          </button>
-          {projects.length > 0 && (
-            <span className="px-3 py-1.5 rounded-full bg-[#34C759]/10 text-[#34C759] text-[13px] font-semibold flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#34C759] animate-pulse" />
-              <span>{projects.length} Active {projects.length === 1 ? 'Project' : 'Projects'}</span>
-            </span>
-          )}
-        </div>
+        <button
+          onClick={() => setShowAddProject(true)}
+          className="px-4 py-2 rounded-xl bg-apple-blue text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-xs hover:bg-blue-600 transition-all cursor-pointer self-start sm:self-auto"
+        >
+          <Plus className="h-4 w-4" />
+          <span>New Client Project</span>
+        </button>
       </div>
+
+      {/* Project Selector Tabs */}
+      {projects.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {projects.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedProjectId(p.id)}
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                selectedProjectId === p.id
+                  ? 'bg-apple-blue text-white shadow-xs'
+                  : 'bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-50'
+              }`}
+            >
+              {p.title}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Add Project Modal */}
       {showAddProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-lg font-semibold text-apple-black dark:text-white">Create New Client Project</h3>
-            <form onSubmit={handleCreateProject} className="space-y-4">
+            <h3 className="text-lg font-bold text-apple-black dark:text-white">Create New Client Project</h3>
+            <form onSubmit={handleCreateProject} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-apple-gray-500 mb-1">Project Title</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Modern Web & Mobile Application"
+                  placeholder="e.g. Mana Drivers"
                   value={newProjectTitle}
                   onChange={e => setNewProjectTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-50 dark:bg-[#2C2C2E] text-black dark:text-white text-sm"
@@ -235,6 +311,26 @@ export const AdminProjects: React.FC = () => {
                   value={newProjectPhone}
                   onChange={e => setNewProjectPhone(e.target.value.replace(/\D/g, ''))}
                   className="w-full px-3 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-50 dark:bg-[#2C2C2E] text-black dark:text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray-500 mb-1">Total Budget (₹)</label>
+                <input
+                  type="number"
+                  required
+                  value={newProjectBudget}
+                  onChange={e => setNewProjectBudget(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-50 dark:bg-[#2C2C2E] text-black dark:text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-apple-gray-500 mb-1">Live Deployed URL (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. https://manadrivers.com"
+                  value={newProjectUrl}
+                  onChange={e => setNewProjectUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-apple-gray-50 dark:bg-[#2C2C2E] text-black dark:text-white text-sm font-mono"
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -257,467 +353,305 @@ export const AdminProjects: React.FC = () => {
         </div>
       )}
 
-      {/* Project Selector */}
-      {projects.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {projects.map(p => (
-            <button
-              key={p.id}
-              onClick={() => {
-                setSelectedProjectId(p.id);
-                setClientPhone(p.clientPhone || '');
-                if (p.milestones) setMilestones(p.milestones);
-              }}
-              className={`px-4 py-2 rounded-xl text-[13px] font-medium transition-all whitespace-nowrap ${
-                selectedProjectId === p.id
-                  ? 'bg-[#0071E3] text-white shadow-xs'
-                  : 'bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] text-[#555555] dark:text-[#A1A1A6]'
-              }`}
-            >
-              {p.title}
-            </button>
-          ))}
-        </div>
-      )}
-
       {!currentProject ? (
-        <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-12 text-center space-y-4">
+        <div className="rounded-3xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] p-12 text-center space-y-4">
           <FolderKanban className="h-12 w-12 text-apple-blue mx-auto opacity-70" />
-          <h2 className="text-[20px] font-semibold text-[#000000] dark:text-white">No Active Client Projects</h2>
+          <h2 className="text-[20px] font-bold text-apple-black dark:text-white">No Active Client Projects</h2>
           <p className="text-[14px] text-apple-gray-500 max-w-md mx-auto">
-            You haven't registered any client projects yet. Create a project to assign deliverables, milestones, and client access.
+            You haven't added any client projects yet. Create a project to manage client payment status, live URLs, and queries.
           </p>
           <button
             onClick={() => setShowAddProject(true)}
-            className="px-5 py-2.5 rounded-xl bg-[#0071E3] text-white text-[14px] font-semibold inline-flex items-center gap-2 shadow-xs cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-apple-blue text-white text-[14px] font-semibold inline-flex items-center gap-2 shadow-xs cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             <span>Create First Project</span>
           </button>
         </div>
       ) : (
-      /* ========================================================================= */
-      /* 📱 PRIMARY ACTIVE PROJECT CARD                                            */
-      /* ========================================================================= */
-      <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] shadow-[0_4px_16px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)] overflow-hidden">
-        
-        {/* Project Header Bar */}
-        <div className="p-5 sm:p-7 border-b border-[#E5E5EA] dark:border-[#38383A] bg-[#F5F5F7]/60 dark:bg-[#2C2C2E]/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-[#000000] dark:text-white">
+        /* MINIMALISTIC MAIN PROJECT CARD */
+        <div className="rounded-3xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] shadow-sm overflow-hidden space-y-6 p-6 sm:p-8">
+          
+          {/* Header Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-apple-gray-200 dark:border-[#38383A]">
+            <div>
+              <h2 className="text-[22px] font-bold text-apple-black dark:text-white">
                 {currentProject.title}
               </h2>
-              <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-[#34C759]/10 text-[#34C759]">
-                Stage: Milestone {completedCount} of {milestones.length}
-              </span>
-            </div>
-            
-            {/* Client Phone Management */}
-            <div className="flex items-center gap-3 flex-wrap text-[14px] text-[#555555] dark:text-[#A1A1A6]">
-              <span className="flex items-center gap-1.5">
-                <span>Client Mobile:</span>
+              <div className="flex items-center gap-2 text-[13px] text-apple-gray-500 mt-1">
+                <span>Client Contact:</span>
                 {isEditingPhone ? (
                   <form onSubmit={handleSavePhone} className="inline-flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-apple-gray-400">+91</span>
+                    <span className="font-semibold text-apple-gray-400">+91</span>
                     <input
                       type="tel"
                       maxLength={10}
                       value={clientPhone}
                       onChange={e => setClientPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      className="px-2 py-0.5 rounded border border-[#0071E3] text-[13px] bg-white dark:bg-[#2C2C2E] text-black dark:text-white w-28 focus:outline-none"
+                      className="px-2 py-0.5 rounded border border-apple-blue text-[13px] bg-white dark:bg-[#2C2C2E] text-black dark:text-white w-28 focus:outline-none"
                       autoFocus
                     />
-                    <button type="submit" className="px-2 py-0.5 rounded bg-[#0071E3] text-white text-[12px] font-semibold">
+                    <button type="submit" className="px-2 py-0.5 rounded bg-apple-blue text-white text-[12px] font-semibold">
                       Save
                     </button>
-                    <button type="button" onClick={() => setIsEditingPhone(false)} className="text-[12px] text-apple-gray-400 hover:text-black dark:hover:text-white">
+                    <button type="button" onClick={() => setIsEditingPhone(false)} className="text-[12px] text-apple-gray-400">
                       Cancel
                     </button>
                   </form>
                 ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <strong className="text-[#000000] dark:text-white font-semibold">
-                      +91 {clientPhone}
-                    </strong>
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-apple-black dark:text-white">
+                    +91 {clientPhone}
                     <button
                       onClick={() => setIsEditingPhone(true)}
-                      className="text-[12px] text-[#0071E3] hover:underline font-medium"
+                      className="text-[12px] text-apple-blue hover:underline font-medium ml-1"
                     >
-                      (Edit Phone)
+                      (Edit)
                     </button>
                   </span>
                 )}
-              </span>
-              {phoneSaveSuccess && (
-                <span className="text-[12px] text-apple-green font-semibold animate-fade-in">
-                  ✓ Saved
-                </span>
-              )}
+              </div>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3 pt-2 md:pt-0 flex-wrap">
-            <button
-              onClick={handleTogglePortalAccess}
-              className={`text-[12px] font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 ${
-                currentProject?.clientPortalApproved !== false
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 hover:bg-rose-500/20'
-              }`}
-              title="Only admin can enable/disable this client's portal access"
-            >
-              <span className={`h-2 w-2 rounded-full ${currentProject?.clientPortalApproved !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span>Portal: {currentProject?.clientPortalApproved !== false ? 'Approved' : 'Restricted (No Login)'}</span>
-            </button>
-
-            <span className="text-[13px] font-semibold text-[#0071E3] bg-[#0071E3]/10 px-3 py-1.5 rounded-xl">
-              {progressPercent}% Complete
-            </span>
-          </div>
-        </div>
-
-        {/* Progress Bar Strip */}
-        <div className="w-full bg-[#E5E5EA] dark:bg-[#2C2C2E] h-1.5">
-          <div 
-            className="bg-[#0071E3] h-1.5 transition-all duration-500 rounded-r-full"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        {/* Project Content Grid */}
-        <div className="p-5 sm:p-7 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-          
-          {/* Left Column: Interactive Milestone Engine */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[17px] font-semibold text-[#000000] dark:text-white flex items-center gap-2">
-                <FolderKanban className="h-4.5 w-4.5 text-[#0071E3]" />
-                <span>Milestone Engine</span>
-              </h3>
-              <span className="text-[13px] font-medium text-[#555555] dark:text-[#A1A1A6]">
-                {completedCount} of {milestones.length} Done
+            <div className="flex items-center gap-2">
+              <span className={`px-3 py-1 rounded-full text-[12px] font-bold ${
+                currentProject.advancePaid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
+              }`}>
+                {currentProject.advancePaid ? '✓ 20% Advance Received' : '⏳ Advance Payment Pending'}
               </span>
             </div>
-
-            <div className="space-y-2.5">
-              {milestones.map((m) => (
-                <div 
-                  key={m.id}
-                  onClick={() => toggleMilestone(m.id)}
-                  className={`flex items-start gap-3.5 p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer select-none ${
-                    m.done 
-                      ? 'bg-[#F5F5F7] dark:bg-[#2C2C2E]/40 border-[#E5E5EA] dark:border-[#38383A]' 
-                      : 'bg-white dark:bg-[#1C1C1E] border-[#D2D2D7] dark:border-[#38383A] hover:border-[#0071E3]'
-                  }`}
-                >
-                  <div className={`mt-0.5 h-5 w-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
-                    m.done ? 'bg-[#0071E3] text-white' : 'border border-[#A1A1A6] bg-transparent'
-                  }`}>
-                    {m.done && <Check className="h-3.5 w-3.5" />}
-                  </div>
-
-                  <span className={`text-[14px] leading-snug font-medium transition-all ${
-                    m.done ? 'line-through text-[#A1A1A6]' : 'text-[#000000] dark:text-white'
-                  }`}>
-                    {m.task}
-                  </span>
-                </div>
-              ))}
-
-              {/* Add Custom Milestone Input */}
-              <form onSubmit={handleAddMilestone} className="flex gap-2 pt-2">
-                <input
-                  type="text"
-                  value={newMilestoneText}
-                  onChange={e => setNewMilestoneText(e.target.value)}
-                  placeholder="Add next sprint milestone..."
-                  className="flex-1 min-h-[44px] px-3.5 py-2 rounded-xl border border-[#D2D2D7] dark:border-[#38383A] bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[14px] text-[#000000] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0071E3]"
-                />
-                <button
-                  type="submit"
-                  disabled={!newMilestoneText.trim()}
-                  className="min-h-[44px] px-4 rounded-xl bg-[#F5F5F7] dark:bg-[#2C2C2E] border border-[#D2D2D7] dark:border-[#38383A] text-[#000000] dark:text-white font-medium text-[13px] hover:bg-[#E5E5EA] transition-colors disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shrink-0"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Add</span>
-                </button>
-              </form>
-
-              {/* Notify Client Trigger */}
-              <button 
-                onClick={handleNotify} 
-                className="w-full mt-2 min-h-[48px] rounded-xl bg-[#0071E3] text-white font-medium text-[14px] hover:bg-[#0077ED] active:scale-[0.98] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
-              >
-                {notified ? (
-                  <>
-                    <CheckCircle2 className="h-4.5 w-4.5 text-[#34C759]" />
-                    <span className="text-white font-semibold">Live Notification Dispatched!</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    <span>Send Progress Notification to Client</span>
-                  </>
-                )}
-              </button>
-            </div>
           </div>
 
-          {/* Right Column: Client Feedback & Project Details */}
-          <div className="space-y-5">
+          {/* THREE CORE SECTIONS: 1. Payment Breakdown, 2. Live URL, 3. Client Queries */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Feedback Inspector */}
-            <div>
-              <h3 className="text-[17px] font-semibold text-[#000000] dark:text-white mb-3 flex items-center gap-2">
-                <MessageSquare className="h-4.5 w-4.5 text-[#0071E3]" />
-                <span>Client Feedback & Requests</span>
-              </h3>
+            {/* 1. Payment Breakdown Section */}
+            <div className="p-5 rounded-2xl bg-apple-gray-50 dark:bg-[#2C2C2E]/50 border border-apple-gray-200 dark:border-[#38383A] space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[16px] font-bold text-apple-black dark:text-white flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-emerald-600" />
+                  <span>1. Payment Details &amp; Status</span>
+                </h3>
+              </div>
 
-              <div className="p-4 sm:p-5 rounded-2xl bg-[#F5F5F7] dark:bg-[#2C2C2E]/60 border border-[#E5E5EA] dark:border-[#38383A] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#0071E3]">
-                    Client Change Request
-                  </span>
-                  <span className="text-[12px] text-[#A1A1A6]">
-                    Today at 11:30 AM
-                  </span>
+              <div className="space-y-3 text-[13.5px]">
+                <div className="flex justify-between items-center py-2 border-b border-apple-gray-200/60 dark:border-[#38383A]">
+                  <span className="text-apple-gray-500">Total Project Budget:</span>
+                  <strong className="text-[16px] font-bold text-apple-black dark:text-white">
+                    {formatCurrency(currentProject.totalBudget || 25000)}
+                  </strong>
                 </div>
 
-                <p className="text-[14px] text-[#000000] dark:text-white leading-relaxed italic">
-                  {feedbackResolved 
-                    ? "✓ Client feedback marked resolved. Changes verified in staging build."
-                    : '"Please ensure the checkout screen supports instant Google Pay & PhonePe UPI intent buttons."'}
-                </p>
+                <div className="flex justify-between items-center py-2 border-b border-apple-gray-200/60 dark:border-[#38383A]">
+                  <div>
+                    <span className="text-apple-gray-500">20% Advance Amount:</span>
+                    <span className="text-xs text-apple-gray-400 block">
+                      {formatCurrency(Math.round((currentProject.totalBudget || 25000) * 0.2))}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleTogglePaymentStatus('advancePaid')}
+                    className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+                      currentProject.advancePaid
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                    }`}
+                  >
+                    {currentProject.advancePaid ? '✓ Advance Paid' : 'Mark Advance Paid'}
+                  </button>
+                </div>
 
-                <div className="flex items-center gap-2 pt-2">
-                  {!feedbackResolved ? (
-                    <>
-                      <button
-                        onClick={() => setFeedbackResolved(true)}
-                        className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-[#34C759] text-white text-[13px] font-medium hover:bg-[#2EB84F] transition-colors cursor-pointer"
-                      >
-                        Mark Resolved
-                      </button>
-                      <button
-                        className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] text-[#555555] dark:text-[#A1A1A6] text-[13px] font-medium hover:text-[#000000] dark:hover:text-white transition-colors cursor-pointer"
-                      >
-                        Flag Out of Scope
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => setFeedbackResolved(false)}
-                      className="min-h-[38px] px-3.5 py-1.5 rounded-lg bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] text-[#0071E3] text-[13px] font-medium hover:bg-[#F5F5F7] transition-colors cursor-pointer"
-                    >
-                      Reopen Feedback
-                    </button>
-                  )}
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <span className="text-apple-gray-500">Final Balance Payment:</span>
+                    <span className="text-xs text-apple-gray-400 block">
+                      {formatCurrency(Math.round((currentProject.totalBudget || 25000) * 0.8))}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleTogglePaymentStatus('finalPaid')}
+                    className={`px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all cursor-pointer ${
+                      (currentProject as any).finalPaid
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'bg-apple-gray-200 dark:bg-[#38383A] text-apple-gray-700 dark:text-apple-gray-300'
+                    }`}
+                  >
+                    {(currentProject as any).finalPaid ? '✓ Final Paid' : 'Mark Final Paid'}
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Deliverables Info Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#F5F5F7] dark:bg-[#2C2C2E]/60 border border-[#E5E5EA] dark:border-[#38383A] space-y-3">
-              <h4 className="text-[14px] font-bold text-[#000000] dark:text-white">
-                Tech Stack & Target Platforms
-              </h4>
-              <div className="flex flex-wrap gap-2 text-[12px]">
-                <span className="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] font-medium text-[#000000] dark:text-white">
-                  📱 React Native (iOS & Android)
-                </span>
-                <span className="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] font-medium text-[#000000] dark:text-white">
-                  🌐 Next.js & Express API
-                </span>
-                <span className="px-3 py-1 rounded-full bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] font-medium text-[#000000] dark:text-white">
-                  ⚡ Razorpay & UPI Gateway
-                </span>
+            {/* 2. Live Deployed URL Section */}
+            <div className="p-5 rounded-2xl bg-apple-gray-50 dark:bg-[#2C2C2E]/50 border border-apple-gray-200 dark:border-[#38383A] space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[16px] font-bold text-apple-black dark:text-white flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-apple-blue" />
+                  <span>2. Live Deployed Website / App Link</span>
+                </h3>
+                {liveUrl && (
+                  <a
+                    href={liveUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[12px] font-semibold text-apple-blue hover:underline flex items-center gap-1"
+                  >
+                    <span>Visit Live</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-[12px] font-semibold text-apple-gray-500">
+                  Application Web Link URL
+                </label>
+                <form onSubmit={handleSaveLiveUrl} className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. https://manadrivers.com"
+                    value={liveUrl}
+                    onChange={(e) => setLiveUrl(e.target.value)}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-apple-gray-300 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] text-apple-black dark:text-white text-[13.5px] font-mono focus:outline-none focus:ring-2 focus:ring-apple-blue"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 rounded-xl bg-apple-blue text-white text-[13px] font-semibold hover:bg-blue-600 transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    <Save className="h-4 w-4" />
+                    <span>Save URL</span>
+                  </button>
+                </form>
+
+                {urlSavedSuccess && (
+                  <p className="text-[12px] text-emerald-600 font-semibold flex items-center gap-1 animate-in fade-in">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Live application URL updated successfully!
+                  </p>
+                )}
+
+                {liveUrl ? (
+                  <div className="p-3 rounded-xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-[12.5px] font-mono text-apple-blue truncate">
+                    {liveUrl}
+                  </div>
+                ) : (
+                  <p className="text-[12.5px] text-apple-gray-400 italic">
+                    No live URL assigned yet. Enter the deployed URL above to make it accessible in the client portal.
+                  </p>
+                )}
               </div>
             </div>
 
           </div>
+
+          {/* 3. Client Queries & Fixes Section */}
+          <div className="p-5 sm:p-6 rounded-2xl bg-apple-gray-50 dark:bg-[#2C2C2E]/50 border border-apple-gray-200 dark:border-[#38383A] space-y-4">
+            <div className="flex items-center justify-between border-b border-apple-gray-200 dark:border-[#38383A] pb-3">
+              <h3 className="text-[16px] font-bold text-apple-black dark:text-white flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-purple-600" />
+                <span>3. Client Queries &amp; Support Requests ({queries.length})</span>
+              </h3>
+              <span className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                {pendingQueries.length} Pending
+              </span>
+            </div>
+
+            {queries.length === 0 ? (
+              <div className="text-center py-8 text-apple-gray-400 text-[13.5px]">
+                No queries submitted by the client yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Pending Queries */}
+                {pendingQueries.length > 0 && (
+                  <div>
+                    <span className="text-[12px] font-bold uppercase tracking-wider text-amber-600 block mb-2">
+                      Pending Queries ({pendingQueries.length})
+                    </span>
+                    <div className="space-y-2.5">
+                      {pendingQueries.map((q: any) => (
+                        <div
+                          key={q.id}
+                          className="p-4 rounded-xl bg-white dark:bg-[#1C1C1E] border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
+                        >
+                          <div className="space-y-1">
+                            <p className="text-[13.5px] font-medium text-apple-black dark:text-white leading-relaxed">
+                              "{q.text}"
+                            </p>
+                            <span className="text-[11px] text-apple-gray-400 block font-mono">
+                              Received: {q.time || 'Recently'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleToggleQueryStatus(q.id)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[12.5px] font-semibold hover:bg-emerald-700 transition-all cursor-pointer flex items-center gap-1.5"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              <span>Fix / Mark Resolved</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQuery(q.id)}
+                              className="p-1.5 rounded-lg text-apple-red hover:bg-apple-red/10 border border-apple-red/20 cursor-pointer"
+                              title="Delete Query"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fixed / Resolved Queries */}
+                {fixedQueries.length > 0 && (
+                  <div className={pendingQueries.length > 0 ? 'pt-3 border-t border-apple-gray-200 dark:border-[#38383A]' : ''}>
+                    <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-600 block mb-2">
+                      Fixed &amp; Resolved Queries ({fixedQueries.length})
+                    </span>
+                    <div className="space-y-2">
+                      {fixedQueries.map((q: any) => (
+                        <div
+                          key={q.id}
+                          className="p-3.5 rounded-xl bg-white dark:bg-[#1C1C1E] border border-emerald-500/20 flex items-center justify-between gap-3 text-[13px] opacity-80 hover:opacity-100 transition-opacity"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <span className="line-through text-apple-gray-500 dark:text-apple-gray-400">
+                              "{q.text}"
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleToggleQueryStatus(q.id)}
+                              className="text-[11.5px] text-apple-blue font-semibold hover:underline cursor-pointer"
+                            >
+                              Reopen Query
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQuery(q.id)}
+                              className="p-1 rounded-md text-apple-red hover:bg-apple-red/10 cursor-pointer"
+                              title="Delete Query"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
         </div>
-      </div>
       )}
     </div>
   );
 };
 
 export const AdminHub: React.FC = () => {
-  const [copiedTemplate, setCopiedTemplate] = useState<string | null>(null);
-  const [savedVault, setSavedVault] = useState(false);
-  const [address, setAddress] = useState('ARC Building\nMadhapur, Kavuri Hills\nHyderabad, Telangana - 500081');
-  const [gst, setGst] = useState('36XXXXXXXXXX1Z5');
-  const [phone, setPhone] = useState('+91 98765 43210');
-
-  const templates = [
-    {
-      title: 'Master Web Launch Timeline (2-3 Weeks)',
-      desc: 'Week 1: Wireframes & Brand Approval • Week 2: Responsive Frontend & CMS • Week 3: Domain DNS & Live Launch',
-      tag: 'Web Standard'
-    },
-    {
-      title: 'Master Mobile App Timeline (8 Weeks)',
-      desc: 'Weeks 1-2: Architecture & Figma • Weeks 3-5: Core React Native Build • Weeks 6-7: API & QA • Week 8: App Store Submission',
-      tag: 'Mobile Standard'
-    },
-    {
-      title: 'Standard Agency Scope Agreement (NDA & Contract)',
-      desc: 'Includes 50% advance milestone, weekly demo sign-offs, and 30-day post-launch bug warranty terms.',
-      tag: 'Legal'
-    },
-    {
-      title: 'Resume Generator LaTeX & PDF Engine',
-      desc: 'ATS-optimized single-page format with clean typography for software engineers and executives.',
-      tag: 'Tooling'
-    }
-  ];
-
-  const handleCopyTemplate = (title: string, desc: string) => {
-    navigator.clipboard.writeText(`${title}\n\n${desc}`);
-    setCopiedTemplate(title);
-    setTimeout(() => setCopiedTemplate(null), 2000);
-  };
-
-  const handleSaveVault = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavedVault(true);
-    setTimeout(() => setSavedVault(false), 3000);
-  };
-
-  return (
-    <div className="space-y-6 sm:space-y-8">
-      
-      {/* Page Header */}
-      <div>
-        <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-[#000000] dark:text-[#FFFFFF] leading-tight">
-          Command Hub
-        </h1>
-      </div>
-
-      {/* Grid: Templates + Vault */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        
-        {/* Template Library */}
-        <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-5 sm:p-7 shadow-xs space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[19px] sm:text-[21px] font-semibold text-[#000000] dark:text-white flex items-center gap-2.5">
-              <FileText className="h-5 w-5 text-[#0071E3]" />
-              <span>Agency Templates</span>
-            </h2>
-            <span className="text-[12px] font-medium text-[#A1A1A6]">4 Blueprints</span>
-          </div>
-
-          <div className="space-y-3">
-            {templates.map((tmpl, i) => (
-              <div 
-                key={i} 
-                className="p-4 rounded-2xl bg-[#F5F5F7] dark:bg-[#2C2C2E]/60 border border-[#E5E5EA] dark:border-[#38383A] space-y-2 hover:border-[#0071E3] transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-semibold text-[15px] text-[#000000] dark:text-white leading-snug">
-                    {tmpl.title}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-white dark:bg-[#1C1C1E] text-[11px] font-medium text-[#555555] dark:text-[#A1A1A6] border border-[#E5E5EA] dark:border-[#38383A] shrink-0">
-                    {tmpl.tag}
-                  </span>
-                </div>
-
-                <p className="text-[13px] text-[#555555] dark:text-[#A1A1A6] leading-relaxed">
-                  {tmpl.desc}
-                </p>
-
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    onClick={() => handleCopyTemplate(tmpl.title, tmpl.desc)}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#0071E3] hover:underline cursor-pointer"
-                  >
-                    {copiedTemplate === tmpl.title ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 text-[#34C759]" />
-                        <span className="text-[#34C759]">Copied to Clipboard</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5" />
-                        <span>Copy Blueprint</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Agency Security Vault */}
-        <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-[#1C1C1E] border border-[#E5E5EA] dark:border-[#38383A] p-5 sm:p-7 shadow-xs space-y-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[19px] sm:text-[21px] font-semibold text-[#000000] dark:text-white flex items-center gap-2.5">
-              <Shield className="h-5 w-5 text-[#0071E3]" />
-              <span>Agency Business Vault</span>
-            </h2>
-            <span className="text-[12px] font-medium text-[#34C759] flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-[#34C759]" />
-              <span>Secured</span>
-            </span>
-          </div>
-
-          <form onSubmit={handleSaveVault} className="space-y-4">
-            <div>
-              <label className="block text-[13px] font-medium text-[#555555] dark:text-[#A1A1A6] mb-1.5">
-                Registered Agency Address
-              </label>
-              <textarea 
-                rows={3}
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                className="w-full rounded-xl border border-[#D2D2D7] dark:border-[#38383A] bg-[#F5F5F7] dark:bg-[#2C2C2E] p-3 text-[15px] text-[#000000] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0071E3] transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[13px] font-medium text-[#555555] dark:text-[#A1A1A6] mb-1.5">
-                GST / Tax Registration ID
-              </label>
-              <input 
-                type="text"
-                value={gst}
-                onChange={e => setGst(e.target.value)}
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-[#D2D2D7] dark:border-[#38383A] bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[15px] text-[#000000] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0071E3] transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[13px] font-medium text-[#555555] dark:text-[#A1A1A6] mb-1.5">
-                Official Agency Hotline
-              </label>
-              <input 
-                type="text"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border border-[#D2D2D7] dark:border-[#38383A] bg-[#F5F5F7] dark:bg-[#2C2C2E] text-[15px] text-[#000000] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0071E3] transition-all"
-              />
-            </div>
-
-            {savedVault && (
-              <div className="p-3.5 rounded-xl bg-[#34C759]/10 border border-[#34C759]/20 text-[#34C759] text-[13px] flex items-center gap-2">
-                <Check className="h-4 w-4 shrink-0" />
-                <span>Agency credentials and registered details updated successfully!</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="w-full min-h-[48px] rounded-xl bg-[#0071E3] text-white font-medium text-[14px] hover:bg-[#0077ED] active:scale-[0.98] transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-2"
-            >
-              <Save className="h-4 w-4" />
-              <span>Save Configuration</span>
-            </button>
-          </form>
-        </div>
-
-      </div>
-    </div>
-  );
+  return <AdminProjects />;
 };

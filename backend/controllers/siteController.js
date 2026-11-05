@@ -2054,24 +2054,87 @@ const createAdminProject = async (req, res) => {
 
 const updateAdminProject = async (req, res) => {
   const { id } = req.params;
-  const idQuery = mongoose.isValidObjectId(id) ? { $or: [{ id }, { _id: id }] } : { id };
-  let project = clientProjects.find((item) => item.id === id || String(item._id) === id);
+  const targetId = String(id || '').trim();
 
+  // Robust flexible memory lookup
+  let project = clientProjects.find((item) => {
+    if (!item) return false;
+    const itemId = String(item.id || item._id || '').trim();
+    return (
+      itemId === targetId ||
+      itemId === `proj_${targetId}` ||
+      targetId === `proj_${itemId}` ||
+      itemId.replace('proj_', '') === targetId.replace('proj_', '')
+    );
+  });
+
+  // Try 0-based or 1-based index if targetId is purely numeric
+  if (!project && !isNaN(Number(targetId))) {
+    const idx = Number(targetId);
+    if (clientProjects[idx - 1]) project = clientProjects[idx - 1];
+    else if (clientProjects[idx]) project = clientProjects[idx];
+  }
+
+  // Update in-memory object if found
   if (project) {
     Object.assign(project, req.body);
   }
 
+  // Database search conditions
+  const orConditions = [
+    { id: targetId },
+    { id: `proj_${targetId}` },
+    { id: targetId.replace('proj_', '') },
+  ];
+  if (mongoose.isValidObjectId(targetId)) {
+    orConditions.push({ _id: targetId });
+  }
+
   if (isDbReady()) {
     try {
-      const updated = await ClientProject.findOneAndUpdate(idQuery, req.body, { returnDocument: 'after' });
-      if (updated) project = updated;
-    } catch {
-      // Fallback
+      const updated = await ClientProject.findOneAndUpdate(
+        { $or: orConditions },
+        { $set: req.body },
+        { returnDocument: 'after', upsert: false }
+      );
+      if (updated) {
+        project = updated;
+      }
+    } catch (err) {
+      console.warn('[Admin Projects] Update Mongo error:', err.message);
     }
   }
 
+  // Fallback: If project not found anywhere, create or upsert a new record with this ID
   if (!project) {
-    return res.status(404).json({ error: 'Project not found' });
+    const newProject = {
+      id: targetId.startsWith('proj_') ? targetId : `proj_${targetId}`,
+      title: req.body.title || 'Client Project',
+      clientPhone: req.body.clientPhone || '9666635009',
+      clientEmail: req.body.clientEmail || '',
+      clientName: req.body.clientName || 'Client',
+      type: req.body.type || 'Web Application',
+      status: req.body.status || 'Active',
+      totalBudget: req.body.totalBudget || 25000,
+      advancePaid: Boolean(req.body.advancePaid),
+      finalPaid: Boolean(req.body.finalPaid),
+      liveUrl: req.body.liveUrl || '',
+      feedback: req.body.feedback || [],
+      milestones: req.body.milestones || [],
+      deliverables: req.body.deliverables || [],
+      ...req.body,
+    };
+
+    clientProjects.unshift(newProject);
+    project = newProject;
+
+    if (isDbReady()) {
+      try {
+        await ClientProject.create(newProject);
+      } catch (err) {
+        console.warn('[Admin Projects] Upsert Mongo error:', err.message);
+      }
+    }
   }
 
   return res.json(project);
@@ -2079,17 +2142,37 @@ const updateAdminProject = async (req, res) => {
 
 const deleteAdminProject = async (req, res) => {
   const { id } = req.params;
-  const idQuery = mongoose.isValidObjectId(id) ? { $or: [{ id }, { _id: id }] } : { id };
-  const index = clientProjects.findIndex((item) => item.id === id || String(item._id) === id);
+  const targetId = String(id || '').trim();
+
+  const index = clientProjects.findIndex((item) => {
+    if (!item) return false;
+    const itemId = String(item.id || item._id || '').trim();
+    return (
+      itemId === targetId ||
+      itemId === `proj_${targetId}` ||
+      targetId === `proj_${itemId}` ||
+      itemId.replace('proj_', '') === targetId.replace('proj_', '')
+    );
+  });
+
   if (index !== -1) {
     clientProjects.splice(index, 1);
   }
 
+  const orConditions = [
+    { id: targetId },
+    { id: `proj_${targetId}` },
+    { id: targetId.replace('proj_', '') },
+  ];
+  if (mongoose.isValidObjectId(targetId)) {
+    orConditions.push({ _id: targetId });
+  }
+
   if (isDbReady()) {
     try {
-      await ClientProject.deleteOne(idQuery);
-    } catch {
-      // Fallback
+      await ClientProject.deleteOne({ $or: orConditions });
+    } catch (err) {
+      console.warn('[Admin Projects] Delete Mongo error:', err.message);
     }
   }
 

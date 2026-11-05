@@ -42,6 +42,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { RecruiterOutreachSection } from '@/components/admin/RecruiterOutreachSection';
+import { AdminProjects } from '@/pages/AdminProjects';
 import type { Lead, ClientProject, PortfolioProject } from '@/types';
 import { formatCurrency, sanitizePhone, safeFetchJson, apiUrl } from '@/lib/utils';
 
@@ -552,47 +553,7 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* SECTION: Client Workspaces */}
-      {currentSection === 'projects' && (
-        <Card className="p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-apple-gray-200 dark:border-[#38383A]">
-            <h2 className="text-[18px] font-bold text-apple-black dark:text-white">
-              Client Project Workspaces ({projects.length})
-            </h2>
-            <Button onClick={() => setShowNewProjectModal(true)} className="h-9 px-4 rounded-xl gap-2">
-              <Plus className="h-4 w-4" /> Add New Client Project
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {projects.map((proj) => (
-              <Card key={proj.id} className="p-5 rounded-2xl border border-apple-gray-200 dark:border-[#38383A] space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-[16px] text-apple-black dark:text-white">{proj.title}</h3>
-                    <p className="text-[12.5px] text-apple-gray-500">Client: {proj.clientName} ({proj.clientPhone})</p>
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                    proj.advancePaid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
-                  }`}>
-                    {proj.advancePaid ? '20% Paid' : 'Pending 20%'}
-                  </span>
-                </div>
-
-                <div className="text-[13px] space-y-1 text-apple-gray-600 dark:text-apple-gray-300 pt-2 border-t border-apple-gray-200 dark:border-[#38383A]">
-                  <div className="flex justify-between">
-                    <span>Total Budget:</span>
-                    <strong>{formatCurrency(proj.totalBudget)}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Type:</span>
-                    <span>{proj.type}</span>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </Card>
-      )}
+      {currentSection === 'projects' && <AdminProjects />}
 
       {/* SECTION: Showcase Portfolio Projects CRUD */}
       {currentSection === 'portfolio' && (

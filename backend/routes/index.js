@@ -22,6 +22,9 @@ const {
   resetAdminPassword,
   changeAdminPassword,
   getLeads,
+  deleteLead,
+  updateLead,
+  getActivityLogs,
   requestEmailOtpHandler,
   verifyEmailOtpHandler,
   checkClientPhone,
@@ -37,6 +40,10 @@ const {
   updateAdminProject,
   createAdminProject,
   deleteAdminProject,
+  getAdminNotes,
+  createAdminNote,
+  updateAdminNote,
+  deleteAdminNote,
   getProjectPrices,
   updateProjectPrices,
   getWhatsAppStatus,
@@ -108,6 +115,9 @@ router.post('/admin/forgot-password', requestAdminForgotPassword);
 router.post('/admin/reset-password', resetAdminPassword);
 router.post('/admin/change-password', protectAdmin, changeAdminPassword);
 router.get('/admin/leads', protectAdmin, getLeads);
+router.delete('/admin/leads/:id', protectAdmin, deleteLead);
+router.put('/admin/leads/:id', protectAdmin, updateLead);
+router.get('/admin/logs', protectAdmin, getActivityLogs);
 router.get('/admin/stats', protectAdmin, getAdminStats);
 router.get('/admin/projects', protectAdmin, getAdminProjects);
 router.put('/admin/projects/:id', protectAdmin, updateAdminProject);
@@ -117,6 +127,12 @@ router.get('/admin/project-prices', protectAdmin, getProjectPrices);
 router.put('/admin/project-prices', protectAdmin, updateProjectPrices);
 router.post('/admin/project-prices', protectAdmin, updateProjectPrices);
 router.get('/admin/whatsapp-status', protectAdmin, getWhatsAppStatus);
+
+// Admin Notes API endpoints
+router.get('/admin/notes', protectAdmin, getAdminNotes);
+router.post('/admin/notes', protectAdmin, createAdminNote);
+router.put('/admin/notes/:id', protectAdmin, updateAdminNote);
+router.delete('/admin/notes/:id', protectAdmin, deleteAdminNote);
 
 // Admin trigger test alert
 router.post('/admin/test-alert', protectAdmin, async (req, res) => {

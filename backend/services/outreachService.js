@@ -1,12 +1,7 @@
-// ==============================================================================
-// TODO: Resume PDF email dispatch and recruiter outreach will be implemented in a future update.
-// For now, this service provides safe simulated responses to prevent UI breakage.
-// ==============================================================================
-
 const path = require('path');
 const fs = require('fs');
-
-const { FROM_EMAIL } = require('../lib/mailer');
+const nodemailer = require('nodemailer');
+const { FROM_EMAIL, sendMail } = require('../lib/mailer');
 
 const RESUME_PATHS = [
   path.join(process.cwd(), 'frontend', 'public', 'SurajNyavanandi-Resume.pdf'),
@@ -24,6 +19,18 @@ function getResumePath() {
     if (fs.existsSync(p)) return p;
   }
   return null;
+}
+
+function getGmailTransporter() {
+  const user = (process.env.GMAIL_USER || '').trim();
+  const pass = (process.env.GMAIL_APP_PASSWORD || '').trim();
+
+  if (!user || !pass || pass.includes('xxxx')) return null;
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  });
 }
 
 function getOutreachConfig() {
@@ -102,29 +109,139 @@ function generateWhatsAppLink(phoneNumber, type = 'fresher') {
   };
 }
 
-// TODO: Resume PDF email dispatch and recruiter outreach will be implemented in a future update.
 async function sendFresherEmail(emails) {
   const emailList = Array.isArray(emails) ? emails : [emails];
-  const validEmails = emailList.map(e => String(e).trim()).filter(e => e.includes('@'));
-  console.log(`[Outreach Service] Recruiter outreach paused for future implementation (Targets: ${validEmails.join(', ')})`);
+  const validEmails = emailList.map((e) => String(e).trim()).filter((e) => e.includes('@'));
+
+  if (validEmails.length === 0) {
+    return { success: false, message: 'No valid recipient email addresses provided.' };
+  }
+
+  const resumePath = getResumePath();
+  const attachments = resumePath
+    ? [
+        {
+          filename: 'SurajNyavanandi-Resume.pdf',
+          path: resumePath,
+          contentType: 'application/pdf',
+        },
+      ]
+    : [];
+
+  const html = getFresherEmailHtml();
+  const subject = 'Application for MERN Stack Developer Role - Suraj Nyavanandi';
+  const transporter = getGmailTransporter();
+
+  const results = [];
+  let successCount = 0;
+
+  for (const recipient of validEmails) {
+    if (transporter) {
+      try {
+        const fromAddr = process.env.GMAIL_USER || FROM_EMAIL;
+        const info = await transporter.sendMail({
+          from: `Suraj Nyavanandi <${fromAddr}>`,
+          to: recipient,
+          subject,
+          html,
+          attachments,
+        });
+        results.push({ email: recipient, success: true, messageId: info.messageId });
+        successCount++;
+      } catch (err) {
+        console.error(`[Gmail Dispatch Error] Failed to send to ${recipient}:`, err);
+        results.push({ email: recipient, success: false, error: err.message });
+      }
+    } else {
+      const mailerRes = await sendMail({ to: recipient, subject, html });
+      if (mailerRes.success) {
+        results.push({
+          email: recipient,
+          success: true,
+          simulated: mailerRes.simulated,
+          messageId: mailerRes.messageId,
+        });
+        successCount++;
+      } else {
+        results.push({ email: recipient, success: false, error: mailerRes.error || 'Failed to dispatch email' });
+      }
+    }
+  }
+
   return {
-    success: true,
-    simulated: true,
-    message: 'Recruiter outreach feature is paused for future implementation.',
-    results: validEmails.map(email => ({ email, success: true, simulated: true })),
+    success: successCount > 0,
+    message: transporter
+      ? `Dispatched fresher job applications to ${successCount} recruiter(s) via Gmail.`
+      : `Dispatched fresher applications to ${successCount} recipient(s). (Configure GMAIL_USER & GMAIL_APP_PASSWORD in .env for live Gmail delivery)`,
+    results,
   };
 }
 
-// TODO: Resume PDF email dispatch and recruiter outreach will be implemented in a future update.
 async function sendExperiencedEmail(emails) {
   const emailList = Array.isArray(emails) ? emails : [emails];
-  const validEmails = emailList.map(e => String(e).trim()).filter(e => e.includes('@'));
-  console.log(`[Outreach Service] Recruiter outreach paused for future implementation (Targets: ${validEmails.join(', ')})`);
+  const validEmails = emailList.map((e) => String(e).trim()).filter((e) => e.includes('@'));
+
+  if (validEmails.length === 0) {
+    return { success: false, message: 'No valid recipient email addresses provided.' };
+  }
+
+  const resumePath = getResumePath();
+  const attachments = resumePath
+    ? [
+        {
+          filename: 'SurajNyavanandi-Resume.pdf',
+          path: resumePath,
+          contentType: 'application/pdf',
+        },
+      ]
+    : [];
+
+  const html = getExperiencedEmailHtml();
+  const subject = 'Application for Full Stack Developer (React / Node / MERN) - Suraj Nyavanandi';
+  const transporter = getGmailTransporter();
+
+  const results = [];
+  let successCount = 0;
+
+  for (const recipient of validEmails) {
+    if (transporter) {
+      try {
+        const fromAddr = process.env.GMAIL_USER || FROM_EMAIL;
+        const info = await transporter.sendMail({
+          from: `Suraj Nyavanandi <${fromAddr}>`,
+          to: recipient,
+          subject,
+          html,
+          attachments,
+        });
+        results.push({ email: recipient, success: true, messageId: info.messageId });
+        successCount++;
+      } catch (err) {
+        console.error(`[Gmail Dispatch Error] Failed to send to ${recipient}:`, err);
+        results.push({ email: recipient, success: false, error: err.message });
+      }
+    } else {
+      const mailerRes = await sendMail({ to: recipient, subject, html });
+      if (mailerRes.success) {
+        results.push({
+          email: recipient,
+          success: true,
+          simulated: mailerRes.simulated,
+          messageId: mailerRes.messageId,
+        });
+        successCount++;
+      } else {
+        results.push({ email: recipient, success: false, error: err.message || 'Failed to dispatch email' });
+      }
+    }
+  }
+
   return {
-    success: true,
-    simulated: true,
-    message: 'Recruiter outreach feature is paused for future implementation.',
-    results: validEmails.map(email => ({ email, success: true, simulated: true })),
+    success: successCount > 0,
+    message: transporter
+      ? `Dispatched experienced job applications to ${successCount} recruiter(s) via Gmail.`
+      : `Dispatched experienced applications to ${successCount} recipient(s). (Configure GMAIL_USER & GMAIL_APP_PASSWORD in .env for live Gmail delivery)`,
+    results,
   };
 }
 

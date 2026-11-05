@@ -7,37 +7,42 @@ import { Input } from '@/components/ui/Input';
 import { 
   CheckCircle, 
   AlertCircle, 
-  FileText, 
   Clock, 
   Send, 
   ArrowRight, 
   LogOut, 
   ArrowLeft,
-  MapPin,
   CreditCard,
-  Plus,
-  ShieldCheck
+  ExternalLink,
+  Globe,
+  MessageSquare,
+  HelpCircle,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import type { ClientProject } from '@/types';
 import { Validation } from '@/utils/validation';
 import { usePaymentMethods } from '@/hooks/usePaymentMethods';
-import { DeliveryAddressFormModal } from '@/components/modals/DeliveryAddressFormModal';
-import type { AddressFormData } from '@/hooks/useAddressForm';
-import { apiUrl } from '@/utils/utils';
+import { apiUrl, formatCurrency } from '@/utils/utils';
+
+interface ProjectQueryItem {
+  id: string | number;
+  text: string;
+  response?: string;
+  status: 'pending' | 'fixed' | 'current';
+  createdAt: string;
+}
 
 export const ClientDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [feedbackForm, setFeedbackForm] = useState({ area: '', description: '' });
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<ClientProject | null>(null);
   const [projects, setProjects] = useState<ClientProject[]>([]);
-
-  // Modals state
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [savedAddress, setSavedAddress] = useState<AddressFormData | null>(() => {
-    return Validation.getStorageItem<AddressFormData | null>('virattom_client_delivery_address', null);
-  });
+  
+  // Query submission state
+  const [newQueryText, setNewQueryText] = useState('');
+  const [submittingQuery, setSubmittingQuery] = useState(false);
+  const [queryCategoryFilter, setQueryCategoryFilter] = useState<'all' | 'pending' | 'fixed'>('all');
+  const [querySuccessNotice, setQuerySuccessNotice] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -47,7 +52,6 @@ export const ClientDashboard: React.FC = () => {
     errorMessage: paymentError,
     successMessage: paymentSuccessMsg,
     processProjectAdvance,
-    savedMethods,
   } = usePaymentMethods();
 
   const handleLogout = useCallback(() => {
@@ -64,7 +68,6 @@ export const ClientDashboard: React.FC = () => {
     }
 
     try {
-      // 1. Fetch all projects belonging to this client
       const projectsRes = await fetch(apiUrl('/api/client/projects'), {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -79,7 +82,6 @@ export const ClientDashboard: React.FC = () => {
       const projectList: ClientProject[] = projectsData.projects || [];
       setProjects(projectList);
 
-      // 2. Fetch specific or active project
       const targetId = selectedId || localStorage.getItem('selected_project_id') || projectList[0]?.id || '';
       const projectUrl = targetId ? apiUrl(`/api/client/project?projectId=${targetId}`) : apiUrl('/api/client/project');
       const projectRes = await fetch(projectUrl, {
@@ -126,13 +128,12 @@ export const ClientDashboard: React.FC = () => {
     });
   }, [project, processProjectAdvance]);
 
-  const handleSaveAddress = useCallback((address: AddressFormData) => {
-    setSavedAddress(address);
-    Validation.setStorageItem('virattom_client_delivery_address', address);
-  }, []);
-
-  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+  const handleSendQuery = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newQueryText.trim()) return;
+    setSubmittingQuery(true);
+    setQuerySuccessNotice(null);
+
     const token = localStorage.getItem('client_token');
     try {
       const res = await fetch(apiUrl('/api/client/feedback'), {
@@ -141,16 +142,20 @@ export const ClientDashboard: React.FC = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token || ''}`,
         },
-        body: JSON.stringify({ text: `[${feedbackForm.area}] ${feedbackForm.description}` }),
+        body: JSON.stringify({ text: newQueryText.trim() }),
       });
       const data = await res.json();
       if (data.success && data.project) {
         setProject(data.project);
+        setNewQueryText('');
+        setQuerySuccessNotice('Your query has been sent to our admin team!');
+        setTimeout(() => setQuerySuccessNotice(null), 4000);
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setSubmittingQuery(false);
     }
-    setFeedbackSubmitted(true);
   };
 
   const renderDashboardHeader = () => (
@@ -159,7 +164,7 @@ export const ClientDashboard: React.FC = () => {
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-apple-gray-100 dark:bg-[#2C2C2E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white transition-all cursor-pointer"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl bg-apple-gray-100 dark:bg-[#2C2C2E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:text-apple-black dark:hover:text-white transition-all cursor-pointer"
             title="Back to Home"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -169,7 +174,7 @@ export const ClientDashboard: React.FC = () => {
             <span className="font-bold text-apple-blue">A</span>T TO
             <span className="font-bold text-apple-blue">M</span>
             <span className="ml-2 px-2 py-0.5 text-[10px] rounded-md bg-apple-blue/10 text-apple-blue font-bold uppercase tracking-wider">
-              Client
+              Client Portal
             </span>
           </span>
         </div>
@@ -196,7 +201,7 @@ export const ClientDashboard: React.FC = () => {
 
           <button
             onClick={handleLogout}
-            className="min-h-[44px] inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-medium text-apple-red hover:bg-apple-red/10 transition-colors cursor-pointer"
+            className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-medium text-apple-red hover:bg-apple-red/10 transition-colors cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden sm:inline">Sign Out</span>
@@ -211,7 +216,7 @@ export const ClientDashboard: React.FC = () => {
       <div className="min-h-screen flex flex-col bg-white dark:bg-apple-black text-apple-black dark:text-white antialiased">
         {renderDashboardHeader()}
         <div className="flex-1 flex items-center justify-center py-20 text-center text-apple-gray-400">
-          Loading project workspace from server...
+          Loading client workspace...
         </div>
       </div>
     );
@@ -228,7 +233,7 @@ export const ClientDashboard: React.FC = () => {
             </div>
             <h2 className="text-[20px] font-semibold text-apple-black dark:text-white">No Project Found</h2>
             <p className="text-[14px] text-apple-gray-500">
-              No active project is linked to this mobile number.
+              No active project is linked to this account.
             </p>
             <Button onClick={() => (window.location.href = '/')}>Back to Home</Button>
           </div>
@@ -237,447 +242,287 @@ export const ClientDashboard: React.FC = () => {
     );
   }
 
-  const totalBudget = project.totalBudget || 0;
+  const totalBudget = project.totalBudget || 25000;
   const advanceAmount = project.advanceAmount || Validation.calculateAdvance(totalBudget, 20);
   const remainingAmount = Math.max(0, totalBudget - advanceAmount);
 
-  // If 20% advance is not yet paid, present the 20% Booking Gate
-  if (!project.advancePaid) {
-    return (
-      <div className="min-h-screen flex flex-col bg-white dark:bg-apple-black text-apple-black dark:text-white antialiased">
-        {renderDashboardHeader()}
-        <div className="max-w-2xl w-full mx-auto space-y-6 py-8 px-4 sm:px-6">
-          {paymentSuccessMsg && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium text-center flex items-center justify-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              <span>{paymentSuccessMsg}</span>
-            </div>
-          )}
+  // Extract queries / feedback items
+  const rawQueries = (project.feedback || []).map((f: any) => {
+    const isFixed = f.resolved || f.text.toLowerCase().includes('[resolved]') || f.text.toLowerCase().includes('[fixed]');
+    return {
+      id: f.id || Math.random().toString(),
+      text: f.text.replace(/\[resolved\]|\[fixed\]/gi, '').trim(),
+      response: f.response || (isFixed ? 'Resolved and updated on your live project.' : undefined),
+      status: isFixed ? 'fixed' : 'pending',
+      createdAt: f.time || 'Recently',
+    } as ProjectQueryItem;
+  });
 
-          {paymentError && (
-            <div className="p-4 rounded-2xl bg-apple-red/10 border border-apple-red/20 text-apple-red font-medium text-center flex items-center justify-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              <span>{paymentError}</span>
-            </div>
-          )}
+  const filteredQueries = rawQueries.filter((q) => {
+    if (queryCategoryFilter === 'pending') return q.status === 'pending';
+    if (queryCategoryFilter === 'fixed') return q.status === 'fixed';
+    return true;
+  });
 
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <h1 className="text-[26px] sm:text-[32px] font-semibold tracking-tight text-apple-black dark:text-white">
+  // Find live link deliverable if available
+  const liveDeliverable = (project.deliverables || []).find(
+    (d: any) => d.url && d.url.startsWith('http') && !d.url.includes('#')
+  );
+  const liveUrl = liveDeliverable?.url || 'https://virattom.com';
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FBFBFD] dark:bg-apple-black text-apple-black dark:text-white antialiased">
+      {renderDashboardHeader()}
+
+      <main className="flex-1 mx-auto max-w-4xl w-full px-4 sm:px-6 py-8 space-y-8">
+        {/* Workspace Title & Status */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-[#1C1C1E] p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-2xs">
+          <div>
+            <span className="text-[12px] font-semibold text-apple-blue uppercase tracking-wider block mb-1">
+              {project.type || 'Custom Application'}
+            </span>
+            <h1 className="text-[22px] sm:text-[28px] font-semibold tracking-tight text-apple-black dark:text-white">
               {project.title}
             </h1>
-            <p className="text-[14px] text-apple-gray-500 dark:text-apple-gray-400">
-              20% advance booking required to activate workspace.
+            <p className="text-[13px] text-apple-gray-500 mt-1">
+              Client: <strong className="text-apple-black dark:text-white font-medium">{project.clientName || 'Valued Client'}</strong> ({project.clientPhone})
             </p>
           </div>
+          <div className="self-start sm:self-auto flex items-center gap-2">
+            <span className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-semibold inline-flex items-center gap-1.5 ${
+              project.advancePaid
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : 'bg-amber-500/10 text-amber-600'
+            }`}>
+              <span className={`h-2 w-2 rounded-full ${project.advancePaid ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
+              {project.advancePaid ? '20% Advance Confirmed' : '20% Advance Pending'}
+            </span>
+          </div>
+        </div>
 
-          {/* 20% Advance Breakdown Card */}
-          <Card className="p-6 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-md space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-2xl bg-apple-gray-50 dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A]">
-              <div>
-                <span className="text-[12px] text-apple-gray-400 font-medium uppercase tracking-wider block mb-1">
-                  Total
+        {paymentSuccessMsg && (
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-medium text-center flex items-center justify-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            <span>{paymentSuccessMsg}</span>
+          </div>
+        )}
+
+        {paymentError && (
+          <div className="p-4 rounded-2xl bg-apple-red/10 border border-apple-red/20 text-apple-red font-medium text-center flex items-center justify-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            <span>{paymentError}</span>
+          </div>
+        )}
+
+        {/* SECTION 1: Payment Breakdown & Status */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5 text-apple-blue" />
+            <h2 className="text-[18px] font-semibold text-apple-black dark:text-white">
+              1. Payment Breakdown &amp; Financial Status
+            </h2>
+          </div>
+
+          <Card className="p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] shadow-2xs space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-apple-gray-50 dark:bg-[#2C2C2E]/60 border border-apple-gray-200/80 dark:border-[#38383A]">
+                <span className="text-[11.5px] text-apple-gray-500 uppercase tracking-wider font-semibold block mb-1">
+                  Total Budget
                 </span>
-                <span className="text-[19px] font-semibold text-apple-black dark:text-white">
-                  {Validation.formatCurrency(totalBudget)}
+                <span className="text-[22px] font-bold text-apple-black dark:text-white">
+                  {formatCurrency(totalBudget)}
                 </span>
               </div>
-              <div className="sm:border-l sm:border-r border-apple-gray-200 dark:border-[#38383A] sm:px-4">
-                <span className="text-[12px] text-apple-blue font-medium uppercase tracking-wider block mb-1">
-                  20% Advance
+
+              <div className="p-4 rounded-2xl bg-apple-blue/5 dark:bg-apple-blue/10 border border-apple-blue/20">
+                <span className="text-[11.5px] text-apple-blue uppercase tracking-wider font-semibold block mb-1">
+                  20% Advance Booking
                 </span>
-                <span className="text-[20px] font-semibold text-apple-blue">
-                  {Validation.formatCurrency(advanceAmount)}
-                </span>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[22px] font-bold text-apple-blue">
+                    {formatCurrency(advanceAmount)}
+                  </span>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${
+                    project.advancePaid ? 'bg-emerald-500/15 text-emerald-600' : 'bg-amber-500/15 text-amber-600'
+                  }`}>
+                    {project.advancePaid ? 'PAID' : 'DUE'}
+                  </span>
+                </div>
               </div>
-              <div>
-                <span className="text-[12px] text-apple-gray-400 font-medium uppercase tracking-wider block mb-1">
-                  On Delivery
+
+              <div className="p-4 rounded-2xl bg-apple-gray-50 dark:bg-[#2C2C2E]/60 border border-apple-gray-200/80 dark:border-[#38383A]">
+                <span className="text-[11.5px] text-apple-gray-500 uppercase tracking-wider font-semibold block mb-1">
+                  Balance on Handover (80%)
                 </span>
-                <span className="text-[19px] font-semibold text-apple-gray-600 dark:text-apple-gray-300">
-                  {Validation.formatCurrency(remainingAmount)}
+                <span className="text-[22px] font-bold text-apple-gray-700 dark:text-apple-gray-300">
+                  {formatCurrency(remainingAmount)}
                 </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
+            {!project.advancePaid && (
               <Button
                 onClick={handlePayAdvance}
-                className="w-full h-12 rounded-2xl text-[15px] font-medium gap-2 shadow-md shadow-apple-blue/20"
+                className="w-full h-12 rounded-2xl text-[15px] font-semibold gap-2 shadow-md shadow-apple-blue/20"
                 isLoading={paymentProcessing}
                 disabled={paymentProcessing}
               >
                 <CreditCard className="h-4 w-4" />
-                <span>Pay {Validation.formatCurrency(advanceAmount)} Advance</span>
+                <span>Pay {formatCurrency(advanceAmount)} Advance Now</span>
                 <ArrowRight className="h-4 w-4 ml-auto" />
               </Button>
-            </div>
+            )}
           </Card>
-        </div>
-      </div>
-    );
-  }
+        </section>
 
-  // If 20% advance is paid, render full client dashboard
-  return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-apple-black text-apple-black dark:text-white antialiased">
-      {renderDashboardHeader()}
-      <main className="flex-1 mx-auto max-w-5xl w-full px-4 sm:px-6 py-8">
-        <div className="space-y-6 sm:space-y-8">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-[24px] sm:text-[30px] font-semibold tracking-tight text-apple-black dark:text-white">
-                {project.title}
-              </h1>
-              <p className="text-[13px] text-apple-gray-500 mt-1">
-                Total Budget: {Validation.formatCurrency(totalBudget)} • 20% Advance:{' '}
-                {Validation.formatCurrency(advanceAmount)} (Paid)
-              </p>
-            </div>
-            <span className="self-start sm:self-auto px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[13px] font-medium inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {project.status || 'Active'}
-            </span>
+        {/* SECTION 2: Live Deployed Link */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Globe className="h-5 w-5 text-apple-blue" />
+            <h2 className="text-[18px] font-semibold text-apple-black dark:text-white">
+              2. Live Deployed Web Application
+            </h2>
           </div>
 
-          {/* Responsive Horizontal Tabs */}
-          <div className="border-b border-apple-gray-200 dark:border-[#38383A] overflow-x-auto no-scrollbar">
-            <div className="flex space-x-6 sm:space-x-8 min-w-max pb-px">
-              {[
-                { id: 'overview', label: 'Timeline & Milestones' },
-                { id: 'billing', label: 'Billing & Invoices' },
-                { id: 'feedback', label: 'Change Requests' },
-                { id: 'vault', label: 'Deliverables' },
-              ].map((tab) => (
+          <Card className="p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Active Cloud Deployment
+                </span>
+                <h3 className="text-[16px] font-semibold text-apple-black dark:text-white">
+                  {project.title} Preview URL
+                </h3>
+                <p className="text-[13px] text-apple-gray-500 font-mono underline truncate max-w-md">
+                  {liveUrl}
+                </p>
+              </div>
+
+              <a
+                href={liveUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-apple-black dark:bg-white text-white dark:text-apple-black hover:opacity-90 font-semibold text-[13.5px] shadow-sm transition-all shrink-0 cursor-pointer"
+              >
+                <span>Open Live Project</span>
+                <ExternalLink className="h-4 w-4" />
+              </a>
+            </div>
+          </Card>
+        </section>
+
+        {/* SECTION 3: Project Queries */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5 text-apple-blue" />
+              <h2 className="text-[18px] font-semibold text-apple-black dark:text-white">
+                3. Project Queries &amp; Support
+              </h2>
+            </div>
+
+            {/* Filter pills */}
+            <div className="flex items-center gap-1 bg-apple-gray-100 dark:bg-[#2C2C2E] p-1 rounded-xl border border-apple-gray-200/80 dark:border-[#38383A]">
+              {(['all', 'pending', 'fixed'] as const).map((filter) => (
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`relative pb-3 text-[14px] sm:text-[15px] font-medium whitespace-nowrap cursor-pointer transition-colors ${
-                    activeTab === tab.id
-                      ? 'text-apple-blue font-semibold'
-                      : 'text-apple-gray-500 hover:text-black dark:hover:text-white'
+                  key={filter}
+                  onClick={() => setQueryCategoryFilter(filter)}
+                  className={`px-3 py-1 text-[12px] font-semibold rounded-lg capitalize transition-all cursor-pointer ${
+                    queryCategoryFilter === filter
+                      ? 'bg-white dark:bg-[#1C1C1E] text-apple-black dark:text-white shadow-2xs'
+                      : 'text-apple-gray-500 hover:text-apple-black dark:hover:text-white'
                   }`}
                 >
-                  <span>{tab.label}</span>
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="clientDashboardTab"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-apple-blue"
-                      transition={{ type: 'spring', stiffness: 500, damping: 38 }}
-                    />
-                  )}
+                  {filter}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Animated Tab Panes */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            >
-              {/* Tab: Overview */}
-              {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-              <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
-                  Project Milestones
-                </h2>
-                <Card className="p-0 overflow-hidden border border-apple-gray-200 dark:border-[#38383A]">
-                  <div className="divide-y divide-apple-gray-200 dark:divide-[#38383A]">
-                    {project.milestones && project.milestones.length > 0 ? (
-                      project.milestones.map((m: any, i: number) => (
-                        <div
-                          key={i}
-                          className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                        >
-                          <div className="flex items-center gap-3.5">
-                            {m.completed ? (
-                              <CheckCircle className="text-emerald-500 h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
-                            ) : (
-                              <Clock className="text-apple-gray-400 h-5 w-5 sm:h-6 sm:w-6 shrink-0" />
-                            )}
-                            <div>
-                              <h4 className="font-semibold text-[15px] sm:text-[16px] text-apple-black dark:text-white">
-                                {m.task}
-                              </h4>
-                              <p className="text-[13px] text-apple-gray-500">
-                                Target:{' '}
-                                {new Date(m.date).toLocaleDateString(undefined, {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                })}
-                              </p>
-                            </div>
+          <Card className="p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] shadow-2xs space-y-6">
+            {/* Ask query input form */}
+            <form onSubmit={handleSendQuery} className="space-y-3">
+              <label className="block text-[13.5px] font-semibold text-apple-black dark:text-white">
+                Submit a new query or change request
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  value={newQueryText}
+                  onChange={(e) => setNewQueryText(e.target.value)}
+                  placeholder="Type your question or query here (e.g. 'Add logo to header' or 'Update contact number')..."
+                  className="flex-1 h-11 text-[13.5px] rounded-xl"
+                  required
+                />
+                <Button
+                  type="submit"
+                  disabled={submittingQuery || !newQueryText.trim()}
+                  isLoading={submittingQuery}
+                  className="h-11 px-5 rounded-xl text-[13.5px] font-semibold gap-2 shrink-0"
+                >
+                  <Send className="h-4 w-4" />
+                  <span>Send</span>
+                </Button>
+              </div>
+              {querySuccessNotice && (
+                <p className="text-[12.5px] font-medium text-emerald-600 flex items-center gap-1.5 animate-fade-in">
+                  <Check className="h-3.5 w-3.5" />
+                  {querySuccessNotice}
+                </p>
+              )}
+            </form>
+
+            {/* Query List */}
+            <div className="space-y-3 pt-2 border-t border-apple-gray-200 dark:border-[#38383A]">
+              <h3 className="text-[14px] font-semibold text-apple-black dark:text-white flex items-center justify-between">
+                <span>Submitted Queries ({filteredQueries.length})</span>
+              </h3>
+
+              {filteredQueries.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredQueries.map((q) => (
+                    <div
+                      key={q.id}
+                      className="p-4 rounded-2xl border border-apple-gray-200/80 dark:border-[#38383A] bg-apple-gray-50/70 dark:bg-[#2C2C2E]/40 space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md ${
+                          q.status === 'fixed'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-amber-500/10 text-amber-600'
+                        }`}>
+                          {q.status === 'fixed' ? '✓ Fixed / Resolved' : '• Pending Admin Response'}
+                        </span>
+                        <span className="text-[11.5px] text-apple-gray-400">{q.createdAt}</span>
+                      </div>
+
+                      <p className="text-[13.5px] font-medium text-apple-black dark:text-white leading-relaxed">
+                        "{q.text}"
+                      </p>
+
+                      {q.response && (
+                        <div className="p-3 rounded-xl bg-apple-blue/5 border border-apple-blue/15 text-[12.5px] text-apple-gray-700 dark:text-apple-gray-300 flex items-start gap-2 mt-2">
+                          <Sparkles className="h-4 w-4 text-apple-blue shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="text-apple-blue font-semibold block text-[11px] uppercase tracking-wider mb-0.5">
+                              Admin Response:
+                            </strong>
+                            <span>{q.response}</span>
                           </div>
-                          <span
-                            className={`text-[12px] sm:text-[13px] font-medium px-2.5 py-1 rounded-full self-start sm:self-auto ${
-                              m.completed
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-apple-gray-100 dark:bg-[#2C2C2E] text-apple-gray-500 dark:text-apple-gray-400'
-                            }`}
-                          >
-                            {m.completed ? 'Completed' : 'In Progress'}
-                          </span>
                         </div>
-                      ))
-                    ) : (
-                      <div className="p-8 text-center text-apple-gray-400 text-[14px]">
-                        No milestones scheduled yet.
-                      </div>
-                    )}
-                  </div>
-                </Card>
-              </div>
-
-              <div>
-                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight mb-4 sm:mb-6 text-apple-black dark:text-white">
-                  Quick Actions
-                </h2>
-                <Card className="space-y-3 p-5 sm:p-6 border border-apple-gray-200 dark:border-[#38383A] rounded-2xl">
-                  <Button className="w-full rounded-xl" onClick={() => setActiveTab('feedback')}>
-                    Request Change / Revision
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    className="w-full rounded-xl"
-                    onClick={() => setActiveTab('billing')}
-                  >
-                    View Invoices & Billing
-                  </Button>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {/* Tab: Billing */}
-          {activeTab === 'billing' && (
-            <div className="space-y-6">
-              <Card className="max-w-3xl p-5 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-apple-gray-200 dark:border-[#38383A] pb-4">
-                  <div>
-                    <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
-                      Billing & Invoices
-                    </h2>
-                    <p className="text-[13px] text-apple-gray-500 mt-0.5">
-                      Milestone payments, GST invoicing, and tax details
-                    </p>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowAddressModal(true)}
-                    className="rounded-xl text-[13px] gap-2 self-start sm:self-auto"
-                  >
-                    <MapPin className="h-3.5 w-3.5" />
-                    <span>{savedAddress ? 'Edit Billing Address' : 'Add Billing Address'}</span>
-                  </Button>
-                </div>
-
-                {/* Address summary banner if configured */}
-                {savedAddress && (
-                  <div className="p-4 rounded-2xl bg-apple-gray-50 dark:bg-[#2C2C2E]/50 border border-apple-gray-200 dark:border-[#38383A] flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 rounded-xl bg-apple-blue/10 text-apple-blue mt-0.5">
-                        <MapPin className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="text-[14px] font-bold text-apple-black dark:text-white">
-                          {savedAddress.fullName} ({savedAddress.addressType})
-                        </div>
-                        <div className="text-[13px] text-apple-gray-500 leading-relaxed">
-                          {savedAddress.street}, {savedAddress.apartment ? `${savedAddress.apartment}, ` : ''}
-                          {savedAddress.city}, {savedAddress.state} - {savedAddress.postalCode}
-                        </div>
-                        <div className="text-[12px] text-apple-gray-400 mt-1">
-                          Phone: +91 {savedAddress.phone}
-                        </div>
-                      </div>
+                      )}
                     </div>
-                    <span className="text-[11px] px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">
-                      Verified
-                    </span>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl gap-3">
-                    <div>
-                      <h4 className="font-semibold text-[15px] sm:text-[16px] text-apple-black dark:text-white">
-                        20% Booking Advance ({Validation.formatCurrency(advanceAmount)})
-                      </h4>
-                      <p className="text-[13px] text-apple-gray-500">Confirmed & Activated</p>
-                    </div>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[14px] flex items-center gap-1.5 self-start sm:self-auto">
-                      <CheckCircle className="h-4 w-4" /> Paid
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 border border-apple-gray-200 dark:border-[#38383A] rounded-2xl gap-3">
-                    <div>
-                      <h4 className="font-semibold text-[15px] sm:text-[16px] text-apple-black dark:text-white">
-                        Final Handover Balance (80% — {Validation.formatCurrency(remainingAmount)})
-                      </h4>
-                      <p className="text-[13px] text-apple-gray-500">Due upon final delivery & sign-off</p>
-                    </div>
-                    {project.finalPaid ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Paid</span>
-                    ) : (
-                      <span className="text-[13px] text-apple-gray-400 font-medium self-start sm:self-auto px-3 py-1.5 rounded-full bg-apple-gray-100 dark:bg-[#2C2C2E]">
-                        Due at Handover
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Saved Payment Methods List */}
-                <div className="pt-4 border-t border-apple-gray-200 dark:border-[#38383A]">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[15px] font-semibold text-apple-black dark:text-white">
-                      Accepted Payment Channels
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {savedMethods.map((pm) => (
-                      <div
-                        key={pm.id}
-                        className="p-3.5 rounded-2xl border border-apple-gray-200 dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] flex flex-col justify-between"
-                      >
-                        <div className="text-[13px] font-semibold text-apple-black dark:text-white">
-                          {pm.label}
-                        </div>
-                        <div className="text-[11.5px] text-apple-gray-400 mt-1">{pm.identifier}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* Tab: Feedback */}
-          {activeTab === 'feedback' && (
-            <Card className="max-w-2xl p-5 sm:p-8 rounded-3xl border border-apple-gray-200 dark:border-[#38383A]">
-              <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight mb-6 text-apple-black dark:text-white">
-                Change Request & Feedback
-              </h2>
-
-              {feedbackSubmitted ? (
-                <div className="text-center py-8 space-y-4">
-                  <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
-                  <h3 className="text-[18px] font-semibold text-apple-black dark:text-white">Submitted</h3>
-                  <p className="text-[14px] text-apple-gray-500 max-w-sm mx-auto">
-                    Your request has been recorded.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setFeedbackSubmitted(false)}
-                    className="rounded-xl text-[13px]"
-                  >
-                    Submit Another Request
-                  </Button>
+                  ))}
                 </div>
               ) : (
-                <form onSubmit={handleFeedbackSubmit} className="space-y-5">
-                  <div>
-                    <label className="block text-[14px] font-medium mb-1.5 text-apple-black dark:text-white">
-                      Page / Section
-                    </label>
-                    <Input
-                      placeholder="e.g. Navigation or Checkout"
-                      value={feedbackForm.area}
-                      onChange={(e) => setFeedbackForm({ ...feedbackForm, area: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[14px] font-medium mb-1.5 text-apple-black dark:text-white">
-                      Description
-                    </label>
-                    <textarea
-                      className="flex min-h-[120px] w-full rounded-xl border border-apple-gray-300 bg-white px-3.5 py-2.5 text-[15px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue dark:border-[#38383A] dark:bg-[#1C1C1E] dark:text-white leading-relaxed"
-                      placeholder="Details of required changes..."
-                      value={feedbackForm.description}
-                      onChange={(e) => setFeedbackForm({ ...feedbackForm, description: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full rounded-xl h-11 text-[14px] gap-2">
-                    <Send className="h-4 w-4" /> Submit
-                  </Button>
-                </form>
+                <div className="py-8 text-center text-apple-gray-400 text-[13.5px]">
+                  No {queryCategoryFilter !== 'all' ? queryCategoryFilter : ''} queries found.
+                </div>
               )}
-            </Card>
-          )}
-
-          {/* Tab: Vault */}
-          {activeTab === 'vault' && (
-            <div className="space-y-4">
-              <div>
-                <h2 className="text-[20px] sm:text-[22px] font-semibold tracking-tight text-apple-black dark:text-white">
-                  Deliverables
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 pt-2">
-                {project.deliverables && project.deliverables.length > 0 ? (
-                  project.deliverables.map((item: any, i: number) => (
-                    <Card
-                      key={i}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between p-5 sm:p-6 gap-4 rounded-2xl border border-apple-gray-200 dark:border-[#38383A]"
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div className="h-11 w-11 rounded-xl bg-apple-blue/10 flex items-center justify-center text-apple-blue shrink-0">
-                          <FileText className="h-6 w-6" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-[15px] sm:text-[16px] text-apple-black dark:text-white">
-                            {item.name}
-                          </h4>
-                        </div>
-                      </div>
-                      {item.locked && !project.finalPaid ? (
-                        <div className="flex items-center text-[13px] text-apple-orange gap-1.5 font-medium bg-apple-orange/10 px-3 py-1.5 rounded-lg self-start sm:self-auto">
-                          <AlertCircle className="h-4 w-4 shrink-0" />
-                          <span>Delivery Balance Required</span>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl text-[13px] self-start sm:self-auto"
-                        >
-                          Download
-                        </Button>
-                      )}
-                    </Card>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-apple-gray-400 text-[14px] col-span-2">
-                    No deliverables available yet.
-                  </div>
-                )}
-              </div>
             </div>
-          )}
-          </motion.div>
-        </AnimatePresence>
-        </div>
+          </Card>
+        </section>
       </main>
-
-      {/* Modals */}
-      <DeliveryAddressFormModal
-        isOpen={showAddressModal}
-        onClose={() => setShowAddressModal(false)}
-        onSave={handleSaveAddress}
-        initialAddress={savedAddress || undefined}
-      />
     </div>
   );
 };

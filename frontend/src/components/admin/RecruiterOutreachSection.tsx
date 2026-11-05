@@ -139,13 +139,13 @@ export const RecruiterOutreachSection: React.FC = () => {
         <div>
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[12px] font-semibold mb-2">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Nodemailer Job Outreach & WhatsApp Service</span>
+            <span>Gmail Job Application & WhatsApp Service</span>
           </div>
           <h2 className="text-xl font-bold text-apple-black dark:text-white">
             Recruiter Dispatcher & Applications
           </h2>
           <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1 max-w-xl">
-            Dispatch applications for MERN Stack Developer roles with auto-attached PDF resume (SurajNyavanandi-Resume.pdf) and generate direct WhatsApp pitch links.
+            Dispatch job applications for MERN Stack Developer roles via Gmail with auto-attached PDF resume (SurajNyavanandi-Resume.pdf) and generate direct WhatsApp pitch links.
           </p>
         </div>
 

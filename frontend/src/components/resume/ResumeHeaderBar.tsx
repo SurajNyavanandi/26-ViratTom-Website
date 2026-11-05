@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowLeft, Download, Loader2, RotateCcw, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, RotateCcw, ShieldCheck, UserCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { maskEmail } from '@/lib/utils';
 
 interface ResumeHeaderBarProps {
   mobileView: 'editor' | 'preview';
@@ -8,6 +9,7 @@ interface ResumeHeaderBarProps {
   downloadCount: number;
   verifiedEmail: string;
   onSwitchEmail: () => void;
+  onOpenPreviousLogin?: () => void;
   hasCustomEdits: boolean;
   onResetResume: () => void;
   onInitiateDownload: () => void;
@@ -20,6 +22,7 @@ export const ResumeHeaderBar: React.FC<ResumeHeaderBarProps> = ({
   downloadCount,
   verifiedEmail,
   onSwitchEmail,
+  onOpenPreviousLogin,
   hasCustomEdits,
   onResetResume,
   onInitiateDownload,
@@ -82,10 +85,21 @@ export const ResumeHeaderBar: React.FC<ResumeHeaderBarProps> = ({
             </span>
           </div>
 
+          {onOpenPreviousLogin && (
+            <button
+              onClick={onOpenPreviousLogin}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-apple-gray-100 hover:bg-apple-gray-200/80 border border-apple-gray-200 text-apple-gray-700 text-[12px] font-medium transition-all cursor-pointer shadow-2xs"
+              title="Load previously saved resume draft"
+            >
+              <UserCheck size={15} className="text-apple-blue" />
+              <span className="hidden sm:inline">Previous Resume / Login</span>
+            </button>
+          )}
+
           {verifiedEmail && (
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[12px] font-medium">
               <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-              <span className="truncate max-w-35 sm:max-w-50">{verifiedEmail}</span>
+              <span className="truncate max-w-35 sm:max-w-50">{maskEmail(verifiedEmail)}</span>
               <button
                 onClick={onSwitchEmail}
                 className="text-[11px] underline hover:text-emerald-700 ml-1 cursor-pointer"

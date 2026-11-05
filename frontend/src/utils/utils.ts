@@ -15,6 +15,25 @@ export function formatCurrency(amount: number | string): string {
   return `₹${num.toLocaleString('en-IN')}`;
 }
 
+export function maskEmail(email: string): string {
+  if (!email || !email.includes('@')) return email || '';
+  const [local, domain] = email.trim().split('@');
+  if (local.length <= 2) {
+    return `${local}*****@${domain}`;
+  }
+  const prefix = local.slice(0, 2);
+  const suffix = local.slice(-1);
+  return `${prefix}*****${suffix}@${domain}`;
+}
+
+export function maskPhone(phone: string): string {
+  const clean = sanitizePhone(phone);
+  if (!clean || clean.length < 10) return phone || '';
+  const prefix = clean.slice(0, 2);
+  const suffix = clean.slice(-2);
+  return `${prefix}******${suffix}`;
+}
+
 const DEFAULT_WHATSAPP_NUMBER = '919666635009';
 
 export function getWhatsAppUrl(customText = 'Hello ViratTom Team, I would like to discuss a project.'): string {

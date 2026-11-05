@@ -235,7 +235,6 @@ export const Login: React.FC = () => {
 
         <div className="flex items-center gap-1.5 text-[13px] text-apple-gray-400">
           <ShieldCheck className="h-4 w-4 text-apple-green" />
-          <span className="hidden sm:inline font-medium">Single Admin Access Only</span>
         </div>
       </header>
 
@@ -257,11 +256,12 @@ export const Login: React.FC = () => {
               {mode === 'forgot_email' && 'Reset Admin Password'}
               {mode === 'forgot_otp' && 'Enter Reset Code'}
             </h1>
-            <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1.5">
-              {mode === 'login' && 'Secure administrative access to ViratTom Control Center.'}
-              {mode === 'forgot_email' && 'Enter your registered administrator email address to receive a verification code.'}
-              {mode === 'forgot_otp' && 'Enter the 6-digit verification code sent to your registered email.'}
-            </p>
+            {mode !== 'login' && (
+              <p className="text-[13px] text-apple-gray-500 dark:text-apple-gray-400 mt-1.5">
+                {mode === 'forgot_email' && 'Enter your registered administrator email address to receive a verification code.'}
+                {mode === 'forgot_otp' && 'Enter the 6-digit verification code sent to your registered email.'}
+              </p>
+            )}
           </div>
 
           {/* Success Banner */}

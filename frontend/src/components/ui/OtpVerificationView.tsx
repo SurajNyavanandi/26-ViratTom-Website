@@ -2,6 +2,8 @@ import React from 'react';
 import { Mail, Clock, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Button } from './Button';
 
+import { maskEmail, maskPhone } from '@/utils/utils';
+
 interface OtpVerificationViewProps {
   recipient: string;
   type?: 'email' | 'phone';
@@ -56,7 +58,9 @@ export const OtpVerificationView = React.memo<OtpVerificationViewProps>(({
           {subtitle || (
             <>
               Enter the 6-digit code sent to{' '}
-              <span className="font-semibold text-apple-black dark:text-white">{recipient}</span>
+              <span className="font-semibold text-apple-black dark:text-white">
+                {recipient.includes('@') ? maskEmail(recipient) : maskPhone(recipient)}
+              </span>
             </>
           )}
         </p>

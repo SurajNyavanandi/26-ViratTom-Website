@@ -17,6 +17,17 @@ const ResumeDraft = require('../models/ResumeDraft');
 const User = require('../models/User');
 const SiteStat = require('../models/SiteStat');
 const PortfolioProject = require('../models/PortfolioProject');
+const AdminNote = require('../models/AdminNote');
+
+let fallbackAdminNotes = [
+  {
+    _id: 'note_init_1',
+    title: 'Client Onboarding Checklist',
+    content: 'Ensure advance payment is verified via Razorpay before sharing staging link.',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
 
 // Services
 const {
@@ -101,47 +112,47 @@ if (mongoose.connection) {
 
 const portfolioProjects = [
   {
+    _id: 'husoro_web',
+    title: 'Husoro',
+    type: 'Static Website',
+    url: 'https://husoro.com',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fhusoro.com&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Luxury static corporate website and high-impact digital brand presentation.'
+  },
+  {
     _id: 'prosync_web',
-    title: 'ProSync Web',
-    type: 'Full-Stack / Financial Advisory Platform',
+    title: 'ProSync',
+    type: 'Static Website',
     url: 'https://prosyncindia.com',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business advisory, debt syndication, and financial platform engineered for high-growth enterprises.'
   },
   {
-    _id: '1',
+    _id: 'manadrivers_web',
     title: 'Mana Drivers',
-    type: 'Dynamic Website',
+    type: 'Dynamic & E-Commerce',
     url: 'https://manadrivers.com',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fmanadrivers.com&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
+    description: 'Dynamic online driver booking & vehicle service web platform with e-commerce booking workflows.'
   },
   {
-    _id: '0',
-    title: 'Prosync Consulting',
-    type: 'Corporate Advisory Portal',
-    url: 'https://prosyncindia.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
+    _id: 'inisio_web',
+    title: 'Inisio',
+    type: 'Dynamic Web App',
+    url: 'https://inisio.in',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Finisio.in&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Modern full-stack dynamic productivity & workflow management web application.'
   },
   {
-    _id: '2',
+    _id: 'rvmcarrybags_web',
     title: 'RVM Carry Bags',
-    type: 'Static Website',
+    type: 'Dynamic Web App',
     url: 'https://rvmcarrybags.com/',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Frvmcarrybags.com%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'High-speed corporate catalog website for eco-friendly carry bags, non-woven packaging, and instant business WhatsApp inquiries.'
+    description: 'High-speed dynamic product catalog for eco-friendly carry bags & custom packaging.'
   },
   {
-    _id: '3',
-    title: 'Inisio',
-    type: 'Web Application',
-    url: 'https://inisio.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Finisio.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Modern full-stack productivity & workflow management web application.'
-  },
-  {
-    _id: '4',
+    _id: 'urbanico_app',
     title: 'Urbanico',
     type: 'Mobile App',
     url: 'https://urbanico.vercel.app/',
@@ -2388,6 +2399,182 @@ const getWhatsAppStatus = async (req, res) => {
   });
 };
 
+const adminActivityLogs = [
+  { id: '1', action: 'SYSTEM_BOOT', details: 'ViratTom System initialized and ready', timestamp: new Date().toISOString() },
+  { id: '2', action: 'PROJECT_SEED', details: 'Seeded 6 featured portfolio projects', timestamp: new Date().toISOString() },
+];
+
+const logAdminActivity = (action, details) => {
+  adminActivityLogs.unshift({
+    id: String(Date.now()),
+    action,
+    details,
+    timestamp: new Date().toISOString(),
+  });
+  if (adminActivityLogs.length > 200) adminActivityLogs.pop();
+};
+
+const getActivityLogs = async (req, res) => {
+  return res.json({ success: true, logs: adminActivityLogs });
+};
+
+const deleteLead = async (req, res) => {
+  const { id } = req.params;
+  let deleted = false;
+
+  if (isDbReady()) {
+    try {
+      const resDb = await Lead.findByIdAndDelete(id);
+      if (resDb) deleted = true;
+    } catch {}
+  }
+
+  const idx = fallbackLeads.findIndex((l) => String(l._id || l.id) === String(id));
+  if (idx !== -1) {
+    fallbackLeads.splice(idx, 1);
+    deleted = true;
+  }
+
+  if (deleted) {
+    logAdminActivity('DELETE_LEAD', `Deleted lead submission #${id}`);
+    return res.json({ success: true, message: 'Lead deleted successfully' });
+  }
+  return res.status(404).json({ error: 'Lead submission not found' });
+};
+
+const updateLead = async (req, res) => {
+  const { id } = req.params;
+  const { status, note, verified } = req.body || {};
+
+  let updated = null;
+  if (isDbReady()) {
+    try {
+      updated = await Lead.findByIdAndUpdate(
+        id,
+        { $set: { status, note, verified } },
+        { new: true }
+      );
+    } catch {}
+  }
+
+  const lead = fallbackLeads.find((l) => String(l._id || l.id) === String(id));
+  if (lead) {
+    if (status !== undefined) lead.status = status;
+    if (note !== undefined) lead.note = note;
+    if (verified !== undefined) lead.verified = verified;
+    updated = lead;
+  }
+
+  if (updated) {
+    logAdminActivity('UPDATE_LEAD', `Updated lead #${id}`);
+    return res.json({ success: true, lead: updated });
+  }
+  return res.status(404).json({ error: 'Lead submission not found' });
+};
+
+// Admin Notes CRUD Controller Methods
+const getAdminNotes = async (req, res) => {
+  try {
+    if (isDbReady()) {
+      const notes = await AdminNote.find().sort({ createdAt: -1 });
+      return res.json({ success: true, notes });
+    }
+  } catch (err) {
+    console.warn('[Admin Notes] Mongo fetch fallback:', err.message);
+  }
+  return res.json({ success: true, notes: fallbackAdminNotes });
+};
+
+const createAdminNote = async (req, res) => {
+  const { title, content } = req.body || {};
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Note content is required.' });
+  }
+
+  const newNoteData = {
+    _id: 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    title: (title || 'Untitled Note').trim(),
+    content: content.trim(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  try {
+    if (isDbReady()) {
+      const created = await AdminNote.create(newNoteData);
+      logActivity(`Created admin note: "${created.title}"`);
+      return res.status(201).json({ success: true, note: created });
+    }
+  } catch (err) {
+    console.warn('[Admin Notes] Mongo create fallback:', err.message);
+  }
+
+  fallbackAdminNotes.unshift(newNoteData);
+  logActivity(`Created admin note: "${newNoteData.title}"`);
+  return res.status(201).json({ success: true, note: newNoteData });
+};
+
+const updateAdminNote = async (req, res) => {
+  const { id } = req.params;
+  const { title, content } = req.body || {};
+
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Note content is required.' });
+  }
+
+  const updateData = {
+    title: (title || 'Untitled Note').trim(),
+    content: content.trim(),
+    updatedAt: new Date(),
+  };
+
+  try {
+    if (isDbReady()) {
+      const updated = await AdminNote.findByIdAndUpdate(id, updateData, { new: true });
+      if (updated) {
+        logActivity(`Updated admin note: "${updated.title}"`);
+        return res.json({ success: true, note: updated });
+      }
+    }
+  } catch (err) {
+    console.warn('[Admin Notes] Mongo update fallback:', err.message);
+  }
+
+  const idx = fallbackAdminNotes.findIndex((n) => n._id === id || n.id === id);
+  if (idx !== -1) {
+    fallbackAdminNotes[idx] = { ...fallbackAdminNotes[idx], ...updateData };
+    logActivity(`Updated admin note: "${updateData.title}"`);
+    return res.json({ success: true, note: fallbackAdminNotes[idx] });
+  }
+
+  return res.status(404).json({ error: 'Note not found.' });
+};
+
+const deleteAdminNote = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (isDbReady()) {
+      const deleted = await AdminNote.findByIdAndDelete(id);
+      if (deleted) {
+        logActivity(`Deleted admin note: "${deleted.title}"`);
+        return res.json({ success: true, message: 'Note deleted successfully.' });
+      }
+    }
+  } catch (err) {
+    console.warn('[Admin Notes] Mongo delete fallback:', err.message);
+  }
+
+  const initialLen = fallbackAdminNotes.length;
+  fallbackAdminNotes = fallbackAdminNotes.filter((n) => n._id !== id && n.id !== id);
+  if (fallbackAdminNotes.length < initialLen) {
+    logActivity(`Deleted admin note ID: ${id}`);
+    return res.json({ success: true, message: 'Note deleted successfully.' });
+  }
+
+  return res.status(404).json({ error: 'Note not found.' });
+};
+
 module.exports = {
   getProjects,
   getProjectPrices,
@@ -2403,6 +2590,10 @@ module.exports = {
   resetAdminPassword,
   changeAdminPassword,
   getLeads,
+  deleteLead,
+  updateLead,
+  getActivityLogs,
+  logAdminActivity,
   requestEmailOtpHandler,
   verifyEmailOtpHandler,
   checkClientPhone,
@@ -2418,6 +2609,10 @@ module.exports = {
   updateAdminProject,
   createAdminProject,
   deleteAdminProject,
+  getAdminNotes,
+  createAdminNote,
+  updateAdminNote,
+  deleteAdminNote,
   trackVisit,
   getAdminStats,
   submitWhatsAppLead,

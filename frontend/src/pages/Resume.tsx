@@ -153,6 +153,7 @@ export const Resume = () => {
           downloadCount={verification.downloadCount}
           verifiedEmail={verification.verifiedEmail}
           onSwitchEmail={verification.switchEmail}
+          onOpenPreviousLogin={() => verification.openVerificationModal()}
           hasCustomEdits={hasCustomEdits}
           onResetResume={handleResetResume}
           onInitiateDownload={pdfDownloader.initiateDownload}

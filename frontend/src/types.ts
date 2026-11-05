@@ -111,47 +111,47 @@ export interface PortfolioProject {
 
 export const DEFAULT_PORTFOLIO_PROJECTS: PortfolioProject[] = [
   {
+    _id: 'husoro_web',
+    title: 'Husoro',
+    type: 'Static Website',
+    url: 'https://husoro.com',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fhusoro.com&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Luxury static corporate website and high-impact digital brand presentation.'
+  },
+  {
     _id: 'prosync_web',
-    title: 'ProSync Web',
-    type: 'Full-Stack / Financial Advisory Platform',
+    title: 'ProSync',
+    type: 'Static Website',
     url: 'https://prosyncindia.com',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.com&screenshot=true&meta=false&embed=screenshot.url',
     description: 'Executive business advisory, debt syndication, and financial platform engineered for high-growth enterprises.'
   },
   {
-    _id: '1',
+    _id: 'manadrivers_web',
     title: 'Mana Drivers',
-    type: 'Dynamic Website',
+    type: 'Dynamic & E-Commerce',
     url: 'https://manadrivers.com',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fmanadrivers.com&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Dynamic online driver booking & vehicle service web platform with real-time dispatch and responsive client workflows.'
+    description: 'Dynamic online driver booking & vehicle service web platform with e-commerce booking workflows.'
   },
   {
-    _id: '0',
-    title: 'Prosync Consulting',
-    type: 'Corporate Advisory Portal',
-    url: 'https://prosyncindia.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Fprosyncindia.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Executive business loans, investor debt syndication & corporate financial advisory web platform engineered for high-growth enterprises.'
+    _id: 'inisio_web',
+    title: 'Inisio',
+    type: 'Dynamic Web App',
+    url: 'https://inisio.in',
+    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Finisio.in&screenshot=true&meta=false&embed=screenshot.url',
+    description: 'Modern full-stack dynamic productivity & workflow management web application.'
   },
   {
-    _id: '2',
+    _id: 'rvmcarrybags_web',
     title: 'RVM Carry Bags',
-    type: 'Static Website',
+    type: 'Dynamic Web App',
     url: 'https://rvmcarrybags.com/',
     imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Frvmcarrybags.com%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'High-speed corporate catalog website for eco-friendly carry bags, non-woven packaging, and instant business WhatsApp inquiries.'
+    description: 'High-speed dynamic product catalog for eco-friendly carry bags & custom packaging.'
   },
   {
-    _id: '3',
-    title: 'Inisio',
-    type: 'Web Application',
-    url: 'https://inisio.vercel.app/',
-    imageUrl: 'https://api.microlink.io/?url=https%3A%2F%2Finisio.vercel.app%2F&screenshot=true&meta=false&embed=screenshot.url',
-    description: 'Modern full-stack productivity & workflow management web application.'
-  },
-  {
-    _id: '4',
+    _id: 'urbanico_app',
     title: 'Urbanico',
     type: 'Mobile App',
     url: 'https://urbanico.vercel.app/',

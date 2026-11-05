@@ -5,7 +5,7 @@ import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { ArrowRight, ArrowUpRight, Code, Smartphone, Zap, Shield, CheckCircle, Mail, ExternalLink, FileText, MessageCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES, normalizeProjectType } from '@/lib/utils';
+import { getMinPrice, getVerifiedWhatsAppUrl, safeFetchJson, PROJECT_MIN_PRICES, normalizeProjectType, maskEmail, maskPhone } from '@/lib/utils';
 import { Validation, type LeadFormValues, type LeadFormErrors } from '@/lib/validation';
 import { useOtpVerification } from '@/hooks/useOtpVerification';
 import { OtpVerificationView } from '@/components/ui/OtpVerificationView';
@@ -115,15 +115,15 @@ export const Home = () => {
           return p;
         });
 
-        // 1st: prosyncindia.com, 2nd: manadrivers.com, 3rd: prosyncindia.vercel.app, 4th: rvmcarrybags.com, 5th: inisio, 6th: urbanico
+        // 1st: husoro.com, 2nd: prosyncindia.com, 3rd: manadrivers.com, 4th: inisio.in, 5th: rvmcarrybags.com, 6th: urbanico
         const getOrder = (p: PortfolioProject) => {
           const u = (p.url || '').toLowerCase();
           const t = (p.title || '').toLowerCase();
-          if (u.includes('prosyncindia.com') || (t.includes('prosync') && !u.includes('vercel.app'))) return 1;
-          if (u.includes('manadrivers.com') || t.includes('mana drivers')) return 2;
-          if (u.includes('prosyncindia.vercel.app') || t.includes('consulting')) return 3;
-          if (u.includes('rvmcarrybags.com') || t.includes('rvm')) return 4;
-          if (u.includes('inisio') || t.includes('inisio')) return 5;
+          if (u.includes('husoro') || t.includes('husoro')) return 1;
+          if (u.includes('prosyncindia.com') || t.includes('prosync')) return 2;
+          if (u.includes('manadrivers') || t.includes('mana drivers')) return 3;
+          if (u.includes('inisio') || t.includes('inisio')) return 4;
+          if (u.includes('rvmcarrybags') || t.includes('rvm')) return 5;
           if (u.includes('urbanico') || t.includes('urbanico')) return 6;
           return 99;
         };
@@ -445,9 +445,33 @@ export const Home = () => {
               }}
               className="inline-block text-[13px] sm:text-[14px] font-medium tracking-widest text-apple-gray-500 uppercase"
             >
-              VI<span className="font-semibold text-apple-blue">R</span>
-              <span className="font-semibold text-apple-blue">A</span>T TO
-              <span className="font-semibold text-apple-blue">M</span> TECHNOLOGIES
+              VI
+              <motion.span
+                initial={{ y: -80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.2 }}
+                className="inline-block font-semibold text-apple-blue"
+              >
+                R
+              </motion.span>
+              <motion.span
+                initial={{ y: -80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.35 }}
+                className="inline-block font-semibold text-apple-blue"
+              >
+                A
+              </motion.span>
+              T TO
+              <motion.span
+                initial={{ y: -80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 180, damping: 14, delay: 0.5 }}
+                className="inline-block font-semibold text-apple-blue"
+              >
+                M
+              </motion.span>
+              {" "}TECHNOLOGIES
             </motion.span>
             <motion.h1
               variants={{
@@ -1066,10 +1090,10 @@ export const Home = () => {
                   Thank you, {submittedLead?.name || formState.name}!
                 </h3>
                 <p className="text-[14px] sm:text-[15px] text-apple-gray-500 max-w-lg mx-auto mb-6 leading-relaxed">
-                  Your project requirements have been verified and saved to our engineering queue. For fastest response, connect directly with our team on WhatsApp below.
+                  Your project requirements have been verified and saved. Our engineering leads have received your details and will get in touch with you directly.
                 </p>
 
-                {/* Submitted Lead Summary Box */}
+                {/* Submitted Lead Summary Box with Masked Contact */}
                 <div className="max-w-md mx-auto mb-6 p-4 rounded-xl bg-apple-gray-100/70 border border-apple-gray-200/80 text-left text-[13px] space-y-2">
                   <div className="flex items-center justify-between text-apple-gray-500">
                     <span>Project Type:</span>
@@ -1083,7 +1107,9 @@ export const Home = () => {
                   </div>
                   <div className="flex items-center justify-between text-apple-gray-500">
                     <span>Verified Contact:</span>
-                    <span className="text-apple-black font-medium">{submittedLead?.phone || formState.phone} • {submittedLead?.email || formState.email}</span>
+                    <span className="text-apple-black font-medium">
+                      {maskPhone(submittedLead?.phone || formState.phone)} • {maskEmail(submittedLead?.email || formState.email)}
+                    </span>
                   </div>
                   {Boolean(submittedLead?.scope || formState.scope) && (
                     <div className="pt-1.5 border-t border-apple-gray-200 text-apple-gray-600">
@@ -1094,23 +1120,6 @@ export const Home = () => {
                     </div>
                   )}
                 </div>
-
-                {/* Prominent Fast Response WhatsApp Button with Pre-filled Lead Details */}
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto mb-3">
-                  <a
-                    href={getVerifiedWhatsAppUrl(submittedLead || formState)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-semibold text-[14.5px] shadow-sm hover:shadow-md hover:scale-[1.01] active:scale-95 transition-all cursor-pointer"
-                  >
-                    <MessageCircle className="h-5 w-5 fill-current" />
-                    <span>Fast Response: Continue on WhatsApp</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                </div>
-                <p className="text-[11.5px] text-apple-gray-400 mb-6">
-                  Pre-fills your verified project inquiry directly into WhatsApp for priority routing.
-                </p>
 
                 <div className="flex justify-center pt-3 border-t border-apple-gray-200/60">
                   <Button 
@@ -1156,12 +1165,6 @@ export const Home = () => {
                     <label className="block text-[14px] font-semibold text-apple-black">
                       Project Type <span className="text-apple-red">*</span>
                     </label>
-                    {formState.projectType && (
-                      <span className="text-[12px] font-medium text-apple-blue flex items-center gap-1">
-                        <CheckCircle className="h-3.5 w-3.5" />
-                        Selected
-                      </span>
-                    )}
                   </div>
                   <div className="space-y-2.5">
                     {[

@@ -172,17 +172,6 @@ export const Header: React.FC = () => {
               <span>Login</span>
               <LogIn className="h-4 w-4 text-apple-blue" />
             </Link>
-            <div className="pt-2 border-t border-apple-gray-100 dark:border-[#2C2C2E]">
-              <motion.a
-                href="/#contact"
-                onClick={(e) => handleSectionClick(e, 'contact')}
-                whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-apple-blue text-white text-[13.5px] font-medium shadow-xs"
-              >
-                <span>Start a Project</span>
-                <ArrowRight className="h-4 w-4" />
-              </motion.a>
-            </div>
           </motion.div>
         )}
       </AnimatePresence>

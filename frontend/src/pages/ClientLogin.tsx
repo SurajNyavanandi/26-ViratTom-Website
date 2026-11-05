@@ -86,7 +86,6 @@ export const ClientLogin = () => {
               <ShieldCheck className="h-7 w-7" />
             </div>
             <h1 className="text-[22px] sm:text-[26px] font-semibold tracking-tight">Client Login</h1>
-            <p className="text-[13px] text-apple-gray-500 mt-1">Enter your registered mobile number to access your project workspace</p>
           </div>
           
           <form onSubmit={handleLogin} className="space-y-5">

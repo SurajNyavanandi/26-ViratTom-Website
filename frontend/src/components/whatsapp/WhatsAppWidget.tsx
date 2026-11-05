@@ -103,7 +103,9 @@ export const WhatsAppWidget: React.FC = () => {
           message: parsed.message || '',
         };
       }
-    } catch {}
+    } catch (_) {
+      /* ignore storage error */
+    }
     return {
       name: '',
       phone: '',
@@ -213,7 +215,9 @@ export const WhatsAppWidget: React.FC = () => {
 
     try {
       localStorage.setItem('virattom_wa_lead_data', JSON.stringify(form));
-    } catch {}
+    } catch (_) {
+      /* ignore storage error */
+    }
 
     try {
       let res = await safeFetchJson<{ success: boolean; message?: string; error?: string }>('/api/whatsapp-lead', {

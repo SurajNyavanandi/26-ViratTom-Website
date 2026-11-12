@@ -76,5 +76,8 @@ const leadSchema = new mongoose.Schema(
 
 leadSchema.index({ email: 1, createdAt: -1 });
 leadSchema.index({ phone: 1 });
+leadSchema.index({ createdAt: -1 });
+leadSchema.index({ source: 1, createdAt: -1 });
+leadSchema.index({ status: 1 });
 
 module.exports = mongoose.models.Lead || mongoose.model('Lead', leadSchema);

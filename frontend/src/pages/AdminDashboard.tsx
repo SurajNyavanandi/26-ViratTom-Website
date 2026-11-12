@@ -209,11 +209,13 @@ export const AdminDashboard: React.FC = () => {
         body: JSON.stringify(portfolioForm),
       });
       const data = await res.json();
-      if (data.success || data._id) {
+      if (res.ok && (data.success || data._id || data.id)) {
         setShowPortfolioModal(false);
         setEditingPortfolioId(null);
         setPortfolioForm({ title: '', type: 'Static Website', url: '', imageUrl: '', description: '' });
-        fetchData();
+        fetchData(true);
+      } else {
+        alert(data.error || data.message || 'Failed to save showcase project');
       }
     } catch (e) {
       console.error(e);
@@ -224,11 +226,14 @@ export const AdminDashboard: React.FC = () => {
     if (!window.confirm('Delete this showcase project?')) return;
     const token = localStorage.getItem('admin_token');
     try {
-      await fetch(apiUrl(`/api/admin/projects/${projId}`), {
+      const res = await fetch(apiUrl(`/api/admin/projects/${projId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token || ''}` },
       });
-      fetchData();
+      if (res.ok) {
+        setPortfolioProjects((prev) => prev.filter((p) => (p._id || (p as any).id) !== projId));
+        fetchData(true);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -360,13 +365,24 @@ export const AdminDashboard: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 py-6">
       {/* Top Admin Controls & Section Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#1C1C1E] p-5 sm:p-6 rounded-3xl border border-apple-gray-200 dark:border-[#38383A] shadow-2xs">
-        <div>
-          <span className="text-[12px] font-semibold text-apple-blue uppercase tracking-wider block mb-1">
-            Control Center
-          </span>
-          <h1 className="text-[22px] sm:text-[26px] font-bold text-apple-black dark:text-white tracking-tight">
-            VIRAT TOM Administrative Panel
-          </h1>
+        <div className="flex items-center justify-between gap-4 w-full md:w-auto">
+          <div>
+            <span className="text-[12px] font-semibold text-apple-blue uppercase tracking-wider block mb-1">
+              Control Center
+            </span>
+            <h1 className="text-[22px] sm:text-[26px] font-bold text-apple-black dark:text-white tracking-tight">
+              VIRAT TOM Administrative Panel
+            </h1>
+          </div>
+          <button
+            onClick={() => fetchData(true)}
+            disabled={loading}
+            className="px-3.5 py-2 rounded-xl bg-apple-gray-100 dark:bg-[#2C2C2E] text-apple-gray-800 dark:text-apple-gray-200 border border-apple-gray-200 dark:border-[#38383A] text-[13px] font-semibold flex items-center gap-2 hover:bg-apple-gray-200 dark:hover:bg-[#38383A] transition-all cursor-pointer disabled:opacity-60 shrink-0 shadow-2xs"
+            title="Refresh Admin Panel Data"
+          >
+            <RefreshCw className={`h-4 w-4 text-apple-blue ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

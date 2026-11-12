@@ -59,6 +59,7 @@ export const WhatsAppWidget: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [nameError, setNameError] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [budgetError, setBudgetError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -145,6 +146,7 @@ export const WhatsAppWidget: React.FC = () => {
     setIsOpen(true);
     setIsDropdownOpen(false);
     setNameError(false);
+    setPhoneError(null);
     setBudgetError(null);
     setServerError(null);
     setIsSubmitted(false);
@@ -154,6 +156,7 @@ export const WhatsAppWidget: React.FC = () => {
     setIsOpen(false);
     setIsDropdownOpen(false);
     setNameError(false);
+    setPhoneError(null);
     setBudgetError(null);
     setServerError(null);
   };
@@ -195,6 +198,13 @@ export const WhatsAppWidget: React.FC = () => {
       return;
     }
     setNameError(false);
+
+    const rawDigits = form.phone.replace(/\D/g, '');
+    if (!rawDigits || rawDigits.length < 10) {
+      setPhoneError('Please enter a valid 10-digit mobile number');
+      return;
+    }
+    setPhoneError(null);
 
     const minThreshold = getDynamicThreshold(selectedService.name);
 
@@ -393,17 +403,26 @@ export const WhatsAppWidget: React.FC = () => {
                   {/* Phone Number / Contact */}
                   <div>
                     <label className="block text-[13px] font-medium text-[#1C1C1E] dark:text-[#E5E5EA] mb-1.5">
-                      Mobile Number / WhatsApp <span className="text-[#8E8E93] text-[12px] font-normal">(Optional)</span>
+                      Mobile Number / WhatsApp <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="tel"
-                      placeholder="e.g. 9876543210 (Optional)"
+                      required
+                      placeholder="e.g. 9876543210"
                       value={form.phone}
-                      onChange={(e) =>
-                        setForm({ ...form, phone: e.target.value.replace(/[^\d+\s-]/g, '') })
-                      }
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C] bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white text-[14px] outline-none focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20 transition-all"
+                      onChange={(e) => {
+                        setForm({ ...form, phone: e.target.value.replace(/[^\d+\s-]/g, '') });
+                        if (phoneError) setPhoneError(null);
+                      }}
+                      className={`w-full px-3.5 py-2.5 rounded-xl border text-[14px] outline-none transition-all bg-[#F2F2F7] dark:bg-[#2C2C2E] text-[#1C1C1E] dark:text-white ${
+                        phoneError
+                          ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+                          : 'border-[#E5E5EA] dark:border-[#3A3A3C] focus:border-[#25D366] focus:ring-2 focus:ring-[#25D366]/20'
+                      }`}
                     />
+                    {phoneError && (
+                      <p className="text-[12px] text-red-500 mt-1">{phoneError}</p>
+                    )}
                   </div>
 
                   {/* Service Dropdown */}

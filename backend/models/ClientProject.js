@@ -112,4 +112,7 @@ const clientProjectSchema = new mongoose.Schema(
   }
 );
 
+clientProjectSchema.index({ createdAt: -1 });
+clientProjectSchema.index({ status: 1 });
+
 module.exports = mongoose.models.ClientProject || mongoose.model('ClientProject', clientProjectSchema);

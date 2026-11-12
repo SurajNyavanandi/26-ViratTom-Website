@@ -22,4 +22,6 @@ const adminNoteSchema = new mongoose.Schema(
   }
 );
 
+adminNoteSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.models.AdminNote || mongoose.model('AdminNote', adminNoteSchema);

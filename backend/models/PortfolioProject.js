@@ -41,6 +41,8 @@ const portfolioProjectSchema = new mongoose.Schema(
   }
 );
 
+portfolioProjectSchema.index({ order: 1, createdAt: 1 });
+
 module.exports =
   mongoose.models.PortfolioProject ||
   mongoose.model('PortfolioProject', portfolioProjectSchema);

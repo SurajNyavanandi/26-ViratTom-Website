@@ -104,8 +104,17 @@ export const Home = () => {
 
       if (res.ok && Array.isArray(res.data) && res.data.length > 0) {
         const fetched = [...res.data];
-        const normalized = fetched.map(p => {
-          if (p.url && p.url.includes('prosyncweb.vercel.app')) {
+        const filtered = fetched.filter(p => {
+          const u = (p.url || '').toLowerCase();
+          const t = (p.title || '').toLowerCase();
+          // Filter out duplicate prosync vercel app or consulting if prosyncindia is present
+          if (u.includes('prosync.vercel.app') || u.includes('prosyncweb.vercel.app') || u.includes('prosyncindia.vercel.app') || t === 'prosync consulting') {
+            return false;
+          }
+          return true;
+        });
+        const normalized = filtered.map(p => {
+          if (p.url && (p.url.includes('prosyncweb.vercel.app') || p.url.includes('prosync.vercel.app'))) {
             return {
               ...p,
               url: 'https://prosyncindia.com',
@@ -680,15 +689,13 @@ export const Home = () => {
           >
             {projects.map((project: any) => {
               const projectUrl =
-                (project.url && project.url.includes('prosyncweb.vercel.app')
+                (project.url && (project.url.includes('prosyncweb.vercel.app') || project.url.includes('prosync.vercel.app'))
                   ? 'https://prosyncindia.com'
                   : project.url) ||
-                (project.title === 'ProSync Web' || project.title === 'ProSync'
+                (project.title === 'ProSync Web' || project.title === 'ProSync' || project.title === 'Prosync Consulting'
                   ? 'https://prosyncindia.com'
                   : project.title === 'Mana Drivers'
                   ? 'https://manadrivers.com'
-                  : project.title === 'Prosync Consulting'
-                  ? 'https://prosyncindia.vercel.app/'
                   : project.title === 'RVM Carry Bags'
                   ? 'https://rvmcarrybags.com/'
                   : project.title === 'Inisio'

@@ -258,50 +258,72 @@ const getProjects = async (req, res) => {
 
   if (isDbReady()) {
     try {
-      let dbProjects = await PortfolioProject.find().sort({ order: 1, createdAt: 1 }).lean();
-      
+      // Purge legacy duplicate prosync.vercel.app / prosync consulting if present in DB
+      await PortfolioProject.deleteMany({
+        $or: [
+          { url: { $regex: /prosync.*vercel\.app/i } },
+          { title: 'Prosync Consulting' },
+          { _id: 'prosync_consulting' },
+        ],
+      }).catch(() => {});
+
+      let dbProjects = await PortfolioProject.find({
+        url: { $not: { $regex: /prosync.*vercel\.app/i } },
+        title: { $ne: 'Prosync Consulting' },
+      })
+        .sort({ order: 1, createdAt: 1 })
+        .lean();
+
       // If DB has no projects yet, auto-seed them immediately
       if (!dbProjects || dbProjects.length === 0) {
         await seedPortfolioProjects();
-        dbProjects = await PortfolioProject.find().sort({ order: 1, createdAt: 1 }).lean();
+        dbProjects = await PortfolioProject.find({
+          url: { $not: { $regex: /prosync.*vercel\.app/i } },
+          title: { $ne: 'Prosync Consulting' },
+        })
+          .sort({ order: 1, createdAt: 1 })
+          .lean();
       }
 
-      // Guarantee ProSync Web & Prosync Consulting are present even if an older database had partial records
-      const hasProsyncWeb = dbProjects && dbProjects.some((p) => p.title === 'ProSync Web' || (p.url && (p.url.includes('prosyncindia.com') || p.url.includes('prosyncweb.vercel.app'))));
-      if (!hasProsyncWeb) {
-        const prosyncWeb = portfolioProjects[0];
-        try {
-          await PortfolioProject.findOneAndUpdate(
-            { title: prosyncWeb.title },
-            { ...prosyncWeb, order: 0 },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-          );
-        } catch {}
-        if (dbProjects) dbProjects.unshift(prosyncWeb);
-      }
-
-      const hasProsyncConsulting = dbProjects && dbProjects.some((p) => p.title === 'Prosync Consulting');
-      if (!hasProsyncConsulting) {
-        const prosync = portfolioProjects[1];
-        try {
-          await PortfolioProject.findOneAndUpdate(
-            { title: prosync.title },
-            { ...prosync, order: 1 },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
-          );
-        } catch {}
-        if (dbProjects) dbProjects.push(prosync);
+      // Ensure ProSync (prosyncindia.com) is present
+      const hasProsync = dbProjects && dbProjects.some((p) => p.url && p.url.includes('prosyncindia.com'));
+      if (!hasProsync) {
+        const prosyncWeb = portfolioProjects.find((p) => p.url && p.url.includes('prosyncindia.com')) || portfolioProjects[1];
+        if (prosyncWeb) {
+          try {
+            await PortfolioProject.findOneAndUpdate(
+              { title: prosyncWeb.title },
+              { ...prosyncWeb, order: 1 },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+          } catch {}
+          if (dbProjects) dbProjects.push(prosyncWeb);
+        }
       }
 
       if (dbProjects && dbProjects.length > 0) {
-        return res.json(dbProjects);
+        const cleaned = dbProjects.filter(
+          (p) =>
+            !p.url?.includes('prosync.vercel.app') &&
+            !p.url?.includes('prosyncweb.vercel.app') &&
+            !p.url?.includes('prosyncindia.vercel.app') &&
+            p.title !== 'Prosync Consulting'
+        );
+        return res.json(cleaned);
       }
     } catch (err) {
       console.warn('[Projects Query Notice]:', err.message);
     }
   }
 
-  return res.json(portfolioProjects);
+  const cleanedFallback = portfolioProjects.filter(
+    (p) =>
+      !p.url?.includes('prosync.vercel.app') &&
+      !p.url?.includes('prosyncweb.vercel.app') &&
+      !p.url?.includes('prosyncindia.vercel.app') &&
+      p.title !== 'Prosync Consulting'
+  );
+  return res.json(cleanedFallback);
 };
 
 // -------------------------------------------------------------
@@ -676,12 +698,16 @@ const getAdminStats = async (req, res) => {
 
   if (isDbReady()) {
     try {
-      const stat = await SiteStat.findOne({ key: 'page_views' });
+      const [stat, totalDocs, waDocs] = await Promise.all([
+        SiteStat.findOne({ key: 'page_views' }).lean(),
+        Lead.countDocuments(),
+        Lead.countDocuments({ source: 'whatsapp_widget' }),
+      ]);
       if (stat && typeof stat.value === 'number') {
         pageViews = stat.value;
       }
-      totalLeads = await Lead.countDocuments();
-      whatsappLeads = await Lead.countDocuments({ source: 'whatsapp_widget' });
+      totalLeads = totalDocs;
+      whatsappLeads = waDocs;
       projectLeads = totalLeads - whatsappLeads;
     } catch {
       // Memory fallback
@@ -690,7 +716,7 @@ const getAdminStats = async (req, res) => {
 
   if (totalLeads === 0 && fallbackLeads.length > 0) {
     totalLeads = fallbackLeads.length;
-    whatsappLeads = fallbackLeads.filter(l => l.source === 'whatsapp_widget').length;
+    whatsappLeads = fallbackLeads.filter((l) => l.source === 'whatsapp_widget').length;
     projectLeads = totalLeads - whatsappLeads;
   }
 
@@ -715,6 +741,10 @@ const submitWhatsAppLead = async (req, res) => {
 
   if (!trimmedName || trimmedName.length < 2) {
     return res.status(400).json({ success: false, error: 'Please enter your name.' });
+  }
+
+  if (!cleanPhone || cleanPhone.length < 10) {
+    return res.status(400).json({ success: false, error: 'A valid 10-digit mobile number is required.' });
   }
 
   const minThreshold = getBackendProjectThreshold(selectedService);
@@ -1916,8 +1946,12 @@ const getLeads = async (req, res) => {
 
   if (isDbReady()) {
     try {
-      total = await Lead.countDocuments();
-      leads = await Lead.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
+      const [dbTotal, dbLeads] = await Promise.all([
+        Lead.countDocuments(),
+        Lead.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      ]);
+      total = dbTotal;
+      leads = dbLeads;
     } catch {
       // Fallback
     }
@@ -1958,8 +1992,12 @@ const getAdminProjects = async (req, res) => {
 
   if (isDbReady()) {
     try {
-      total = await ClientProject.countDocuments();
-      projects = await ClientProject.find().sort({ createdAt: -1 }).skip(skip).limit(limit);
+      const [dbTotal, dbProjects] = await Promise.all([
+        ClientProject.countDocuments(),
+        ClientProject.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      ]);
+      total = dbTotal;
+      projects = dbProjects;
     } catch {
       // Fallback
     }
@@ -1991,9 +2029,53 @@ const getAdminProjects = async (req, res) => {
 };
 
 const createAdminProject = async (req, res) => {
-  const { title, clientPhone, clientEmail, clientName, type, totalBudget, advancePercentage, advancePaid, clientPortalApproved } = req.body || {};
+  const {
+    title,
+    clientPhone,
+    clientEmail,
+    clientName,
+    type,
+    totalBudget,
+    advancePercentage,
+    advancePaid,
+    clientPortalApproved,
+    url,
+    imageUrl,
+    description,
+  } = req.body || {};
+
+  // If this is a showcase/portfolio project (e.g. from Admin Dashboard Portfolio modal)
+  if (!clientPhone && (url || imageUrl || description || type)) {
+    if (!title) {
+      return res.status(400).json({ success: false, error: 'Project Title is required' });
+    }
+    const cleanTitle = String(title).trim();
+    const cleanId = cleanTitle.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now();
+    const newPortfolio = {
+      _id: cleanId,
+      title: cleanTitle,
+      type: type || 'Static Website',
+      url: url || 'https://virattom.com',
+      imageUrl:
+        imageUrl ||
+        `https://api.microlink.io/?url=${encodeURIComponent(url || 'https://virattom.com')}&screenshot=true&meta=false&embed=screenshot.url`,
+      description: description || '',
+      order: portfolioProjects.length,
+    };
+
+    portfolioProjects.unshift(newPortfolio);
+    if (isDbReady()) {
+      try {
+        await PortfolioProject.create(newPortfolio);
+      } catch (err) {
+        console.warn('[Admin Portfolio] Mongo create notice:', err.message);
+      }
+    }
+    return res.status(201).json({ success: true, ...newPortfolio });
+  }
+
   if (!title || !clientPhone) {
-    return res.status(400).json({ error: 'Title and Client Phone are required' });
+    return res.status(400).json({ success: false, error: 'Title and Client Phone are required' });
   }
 
   const cleanPhone = String(clientPhone).replace(/\D/g, '').slice(-10);
@@ -2029,15 +2111,19 @@ const createAdminProject = async (req, res) => {
     ],
     feedback: [],
     techStack: ['React', 'TypeScript', 'Node.js', 'MongoDB', 'Razorpay'],
-    paymentHistory: advancePaid ? [{
-      id: 'pay_' + Date.now(),
-      amount: advAmount,
-      type: `Advance (${advPct}% Initial Booking)`,
-      date: new Date().toISOString().split('T')[0],
-      paymentMethod: 'Direct / Admin Cleared',
-      transactionId: 'TXN_ADM_' + Math.floor(100000 + Math.random() * 900000),
-      status: 'Completed',
-    }] : [],
+    paymentHistory: advancePaid
+      ? [
+          {
+            id: 'pay_' + Date.now(),
+            amount: advAmount,
+            type: `Advance (${advPct}% Initial Booking)`,
+            date: new Date().toISOString().split('T')[0],
+            paymentMethod: 'Direct / Admin Cleared',
+            transactionId: 'TXN_ADM_' + Math.floor(100000 + Math.random() * 900000),
+            status: 'Completed',
+          },
+        ]
+      : [],
   };
 
   if (isDbReady()) {
@@ -2049,14 +2135,55 @@ const createAdminProject = async (req, res) => {
   }
 
   clientProjects.unshift(newProject);
-  return res.json(newProject);
+  return res.json({ success: true, ...newProject });
 };
 
 const updateAdminProject = async (req, res) => {
   const { id } = req.params;
   const targetId = String(id || '').trim();
 
-  // Robust flexible memory lookup
+  if (!targetId) {
+    return res.status(400).json({ success: false, error: 'Target Project ID is required' });
+  }
+
+  // 1. Check Portfolio Project match (by _id or title)
+  let portfolioProj = portfolioProjects.find(
+    (p) =>
+      String(p._id || '').trim() === targetId ||
+      String(p.title || '').trim().toLowerCase() === targetId.toLowerCase()
+  );
+
+  if (
+    portfolioProj ||
+    req.body.imageUrl !== undefined ||
+    (req.body.url && !req.body.clientPhone && !req.body.totalBudget)
+  ) {
+    if (portfolioProj) {
+      Object.assign(portfolioProj, req.body);
+    }
+    let updatedPortfolio = null;
+    if (isDbReady()) {
+      try {
+        const portOr = [{ _id: targetId }, { title: targetId }];
+        if (req.body.title) portOr.push({ title: req.body.title });
+        updatedPortfolio = await PortfolioProject.findOneAndUpdate(
+          { $or: portOr },
+          { $set: req.body },
+          { returnDocument: 'after' }
+        ).lean();
+        if (updatedPortfolio) {
+          portfolioProj = updatedPortfolio;
+        }
+      } catch (err) {
+        console.warn('[Admin Portfolio] Update Mongo error:', err.message);
+      }
+    }
+    if (portfolioProj || updatedPortfolio) {
+      return res.json({ success: true, ...(updatedPortfolio || portfolioProj) });
+    }
+  }
+
+  // 2. Check Client Project match
   let project = clientProjects.find((item) => {
     if (!item) return false;
     const itemId = String(item.id || item._id || '').trim();
@@ -2080,7 +2207,7 @@ const updateAdminProject = async (req, res) => {
     Object.assign(project, req.body);
   }
 
-  // Database search conditions
+  // Database search conditions for ClientProject
   const orConditions = [
     { id: targetId },
     { id: `proj_${targetId}` },
@@ -2096,7 +2223,7 @@ const updateAdminProject = async (req, res) => {
         { $or: orConditions },
         { $set: req.body },
         { returnDocument: 'after', upsert: false }
-      );
+      ).lean();
       if (updated) {
         project = updated;
       }
@@ -2137,13 +2264,33 @@ const updateAdminProject = async (req, res) => {
     }
   }
 
-  return res.json(project);
+  return res.json({ success: true, ...project });
 };
 
 const deleteAdminProject = async (req, res) => {
   const { id } = req.params;
   const targetId = String(id || '').trim();
 
+  // Check Portfolio Projects
+  const pIndex = portfolioProjects.findIndex(
+    (p) =>
+      String(p._id || '').trim() === targetId ||
+      String(p.title || '').trim().toLowerCase() === targetId.toLowerCase()
+  );
+  if (pIndex !== -1) {
+    portfolioProjects.splice(pIndex, 1);
+  }
+  if (isDbReady()) {
+    try {
+      await PortfolioProject.deleteOne({
+        $or: [{ _id: targetId }, { title: targetId }],
+      });
+    } catch (err) {
+      console.warn('[Admin Portfolio] Delete Mongo error:', err.message);
+    }
+  }
+
+  // Check Client Projects
   const index = clientProjects.findIndex((item) => {
     if (!item) return false;
     const itemId = String(item.id || item._id || '').trim();
@@ -2559,7 +2706,7 @@ const updateLead = async (req, res) => {
 const getAdminNotes = async (req, res) => {
   try {
     if (isDbReady()) {
-      const notes = await AdminNote.find().sort({ createdAt: -1 });
+      const notes = await AdminNote.find().sort({ createdAt: -1 }).lean();
       return res.json({ success: true, notes });
     }
   } catch (err) {

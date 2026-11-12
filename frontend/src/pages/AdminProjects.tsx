@@ -11,7 +11,8 @@ import {
   Check,
   Edit2,
   DollarSign,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import type { ClientProject } from '@/types';
 import { formatCurrency, apiUrl } from '@/lib/utils';
@@ -21,6 +22,7 @@ export const AdminProjects: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [clientPhone, setClientPhone] = useState('');
   const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Live App/Website URL state
   const [liveUrl, setLiveUrl] = useState('');
@@ -36,6 +38,7 @@ export const AdminProjects: React.FC = () => {
 
   // Fetch projects on load
   const fetchProjects = async () => {
+    setIsRefreshing(true);
     const token = localStorage.getItem('admin_token') || '';
     try {
       const res = await fetch(apiUrl('/api/admin/projects'), {
@@ -44,9 +47,9 @@ export const AdminProjects: React.FC = () => {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
         setProjects(data);
-        const currentId = selectedProjectId || data[0].id;
+        const currentId = selectedProjectId || data[0].id || (data[0] as any)._id;
         setSelectedProjectId(currentId);
-        const active = data.find((p: any) => p.id === currentId) || data[0];
+        const active = data.find((p: any) => (p.id || p._id) === currentId) || data[0];
         setClientPhone(active.clientPhone || '');
         setLiveUrl(active.liveUrl || (active.deliverables && active.deliverables[0]?.url !== '#' ? active.deliverables[0].url : ''));
       } else {
@@ -54,6 +57,8 @@ export const AdminProjects: React.FC = () => {
       }
     } catch (err) {
       console.error('[AdminProjects] Fetch error:', err);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -61,7 +66,7 @@ export const AdminProjects: React.FC = () => {
     fetchProjects();
   }, []);
 
-  const currentProject = projects.find(p => p.id === selectedProjectId) || projects[0] || null;
+  const currentProject = projects.find(p => (p.id || (p as any)._id) === selectedProjectId) || projects[0] || null;
 
   // Sync state when selected project changes
   useEffect(() => {
@@ -256,31 +261,46 @@ export const AdminProjects: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddProject(true)}
-          className="px-4 py-2 rounded-xl bg-apple-blue text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-xs hover:bg-blue-600 transition-all cursor-pointer self-start sm:self-auto"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Client Project</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => fetchProjects()}
+            disabled={isRefreshing}
+            className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-black dark:text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-2xs hover:bg-apple-gray-50 dark:hover:bg-[#2C2C2E] transition-all cursor-pointer disabled:opacity-60"
+            title="Refresh projects"
+          >
+            <RefreshCw className={`h-4 w-4 text-apple-blue ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddProject(true)}
+            className="px-4 py-2 rounded-xl bg-apple-blue text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-xs hover:bg-blue-600 transition-all cursor-pointer"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Client Project</span>
+          </button>
+        </div>
       </div>
 
       {/* Project Selector Tabs */}
       {projects.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          {projects.map(p => (
-            <button
-              key={p.id}
-              onClick={() => setSelectedProjectId(p.id)}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                selectedProjectId === p.id
-                  ? 'bg-apple-blue text-white shadow-xs'
-                  : 'bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-50'
-              }`}
-            >
-              {p.title}
-            </button>
-          ))}
+          {projects.map((p) => {
+            const pId = p.id || (p as any)._id;
+            return (
+              <button
+                key={pId}
+                onClick={() => setSelectedProjectId(pId)}
+                className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  selectedProjectId === pId
+                    ? 'bg-apple-blue text-white shadow-xs'
+                    : 'bg-white dark:bg-[#1C1C1E] border border-apple-gray-200 dark:border-[#38383A] text-apple-gray-600 dark:text-apple-gray-300 hover:bg-apple-gray-50'
+                }`}
+              >
+                {p.title}
+              </button>
+            );
+          })}
         </div>
       )}
 
